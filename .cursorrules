@@ -1,0 +1,45 @@
+# Cursor Rules for Revela
+
+## Project Context
+This is a Next.js 14.1.0 web application with TypeScript, Tailwind CSS, and Shadcn/ui. The project uses Supabase for authentication and database. It's a platform for before/after photo visualization for aesthetic professionals.
+
+## Code Standards
+- Always use TypeScript with strict mode
+- Implement proper error handling
+- Follow OWASP Top 10 security guidelines
+- Validate all inputs with Zod
+- Use async/await pattern
+- Keep components small and focused
+- Use Shadcn/ui components when available
+- Use next/image for image optimization
+
+## Security First
+- Never expose sensitive data
+- Always sanitize user inputs
+- Implement rate limiting
+- Use HTTPS everywhere
+- Configure security headers
+- Always verify Supabase RLS policies
+- Validate permissions on both client and server
+
+## Supabase
+- Always check user authentication before operations
+- Use Row Level Security (RLS) for data isolation
+- Never trust client-side validation alone
+- Use Supabase prepared statements (automatic)
+
+## Before Committing
+1. Run TypeScript check: npm run type-check
+2. Run linter: npm run lint
+3. Update documentation if needed
+4. Verify security (OWASP)
+5. Check RLS policies (when applicable)
+
+## AI Assistant Behavior
+- Always consider security implications
+- Suggest performance optimizations
+- Maintain consistent code style
+- Update tests when changing code
+- Document complex logic
+- Prefer Shadcn/ui components
+- Optimize images with next/image
