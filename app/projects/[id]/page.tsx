@@ -315,25 +315,25 @@ export default function ViewProjectPage() {
       <NavigationHeader />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-3 py-1 sm:py-8 max-w-6xl pt-12 sm:pt-20">
+      <main className="flex-1 container mx-auto px-2 sm:px-3 py-1 sm:py-8 max-w-6xl pt-11 sm:pt-20">
         {/* Informações do Projeto */}
         <div 
-          className="rounded-lg p-1.5 sm:p-6 mb-1.5 sm:mb-6 border" 
+          className="rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
           style={{ 
             backgroundColor: 'rgba(232, 220, 192, 0.05)', 
             borderColor: 'rgba(232, 220, 192, 0.1)' 
           }}
         >
-          <div className="flex justify-between items-start mb-1">
+          <div className="flex justify-between items-start mb-0.5">
             <div>
               <h1 
-                className="text-lg sm:text-2xl font-light mb-1" 
+                className="text-sm sm:text-2xl font-light mb-0.5" 
                 style={{ color: '#E8DCC0' }}
               >
                 {project.name}
               </h1>
               <p 
-                className="text-xs sm:text-base" 
+                className="text-[10px] sm:text-base" 
                 style={{ color: '#E8DCC0', opacity: 0.8 }}
               >
                 Data: {new Date(project.date).toLocaleDateString('pt-BR')}
@@ -508,14 +508,14 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="rounded-lg p-1.5 sm:p-6 border mb-6" 
+            className="rounded-lg p-1.5 sm:p-6 border mb-2 sm:mb-6" 
             style={{ 
               backgroundColor: 'rgba(232, 220, 192, 0.05)', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
           >
             <h2 
-              className="text-xs sm:text-xl font-semibold mb-0.5 sm:mb-4 text-center" 
+              className="hidden sm:block text-xs sm:text-xl font-semibold mb-0.5 sm:mb-4 text-center" 
               style={{ color: '#FFFFFF' }}
             >
               Visualização Antes e Depois
@@ -619,10 +619,10 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Em cima/baixo */}
-            <div className="sm:hidden space-y-0.5">
+            <div className="sm:hidden flex flex-col" style={{ height: 'calc(100vh - 110px)' }}>
               {/* Carrossel Antes */}
-              <div className="relative">
-                <div className="text-center mb-0.5">
+              <div className="relative flex-1 flex flex-col min-h-0">
+                <div className="text-center py-0.5">
                   <span 
                     className="text-[10px] font-medium" 
                     style={{ color: '#E8DCC0' }}
@@ -630,11 +630,11 @@ export default function ViewProjectPage() {
                     ANTES
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded-lg overflow-hidden flex-1 min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[42vh] object-contain"
+                    className="w-full h-full object-contain"
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -668,8 +668,8 @@ export default function ViewProjectPage() {
               </div>
 
               {/* Carrossel Depois */}
-              <div className="relative">
-                <div className="text-center mb-0.5">
+              <div className="relative flex-1 flex flex-col min-h-0">
+                <div className="text-center py-0.5">
                   <span 
                     className="text-[10px] font-medium" 
                     style={{ color: '#E8DCC0' }}
@@ -677,11 +677,11 @@ export default function ViewProjectPage() {
                     DEPOIS
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded-lg overflow-hidden flex-1 min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[42vh] object-contain"
+                    className="w-full h-full object-contain"
                   />
                   {displayAfterImages.length > 1 && (
                     <>

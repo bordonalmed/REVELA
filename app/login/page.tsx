@@ -45,17 +45,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-6 sm:mb-8">
-          <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
-            <Image
-              src="/revela3.png"
-              alt="Revela Logo"
-              width={280}
-              height={160}
-              className="w-full h-auto object-contain"
-              priority
-              sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
-            />
-          </div>
+                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
+                  <Image
+                    src="/revela3.png"
+                    alt="Revela Logo"
+                    width={280}
+                    height={160}
+                    className="w-full h-auto object-contain"
+                    priority
+                    unoptimized
+                    sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
+                  />
+                </div>
         </div>
 
         {/* Card do Formulário */}
