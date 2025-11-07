@@ -311,11 +311,11 @@ export default function ViewProjectPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
+    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
       <NavigationHeader />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden" style={{ paddingTop: '36px' }}>
+      <main className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden" style={{ marginTop: '36px' }}>
         {/* Informações do Projeto - Escondido no mobile */}
         <div 
           className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
@@ -618,10 +618,10 @@ export default function ViewProjectPage() {
               </div>
             </div>
 
-            {/* Mobile: Em cima/baixo - PORTRAIT */}
-            <div className="sm:hidden portrait:flex portrait:flex-col landscape:hidden h-full overflow-hidden">
+            {/* Mobile: Vertical (altura > largura) */}
+            <div className="sm:hidden h-full overflow-hidden flex flex-col [@media(orientation:landscape)]:hidden">
               {/* Carrossel Antes */}
-              <div className="relative flex-1 flex flex-col overflow-hidden">
+              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-1 flex-shrink-0">
                   <span 
                     className="text-[9px] font-medium" 
@@ -630,11 +630,11 @@ export default function ViewProjectPage() {
                     ANTES
                   </span>
                 </div>
-                <div className="relative rounded overflow-hidden flex-1">
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -668,7 +668,7 @@ export default function ViewProjectPage() {
               </div>
 
               {/* Carrossel Depois */}
-              <div className="relative flex-1 flex flex-col overflow-hidden">
+              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-1 flex-shrink-0">
                   <span 
                     className="text-[9px] font-medium" 
@@ -677,11 +677,11 @@ export default function ViewProjectPage() {
                     DEPOIS
                   </span>
                 </div>
-                <div className="relative rounded overflow-hidden flex-1">
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
@@ -715,10 +715,10 @@ export default function ViewProjectPage() {
               </div>
             </div>
 
-            {/* Mobile: Lado a lado - LANDSCAPE */}
-            <div className="sm:hidden portrait:hidden landscape:flex h-full overflow-hidden gap-1">
+            {/* Mobile: Horizontal (largura > altura) */}
+            <div className="hidden [@media(orientation:landscape)]:flex h-full overflow-hidden gap-1 sm:!hidden">
               {/* Carrossel Antes */}
-              <div className="relative flex-1 flex flex-col overflow-hidden">
+              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-0.5 flex-shrink-0">
                   <span 
                     className="text-[8px] font-medium" 
@@ -727,11 +727,11 @@ export default function ViewProjectPage() {
                     ANTES
                   </span>
                 </div>
-                <div className="relative rounded overflow-hidden flex-1">
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -765,7 +765,7 @@ export default function ViewProjectPage() {
               </div>
 
               {/* Carrossel Depois */}
-              <div className="relative flex-1 flex flex-col overflow-hidden">
+              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-0.5 flex-shrink-0">
                   <span 
                     className="text-[8px] font-medium" 
@@ -774,11 +774,11 @@ export default function ViewProjectPage() {
                     DEPOIS
                   </span>
                 </div>
-                <div className="relative rounded overflow-hidden flex-1">
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
