@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Footer } from '@/components/footer';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,6 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -43,10 +42,8 @@ export default function SignupPage() {
 
       if (error) throw error;
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      // Redirecionar direto para o dashboard após criar conta
+      router.push('/dashboard');
     } catch (error: any) {
       setError(error.message || 'Erro ao criar conta');
     } finally {
@@ -54,91 +51,143 @@ export default function SignupPage() {
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="text-green-600 text-5xl">✓</div>
-              <p className="text-lg">Conta criada com sucesso!</p>
-              <p className="text-sm text-muted-foreground">Redirecionando...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center">Revela</CardTitle>
-          <CardDescription className="text-center">
-            Crie sua conta profissional
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Criando conta...' : 'Criar Conta'}
-            </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              Já tem uma conta?{' '}
-              <Link href="/login" className="text-primary hover:underline">
-                Entrar
-              </Link>
+    <div 
+      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8"
+      style={{ backgroundColor: '#1A2B32' }}
+    >
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
+            <Image
+              src="/revela3.png"
+              alt="Revela Logo"
+              width={280}
+              height={160}
+              className="w-full h-auto object-contain"
+              priority
+              sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
+            />
+          </div>
+        </div>
+
+        {/* Card do Formulário */}
+        <div 
+          className="w-full rounded-lg p-6 sm:p-8"
+          style={{ 
+            backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+            border: '1px solid rgba(232, 220, 192, 0.1)' 
+          }}
+        >
+          <div className="text-center mb-6">
+            <h1 className="text-2xl sm:text-3xl font-light mb-2" style={{ color: '#E8DCC0' }}>
+              Criar Conta
+            </h1>
+            <p className="text-sm sm:text-base" style={{ color: '#E8DCC0', opacity: 0.8 }}>
+              Crie sua conta profissional
             </p>
-            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Voltar para início
-            </Link>
-          </CardFooter>
-        </form>
-      </Card>
+          </div>
+
+          <form onSubmit={handleSignup}>
+            <div className="space-y-4">
+              {error && (
+                <div 
+                  className="p-3 text-sm rounded-md border"
+                  style={{ 
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                    borderColor: 'rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5'
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email" style={{ color: '#E8DCC0' }}>
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="bg-transparent border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" style={{ color: '#E8DCC0' }}>
+                  Senha
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="bg-transparent border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" style={{ color: '#E8DCC0' }}>
+                  Confirmar Senha
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="bg-transparent border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-lg px-4 py-3 text-sm sm:text-base font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ 
+                  backgroundColor: '#00A88F',
+                  color: '#FFFFFF'
+                }}
+              >
+                {loading ? 'Criando conta...' : 'Criar Conta'}
+              </button>
+
+              <div className="text-center space-y-3 pt-4">
+                <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>
+                  Já tem uma conta?{' '}
+                  <Link 
+                    href="/login" 
+                    className="hover:opacity-80 transition-opacity underline"
+                    style={{ color: '#00A88F' }}
+                  >
+                    Entrar
+                  </Link>
+                </p>
+                <Link 
+                  href="/" 
+                  className="text-sm hover:opacity-80 transition-opacity inline-block"
+                  style={{ color: '#E8DCC0', opacity: 0.7 }}
+                >
+                  ← Voltar para início
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <Footer />
     </div>
   );
 }

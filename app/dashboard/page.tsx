@@ -1,20 +1,33 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { FolderOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { User } from '@supabase/supabase-js';
+import { NavigationHeader } from '@/components/navigation-header';
+import { Footer } from '@/components/footer';
 
-interface BeforeAfterPhoto {
-  id: string;
+
+
+function Hero({ onNew, onStored }: { onNew: () => void; onStored: () => void }) {
+  return (
+    <section className="px-4 py-8 sm:py-12 md:py-16 animate-in fade-in duration-500">
+      <div className="container mx-auto max-w-4xl text-center">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-light mb-3 sm:mb-4" style={{ color: '#E8DCC0' }}>Bem-vindo ao Revela</h1>
+        <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8" style={{ color: '#E8DCC0', opacity: 0.8 }}>Cada imagem Revela uma Evolução</p>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center max-w-md mx-auto">
+          <button onClick={onNew} className="w-full sm:flex-1 rounded-lg px-4 py-3 text-sm sm:text-base font-medium transition-opacity hover:opacity-90" style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}>Novo projeto</button>
+          <button onClick={onStored} className="w-full sm:flex-1 rounded-lg px-4 py-3 text-sm sm:text-base font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2 border" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.1)' }}><FolderOpen className="w-4 h-4" />Armazenados</button>
+        </div>
+      </div>
+    </section>
+  );
 }
+
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [photos, setPhotos] = useState<BeforeAfterPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -22,144 +35,43 @@ export default function DashboardPage() {
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (!session) {
-        router.push('/login');
-      }
+      if (!session) router.push('/login');
     });
-
     return () => subscription.unsubscribe();
   }, [router]);
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
-    if (!session) {
-      router.push('/login');
-    } else {
-      fetchPhotos();
-    }
+    if (!session) router.push('/login');
     setLoading(false);
   };
 
-  const fetchPhotos = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('before_after_photos')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setPhotos(data || []);
-    } catch (error) {
-      console.error('Error fetching photos:', error);
-    }
+  const handleNew = () => {
+    router.push('/new-project');
   };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+  const handleStored = () => {
+    router.push('/projects');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1A2B32' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}></div>
+          <p style={{ color: '#E8DCC0' }}>Carregando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <header className="bg-white border-b border-slate-200">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/dashboard">
-            <h1 className="text-2xl font-bold text-slate-900 hover:text-primary transition-colors">
-              Revela
-            </h1>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/gallery">
-              <Button variant="ghost">Galeria</Button>
-            </Link>
-            <span className="text-sm text-slate-600">{user?.email}</span>
-            <Button variant="outline" onClick={handleLogout}>
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
-            Bem-vindo ao Revela
-          </h2>
-          <p className="text-slate-600">
-            Gerencie suas fotos de antes e depois
-          </p>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Link href="/gallery">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-              <CardHeader>
-                <CardTitle>Meus Casos</CardTitle>
-                <CardDescription>Visualize todos os seus casos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-4xl font-bold text-primary">{photos.length}</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Uploads</CardTitle>
-              <CardDescription>Adicione novos antes e depois</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" disabled>Em breve</Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Configurações</CardTitle>
-              <CardDescription>Gerencie sua conta</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" className="w-full" disabled>Em breve</Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Instruções</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-slate-600">
-                1. Configure suas credenciais do Supabase no arquivo .env.local
-              </p>
-              <p className="text-sm text-slate-600">
-                2. Faça o deploy no Netlify conectando seu repositório GitHub
-              </p>
-              <p className="text-sm text-slate-600">
-                3. Adicione suas variáveis de ambiente no Netlify
-              </p>
-              <p className="text-sm text-slate-600">
-                4. Crie a tabela "before_after_photos" no Supabase
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A2B32' }}>
+      <NavigationHeader />
+      <div className="flex-1 pt-20 sm:pt-24">
+        <Hero onNew={handleNew} onStored={handleStored} />
+      </div>
+      <Footer />
     </div>
   );
 }

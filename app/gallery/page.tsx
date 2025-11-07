@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BeforeAfterViewer } from '@/components/before-after-viewer';
 import type { User } from '@supabase/supabase-js';
 import Link from 'next/link';
+import { NavigationHeader } from '@/components/navigation-header';
+import { Footer } from '@/components/footer';
 
 interface BeforeAfterPhoto {
   id: string;
@@ -68,10 +70,6 @@ export default function GalleryPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
 
   if (loading) {
     return (
@@ -85,32 +83,15 @@ export default function GalleryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <header className="bg-white border-b border-slate-200">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/dashboard">
-            <h1 className="text-2xl font-bold text-slate-900 hover:text-primary transition-colors">
-              Revela
-            </h1>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost">Dashboard</Button>
-            </Link>
-            <span className="text-sm text-slate-600">{user?.email}</span>
-            <Button variant="outline" onClick={handleLogout}>
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen" style={{ backgroundColor: '#1A2B32' }}>
+      <NavigationHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pt-20 sm:pt-24">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="text-3xl font-bold mb-2" style={{ color: '#FFFFFF' }}>
             Minha Galeria
           </h2>
-          <p className="text-slate-600">
+          <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
             Visualize seus casos de antes e depois
           </p>
         </div>
@@ -119,7 +100,7 @@ export default function GalleryPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-12">
-                <p className="text-slate-600 mb-4">
+                <p style={{ color: 'rgba(255, 255, 255, 0.7)' }} className="mb-4">
                   Nenhum caso adicionado ainda
                 </p>
                 <Link href="/dashboard">
@@ -147,6 +128,7 @@ export default function GalleryPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }
