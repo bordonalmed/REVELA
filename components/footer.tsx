@@ -1,7 +1,7 @@
-export function Footer() {
+export function Footer({ className = "" }: { className?: string }) {
   return (
     <footer 
-      className="border-t py-4 sm:py-6"
+      className={`border-t py-4 sm:py-6 ${className}`}
       style={{ 
         borderColor: 'rgba(232, 220, 192, 0.1)' 
       }}

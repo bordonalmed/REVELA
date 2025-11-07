@@ -311,14 +311,14 @@ export default function ViewProjectPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A2B32' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
       <NavigationHeader />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-2 sm:px-3 py-1 sm:py-8 max-w-6xl pt-11 sm:pt-20">
-        {/* Informações do Projeto */}
+      <main className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden" style={{ paddingTop: '36px' }}>
+        {/* Informações do Projeto - Escondido no mobile */}
         <div 
-          className="rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
+          className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
           style={{ 
             backgroundColor: 'rgba(232, 220, 192, 0.05)', 
             borderColor: 'rgba(232, 220, 192, 0.1)' 
@@ -508,7 +508,7 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="rounded-lg p-1.5 sm:p-6 border mb-2 sm:mb-6" 
+            className="flex-1 flex flex-col overflow-hidden rounded-lg p-1 sm:p-6 border mb-0 sm:mb-6" 
             style={{ 
               backgroundColor: 'rgba(232, 220, 192, 0.05)', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
@@ -618,23 +618,23 @@ export default function ViewProjectPage() {
               </div>
             </div>
 
-            {/* Mobile: Em cima/baixo */}
-            <div className="sm:hidden flex flex-col" style={{ height: 'calc(100vh - 110px)' }}>
+            {/* Mobile: Em cima/baixo - PORTRAIT */}
+            <div className="sm:hidden portrait:flex portrait:flex-col landscape:hidden h-full overflow-hidden">
               {/* Carrossel Antes */}
-              <div className="relative flex-1 flex flex-col min-h-0">
-                <div className="text-center py-0.5">
+              <div className="relative flex-1 flex flex-col overflow-hidden">
+                <div className="text-center py-1 flex-shrink-0">
                   <span 
-                    className="text-[10px] font-medium" 
+                    className="text-[9px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     ANTES
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden flex-1 min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded overflow-hidden flex-1">
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-full object-contain"
+                    className="absolute inset-0 w-full h-full object-contain"
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -668,20 +668,20 @@ export default function ViewProjectPage() {
               </div>
 
               {/* Carrossel Depois */}
-              <div className="relative flex-1 flex flex-col min-h-0">
-                <div className="text-center py-0.5">
+              <div className="relative flex-1 flex flex-col overflow-hidden">
+                <div className="text-center py-1 flex-shrink-0">
                   <span 
-                    className="text-[10px] font-medium" 
+                    className="text-[9px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     DEPOIS
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden flex-1 min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded overflow-hidden flex-1">
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-full object-contain"
+                    className="absolute inset-0 w-full h-full object-contain"
                   />
                   {displayAfterImages.length > 1 && (
                     <>
@@ -714,10 +714,107 @@ export default function ViewProjectPage() {
                 </div>
               </div>
             </div>
+
+            {/* Mobile: Lado a lado - LANDSCAPE */}
+            <div className="sm:hidden portrait:hidden landscape:flex h-full overflow-hidden gap-1">
+              {/* Carrossel Antes */}
+              <div className="relative flex-1 flex flex-col overflow-hidden">
+                <div className="text-center py-0.5 flex-shrink-0">
+                  <span 
+                    className="text-[8px] font-medium" 
+                    style={{ color: '#E8DCC0' }}
+                  >
+                    ANTES
+                  </span>
+                </div>
+                <div className="relative rounded overflow-hidden flex-1">
+                  <img
+                    src={displayBeforeImages[beforeCurrentIndex]}
+                    alt={`Antes ${beforeCurrentIndex + 1}`}
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                  {displayBeforeImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevBeforeImage}
+                        className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        aria-label="Imagem anterior"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={nextBeforeImage}
+                        className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        aria-label="Próxima imagem"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
+                        <span 
+                          className="text-[8px] px-1 py-0.5 rounded"
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        >
+                          {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Carrossel Depois */}
+              <div className="relative flex-1 flex flex-col overflow-hidden">
+                <div className="text-center py-0.5 flex-shrink-0">
+                  <span 
+                    className="text-[8px] font-medium" 
+                    style={{ color: '#E8DCC0' }}
+                  >
+                    DEPOIS
+                  </span>
+                </div>
+                <div className="relative rounded overflow-hidden flex-1">
+                  <img
+                    src={displayAfterImages[afterCurrentIndex]}
+                    alt={`Depois ${afterCurrentIndex + 1}`}
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                  {displayAfterImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevAfterImage}
+                        className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        aria-label="Imagem anterior"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={nextAfterImage}
+                        className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        aria-label="Próxima imagem"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
+                        <span 
+                          className="text-[8px] px-1 py-0.5 rounded"
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        >
+                          {afterCurrentIndex + 1}/{displayAfterImages.length}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
-      <Footer />
+      <Footer className="hidden sm:block" />
     </div>
   );
 }
