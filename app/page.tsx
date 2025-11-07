@@ -11,9 +11,9 @@ export default function Home() {
         <div className="text-center w-full max-w-5xl px-2 sm:px-4 md:px-6">
           {/* Logo - DESTAQUE PRINCIPAL */}
           <div className="flex justify-center mb-6 sm:mb-8 md:mb-10">
-            <div 
+            <div
               className="relative w-[50vw] sm:w-[40vw] md:w-[35vw] lg:w-[280px] h-auto"
-              style={{ 
+              style={{
                 minHeight: '100px'
               }}
             >
@@ -24,6 +24,7 @@ export default function Home() {
                 height={160}
                 className="w-full h-auto object-contain"
                 priority
+                unoptimized
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 40vw, (max-width: 1024px) 35vw, 280px"
               />
             </div>

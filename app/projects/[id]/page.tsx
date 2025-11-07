@@ -315,10 +315,10 @@ export default function ViewProjectPage() {
       <NavigationHeader />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-2 sm:py-8 max-w-6xl pt-14 sm:pt-20">
+      <main className="flex-1 container mx-auto px-3 py-1 sm:py-8 max-w-6xl pt-12 sm:pt-20">
         {/* Informações do Projeto */}
         <div 
-          className="rounded-lg p-2 sm:p-6 mb-2 sm:mb-6 border" 
+          className="rounded-lg p-1.5 sm:p-6 mb-1.5 sm:mb-6 border" 
           style={{ 
             backgroundColor: 'rgba(232, 220, 192, 0.05)', 
             borderColor: 'rgba(232, 220, 192, 0.1)' 
@@ -508,14 +508,14 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="rounded-lg p-2 sm:p-6 border mb-6" 
+            className="rounded-lg p-1.5 sm:p-6 border mb-6" 
             style={{ 
               backgroundColor: 'rgba(232, 220, 192, 0.05)', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
           >
             <h2 
-              className="text-sm sm:text-xl font-semibold mb-1 sm:mb-4 text-center" 
+              className="text-xs sm:text-xl font-semibold mb-0.5 sm:mb-4 text-center" 
               style={{ color: '#FFFFFF' }}
             >
               Visualização Antes e Depois
@@ -619,12 +619,12 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Em cima/baixo */}
-            <div className="sm:hidden space-y-1">
+            <div className="sm:hidden space-y-0.5">
               {/* Carrossel Antes */}
               <div className="relative">
-                <div className="text-center mb-1">
+                <div className="text-center mb-0.5">
                   <span 
-                    className="text-xs font-medium" 
+                    className="text-[10px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     ANTES
@@ -634,7 +634,7 @@ export default function ViewProjectPage() {
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[38vh] object-contain"
+                    className="w-full h-auto max-h-[42vh] object-contain"
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -669,9 +669,9 @@ export default function ViewProjectPage() {
 
               {/* Carrossel Depois */}
               <div className="relative">
-                <div className="text-center mb-1">
+                <div className="text-center mb-0.5">
                   <span 
-                    className="text-xs font-medium" 
+                    className="text-[10px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     DEPOIS
@@ -681,7 +681,7 @@ export default function ViewProjectPage() {
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[38vh] object-contain"
+                    className="w-full h-auto max-h-[42vh] object-contain"
                   />
                   {displayAfterImages.length > 1 && (
                     <>

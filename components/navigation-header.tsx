@@ -30,11 +30,11 @@ export function NavigationHeader() {
         borderColor: 'rgba(232, 220, 192, 0.1)' 
       }}
     >
-      <div className="container mx-auto px-4 py-2 sm:py-3">
+      <div className="container mx-auto px-3 py-1.5 sm:py-3">
         <div className="flex items-center justify-between">
           {/* Logotipo à esquerda */}
           <Link href="/dashboard">
-            <div className="relative w-[50px] sm:w-[70px] h-auto">
+            <div className="relative w-[40px] sm:w-[70px] h-auto">
               <Image 
                 src="/revela3.png" 
                 alt="Revela Logo" 
@@ -54,31 +54,31 @@ export function NavigationHeader() {
             {isDashboard ? (
               <button
                 onClick={() => router.push('/settings')}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
                 aria-label="Configurações"
                 style={{ color: '#E8DCC0' }}
               >
-                <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Settings className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
               </button>
             ) : (
               <button
                 onClick={() => router.push('/dashboard')}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
                 aria-label="Dashboard"
                 style={{ color: '#E8DCC0' }}
               >
-                <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Home className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
               </button>
             )}
 
             {/* Botão Sair */}
             <button
               onClick={handleLogout}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
                 aria-label="Sair"
                 style={{ color: '#E8DCC0' }}
             >
-              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+              <LogOut className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
