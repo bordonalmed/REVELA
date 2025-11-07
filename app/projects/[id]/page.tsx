@@ -742,41 +742,22 @@ export default function ViewProjectPage() {
                     className="text-[9px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
-                    DEPOIS
+                    DEPOIS {displayAfterImages.length > 1 && `${afterCurrentIndex + 1}/${displayAfterImages.length}`}
                   </span>
                 </div>
-                <div className="relative rounded overflow-hidden flex-1 min-h-0">
+                <div 
+                  ref={afterTouchRef}
+                  className="relative rounded overflow-hidden flex-1 min-h-0 touch-none"
+                >
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
                   />
+                  {/* Setas removidas do mobile - use swipe */}
                   {displayAfterImages.length > 1 && (
                     <>
-                      <button
-                        onClick={prevAfterImage}
-                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={nextAfterImage}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
-                        <span 
-                          className="text-xs px-2 py-1 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        >
-                          {afterCurrentIndex + 1} / {displayAfterImages.length}
-                        </span>
-                      </div>
+                      <div className="hidden"></div>
                     </>
                   )}
                 </div>
