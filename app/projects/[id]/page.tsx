@@ -52,6 +52,10 @@ export default function ViewProjectPage() {
     };
   }, []);
 
+  // Usar imagens de edição quando estiver editando
+  const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
+  const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
+
   // Touch/Swipe para navegação (apenas mobile)
   useEffect(() => {
     let touchStartX = 0;
@@ -353,10 +357,6 @@ export default function ViewProjectPage() {
       setSaving(false);
     }
   };
-
-  // Usar imagens de edição quando estiver editando
-  const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
-  const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
 
   if (loading) {
     return (
