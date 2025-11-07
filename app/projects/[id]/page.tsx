@@ -26,8 +26,25 @@ export default function ViewProjectPage() {
   const [newBeforeFiles, setNewBeforeFiles] = useState<File[]>([]);
   const [newAfterFiles, setNewAfterFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Detectar orientação
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   useEffect(() => {
     checkUser();
@@ -619,7 +636,7 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Vertical (altura > largura) */}
-            <div className="sm:hidden h-full overflow-hidden flex flex-col [@media(orientation:landscape)]:hidden">
+            <div className={`sm:hidden h-full overflow-hidden ${isLandscape ? 'hidden' : 'flex flex-col'}`}>
               {/* Carrossel Antes */}
               <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-1 flex-shrink-0">
@@ -716,7 +733,7 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Horizontal (largura > altura) */}
-            <div className="hidden [@media(orientation:landscape)]:flex h-full overflow-hidden gap-1 sm:!hidden">
+            <div className={`sm:hidden h-full overflow-hidden gap-1 ${isLandscape ? 'flex' : 'hidden'}`}>
               {/* Carrossel Antes */}
               <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-0.5 flex-shrink-0">
