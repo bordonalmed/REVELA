@@ -29,21 +29,18 @@ export default function ViewProjectPage() {
   const [isLandscape, setIsLandscape] = useState(false);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
-  const beforeTouchRef = React.useRef<HTMLDivElement>(null);
-  const afterTouchRef = React.useRef<HTMLDivElement>(null);
 
   // Detectar orientação
   useEffect(() => {
     const checkOrientation = () => {
       const landscape = window.innerWidth > window.innerHeight;
-      console.log('Orientação:', landscape ? 'HORIZONTAL' : 'VERTICAL', `${window.innerWidth}x${window.innerHeight}`);
       setIsLandscape(landscape);
     };
     
     checkOrientation();
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', () => {
-      setTimeout(checkOrientation, 100); // Pequeno delay para garantir
+      setTimeout(checkOrientation, 100);
     });
     
     return () => {
@@ -55,69 +52,6 @@ export default function ViewProjectPage() {
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
   const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
-
-  // Touch/Swipe para navegação (apenas mobile)
-  useEffect(() => {
-    let touchStartX = 0;
-    let touchEndX = 0;
-
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchEnd = (e: TouchEvent, isBeforeCarousel: boolean) => {
-      touchEndX = e.changedTouches[0].screenX;
-      handleSwipe(isBeforeCarousel);
-    };
-
-    const handleSwipe = (isBeforeCarousel: boolean) => {
-      const swipeThreshold = 50; // Mínimo de 50px para ser considerado swipe
-      
-      if (touchStartX - touchEndX > swipeThreshold) {
-        // Swipe left (próxima imagem)
-        if (isBeforeCarousel) {
-          nextBeforeImage();
-        } else {
-          nextAfterImage();
-        }
-      }
-      
-      if (touchEndX - touchStartX > swipeThreshold) {
-        // Swipe right (imagem anterior)
-        if (isBeforeCarousel) {
-          prevBeforeImage();
-        } else {
-          prevAfterImage();
-        }
-      }
-    };
-
-    const beforeEl = beforeTouchRef.current;
-    const afterEl = afterTouchRef.current;
-
-    if (beforeEl) {
-      const handleBeforeTouchEnd = (e: TouchEvent) => handleTouchEnd(e, true);
-      beforeEl.addEventListener('touchstart', handleTouchStart);
-      beforeEl.addEventListener('touchend', handleBeforeTouchEnd);
-    }
-
-    if (afterEl) {
-      const handleAfterTouchEnd = (e: TouchEvent) => handleTouchEnd(e, false);
-      afterEl.addEventListener('touchstart', handleTouchStart);
-      afterEl.addEventListener('touchend', handleAfterTouchEnd);
-    }
-
-    return () => {
-      if (beforeEl) {
-        beforeEl.removeEventListener('touchstart', handleTouchStart);
-        beforeEl.removeEventListener('touchend', () => {});
-      }
-      if (afterEl) {
-        afterEl.removeEventListener('touchstart', handleTouchStart);
-        afterEl.removeEventListener('touchend', () => {});
-      }
-    };
-  }, [displayBeforeImages.length, displayAfterImages.length, beforeCurrentIndex, afterCurrentIndex]);
 
   useEffect(() => {
     checkUser();
@@ -713,23 +647,41 @@ export default function ViewProjectPage() {
                     className="text-[9px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
-                    ANTES {displayBeforeImages.length > 1 && `${beforeCurrentIndex + 1}/${displayBeforeImages.length}`}
+                    ANTES
                   </span>
                 </div>
-                <div 
-                  ref={beforeTouchRef}
-                  className="relative rounded overflow-hidden flex-1 min-h-0 touch-none"
-                >
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
-                  {/* Setas removidas do mobile - use swipe */}
                   {displayBeforeImages.length > 1 && (
                     <>
-                      {/* Setas escondidas no mobile */}
-                      <div className="hidden"></div>
+                      <button
+                        onClick={prevBeforeImage}
+                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        aria-label="Imagem anterior"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={nextBeforeImage}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        aria-label="Próxima imagem"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                        <span 
+                          className="text-[10px] px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        >
+                          {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                        </span>
+                      </div>
                     </>
                   )}
                 </div>
@@ -742,22 +694,41 @@ export default function ViewProjectPage() {
                     className="text-[9px] font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
-                    DEPOIS {displayAfterImages.length > 1 && `${afterCurrentIndex + 1}/${displayAfterImages.length}`}
+                    DEPOIS
                   </span>
                 </div>
-                <div 
-                  ref={afterTouchRef}
-                  className="relative rounded overflow-hidden flex-1 min-h-0 touch-none"
-                >
+                <div className="relative rounded overflow-hidden flex-1 min-h-0">
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
-                  {/* Setas removidas do mobile - use swipe */}
                   {displayAfterImages.length > 1 && (
                     <>
-                      <div className="hidden"></div>
+                      <button
+                        onClick={prevAfterImage}
+                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        aria-label="Imagem anterior"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={nextAfterImage}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        aria-label="Próxima imagem"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                        <span 
+                          className="text-[10px] px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                        >
+                          {afterCurrentIndex + 1}/{displayAfterImages.length}
+                        </span>
+                      </div>
                     </>
                   )}
                 </div>
@@ -765,10 +736,7 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Horizontal (largura > altura) */}
-            <div 
-              className={`h-full overflow-hidden gap-1 sm:!hidden ${isLandscape ? 'flex' : 'hidden'}`}
-              style={{ display: isLandscape && window.innerWidth < 1024 ? 'flex' : 'none' }}
-            >
+            <div className={`sm:hidden h-full overflow-hidden gap-1 ${isLandscape ? 'flex' : 'hidden'}`}>
               {/* Carrossel Antes */}
               <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
                 <div className="text-center py-0.5 flex-shrink-0">
@@ -790,23 +758,23 @@ export default function ViewProjectPage() {
                       <button
                         onClick={prevBeforeImage}
                         className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         aria-label="Imagem anterior"
                       >
-                        <ChevronLeft className="w-3 h-3" />
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
                         onClick={nextBeforeImage}
                         className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         aria-label="Próxima imagem"
                       >
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                       <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
                         <span 
                           className="text-[8px] px-1 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         >
                           {beforeCurrentIndex + 1}/{displayBeforeImages.length}
                         </span>
@@ -837,23 +805,23 @@ export default function ViewProjectPage() {
                       <button
                         onClick={prevAfterImage}
                         className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         aria-label="Imagem anterior"
                       >
-                        <ChevronLeft className="w-3 h-3" />
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
                         onClick={nextAfterImage}
                         className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         aria-label="Próxima imagem"
                       >
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                       <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
                         <span 
                           className="text-[8px] px-1 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
+                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                         >
                           {afterCurrentIndex + 1}/{displayAfterImages.length}
                         </span>
