@@ -315,25 +315,25 @@ export default function ViewProjectPage() {
       <NavigationHeader />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-6xl pt-20 sm:pt-24">
+      <main className="flex-1 container mx-auto px-4 py-3 sm:py-8 max-w-6xl pt-16 sm:pt-24">
         {/* Informações do Projeto */}
         <div 
-          className="rounded-lg p-4 sm:p-6 mb-6 border" 
+          className="rounded-lg p-3 sm:p-6 mb-3 sm:mb-6 border" 
           style={{ 
             backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-            borderColor: 'rgba(255, 255, 255, 0.1)' 
+            borderColor: 'rgba(232, 220, 192, 0.1)' 
           }}
         >
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start mb-1">
             <div>
               <h1 
-                className="text-xl sm:text-2xl font-light mb-2" 
+                className="text-lg sm:text-2xl font-light mb-1" 
                 style={{ color: '#E8DCC0' }}
               >
                 {project.name}
               </h1>
               <p 
-                className="text-sm sm:text-base" 
+                className="text-xs sm:text-base" 
                 style={{ color: '#E8DCC0', opacity: 0.8 }}
               >
                 Data: {new Date(project.date).toLocaleDateString('pt-BR')}
@@ -508,14 +508,14 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="rounded-lg p-4 sm:p-6 border mb-6" 
+            className="rounded-lg p-3 sm:p-6 border mb-6" 
             style={{ 
               backgroundColor: 'rgba(232, 220, 192, 0.05)', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
           >
             <h2 
-              className="text-lg sm:text-xl font-semibold mb-4 text-center" 
+              className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 text-center" 
               style={{ color: '#FFFFFF' }}
             >
               Visualização Antes e Depois
@@ -619,12 +619,12 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Mobile: Em cima/baixo */}
-            <div className="sm:hidden space-y-4">
+            <div className="sm:hidden space-y-2">
               {/* Carrossel Antes */}
               <div className="relative">
-                <div className="text-center mb-2">
+                <div className="text-center mb-1">
                   <span 
-                    className="text-sm font-medium" 
+                    className="text-xs font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     ANTES
@@ -634,13 +634,13 @@ export default function ViewProjectPage() {
                   <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[400px] object-contain"
+                    className="w-full h-auto max-h-[35vh] object-contain"
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
                       <button
                         onClick={prevBeforeImage}
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
+                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
                         aria-label="Imagem anterior"
                       >
@@ -669,9 +669,9 @@ export default function ViewProjectPage() {
 
               {/* Carrossel Depois */}
               <div className="relative">
-                <div className="text-center mb-2">
+                <div className="text-center mb-1">
                   <span 
-                    className="text-sm font-medium" 
+                    className="text-xs font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
                     DEPOIS
@@ -681,13 +681,13 @@ export default function ViewProjectPage() {
                   <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[400px] object-contain"
+                    className="w-full h-auto max-h-[35vh] object-contain"
                   />
                   {displayAfterImages.length > 1 && (
                     <>
                       <button
                         onClick={prevAfterImage}
-                        className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
+                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
                         aria-label="Imagem anterior"
                       >
