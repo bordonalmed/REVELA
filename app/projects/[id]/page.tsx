@@ -644,19 +644,19 @@ export default function ViewProjectPage() {
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
                         aria-label="Imagem anterior"
                       >
-                        <ChevronLeft className="w-5 h-5" />
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
                         onClick={nextBeforeImage}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1.5 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
                         aria-label="Próxima imagem"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
-                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
                         <span 
-                          className="text-xs px-2 py-1 rounded"
+                          className="text-xs px-1.5 py-0.5 rounded"
                           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
                         >
                           {beforeCurrentIndex + 1} / {displayBeforeImages.length}
