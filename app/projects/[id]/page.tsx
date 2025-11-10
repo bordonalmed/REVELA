@@ -44,7 +44,7 @@ export default function ViewProjectPage() {
       const header = document.querySelector('header');
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const mainMarginTop = 36; // margin-top aplicado ao <main>
-      const extraPadding = landscape ? 8 : 24;
+      const extraPadding = landscape ? 0 : 24;
       const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
       setViewerHeight(Math.max(availableHeight, 0));
 
@@ -344,6 +344,8 @@ export default function ViewProjectPage() {
     );
   }
 
+  const isCompactLandscape = isLandscape && (viewerHeight !== null ? viewerHeight < 520 : true);
+
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
       <NavigationHeader />
@@ -351,69 +353,71 @@ export default function ViewProjectPage() {
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden" style={{ marginTop: '36px' }}>
         {/* Informações do Projeto - Escondido no mobile */}
-        <div 
-          className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
-          style={{ 
-            backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-            borderColor: 'rgba(232, 220, 192, 0.1)' 
-          }}
-        >
-          <div className="flex justify-between items-start mb-0.5">
-            <div>
-              <h1 
-                className="text-sm sm:text-2xl font-light mb-0.5" 
-                style={{ color: '#E8DCC0' }}
-              >
-                {project.name}
-              </h1>
-              <p 
-                className="text-[10px] sm:text-base" 
-                style={{ color: '#E8DCC0', opacity: 0.8 }}
-              >
-                Data: {new Date(project.date).toLocaleDateString('pt-BR')}
-              </p>
-            </div>
-            {!isEditing ? (
-              <button
-                onClick={handleEdit}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
-                style={{ 
-                  backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-                  color: '#E8DCC0', 
-                  borderColor: 'rgba(232, 220, 192, 0.1)' 
-                }}
-              >
-                <Edit2 className="w-4 h-4" />
-                Editar
-              </button>
-            ) : (
-              <div className="flex gap-2">
+        {!isCompactLandscape && (
+          <div 
+            className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
+            style={{ 
+              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+              borderColor: 'rgba(232, 220, 192, 0.1)' 
+            }}
+          >
+            <div className="flex justify-between items-start mb-0.5">
+              <div>
+                <h1 
+                  className="text-sm sm:text-2xl font-light mb-0.5" 
+                  style={{ color: '#E8DCC0' }}
+                >
+                  {project.name}
+                </h1>
+                <p 
+                  className="text-[10px] sm:text-base" 
+                  style={{ color: '#E8DCC0', opacity: 0.8 }}
+                >
+                  Data: {new Date(project.date).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              {!isEditing ? (
                 <button
-                  onClick={handleCancelEdit}
-                  disabled={saving}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border disabled:opacity-50"
+                  onClick={handleEdit}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
                   style={{ 
                     backgroundColor: 'rgba(232, 220, 192, 0.05)', 
                     color: '#E8DCC0', 
                     borderColor: 'rgba(232, 220, 192, 0.1)' 
                   }}
                 >
-                  <X className="w-4 h-4" />
-                  Cancelar
+                  <Edit2 className="w-4 h-4" />
+                  Editar
                 </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={saving || displayBeforeImages.length === 0 || displayAfterImages.length === 0}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            )}
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={saving}
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                      color: '#E8DCC0', 
+                      borderColor: 'rgba(232, 220, 192, 0.1)' 
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={saving || displayBeforeImages.length === 0 || displayAfterImages.length === 0}
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Modo de Edição - Controles de Upload */}
         {isEditing && (
@@ -654,14 +658,18 @@ export default function ViewProjectPage() {
 
             {/* Dispositivos móveis e tablets */}
             <div
-              className="lg:hidden flex-1 flex flex-col min-h-0"
-              style={viewerHeight ? { height: `${viewerHeight}px` } : undefined}
+              className={`lg:hidden flex-1 flex flex-col min-h-0 ${isCompactLandscape ? 'overflow-y-auto' : ''}`}
+              style={
+                !isLandscape && viewerHeight
+                  ? { height: `${viewerHeight}px` }
+                  : undefined
+              }
             >
               {isLandscape ? (
-                <div className="flex flex-1 gap-2 min-h-0" style={{ height: '100%' }}>
+                <div className="flex flex-1 gap-2 min-h-0" style={{ minHeight: viewerHeight ?? 'auto' }}>
                   <div
                     className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ height: '100%', minWidth: 0 }}
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
                   >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
@@ -710,7 +718,7 @@ export default function ViewProjectPage() {
 
                   <div
                     className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ height: '100%', minWidth: 0 }}
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
                   >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
@@ -862,7 +870,7 @@ export default function ViewProjectPage() {
           </div>
         )}
       </main>
-      <Footer className="hidden sm:block" />
+      {!isCompactLandscape && <Footer className="hidden sm:block" />}
     </div>
   );
 }
