@@ -29,6 +29,7 @@ export default function ViewProjectPage() {
   const [isLandscape, setIsLandscape] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
+  const [forceFullscreen, setForceFullscreen] = useState(false);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -44,11 +45,12 @@ export default function ViewProjectPage() {
       const header = document.querySelector('header');
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const mainMarginTop = 36; // margin-top aplicado ao <main>
-      const extraPadding = landscape ? 0 : 24;
+      const fullscreenActive = forceFullscreen || landscape;
+      const extraPadding = fullscreenActive ? 0 : 24;
       const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
       setViewerHeight(Math.max(availableHeight, 0));
 
-      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 52 : 68);
+      const labelAllowance = fullscreenActive ? 0 : (window.innerWidth < 768 ? 52 : 68);
       const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 140);
       setStackedSectionHeight(computedStacked);
     };
@@ -61,7 +63,7 @@ export default function ViewProjectPage() {
       window.removeEventListener('resize', updateLayoutMetrics);
       window.removeEventListener('orientationchange', updateLayoutMetrics);
     };
-  }, []);
+  }, [forceFullscreen]);
 
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
@@ -344,16 +346,22 @@ export default function ViewProjectPage() {
     );
   }
 
-  const isCompactLandscape = isLandscape && (viewerHeight !== null ? viewerHeight < 520 : true);
+  const isFullscreen = forceFullscreen || isLandscape;
+  const shouldHideChrome = isFullscreen;
+  const allowScroll = isLandscape || forceFullscreen;
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
-      <NavigationHeader />
+      {!shouldHideChrome && <NavigationHeader />}
+      {shouldHideChrome && <div style={{ height: '0px' }} />}
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden" style={{ marginTop: '36px' }}>
+      <main
+        className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden"
+        style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
+      >
         {/* Informações do Projeto - Escondido no mobile */}
-        {!isCompactLandscape && (
+        {!shouldHideChrome && (
           <div 
             className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
             style={{ 
@@ -658,15 +666,49 @@ export default function ViewProjectPage() {
 
             {/* Dispositivos móveis e tablets */}
             <div
-              className={`lg:hidden flex-1 flex flex-col min-h-0 ${isCompactLandscape ? 'overflow-y-auto' : ''}`}
-              style={
-                !isLandscape && viewerHeight
-                  ? { height: `${viewerHeight}px` }
-                  : undefined
-              }
+              className={`lg:hidden relative flex-1 flex flex-col min-h-0 ${allowScroll ? 'overflow-y-auto' : ''}`}
+              style={viewerHeight ? { height: `${viewerHeight}px` } : undefined}
             >
+              {!isLandscape && (
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={() => setForceFullscreen((prev) => !prev)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all hover:opacity-90"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.05)',
+                      borderColor: 'rgba(232, 220, 192, 0.2)',
+                      color: '#E8DCC0'
+                    }}
+                  >
+                    {isFullscreen ? 'Fechar tela cheia' : 'Tela cheia'}
+                  </button>
+                </div>
+              )}
+
+              {forceFullscreen && !isLandscape && (
+                <div className="absolute top-2 right-2 z-20">
+                  <button
+                    onClick={() => setForceFullscreen(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all hover:opacity-90"
+                    style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                      borderColor: 'rgba(232, 220, 192, 0.2)',
+                      color: '#E8DCC0'
+                    }}
+                  >
+                    Fechar tela cheia
+                  </button>
+                </div>
+              )}
+
               {isLandscape ? (
-                <div className="flex flex-1 gap-2 min-h-0" style={{ minHeight: viewerHeight ?? 'auto' }}>
+                <div
+                  className="flex flex-1 gap-2 min-h-0"
+                  style={{
+                    minHeight: viewerHeight ?? 'auto',
+                    height: isFullscreen ? `${viewerHeight}px` : 'auto'
+                  }}
+                >
                   <div
                     className="relative flex-1 basis-1/2 flex flex-col min-h-0"
                     style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
@@ -870,7 +912,7 @@ export default function ViewProjectPage() {
           </div>
         )}
       </main>
-      {!isCompactLandscape && <Footer className="hidden sm:block" />}
+      {!shouldHideChrome && <Footer className="hidden sm:block" />}
     </div>
   );
 }
