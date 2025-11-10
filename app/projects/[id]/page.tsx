@@ -35,18 +35,21 @@ export default function ViewProjectPage() {
   // Detectar orientação
   useEffect(() => {
     const updateLayoutMetrics = () => {
+      const viewportHeight = typeof window !== 'undefined' && window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
       const landscape = window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
 
       const header = document.querySelector('header');
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const mainMarginTop = 36; // margin-top aplicado ao <main>
-      const extraPadding = landscape ? 12 : 24;
-      const availableHeight = window.innerHeight - headerHeight - mainMarginTop - extraPadding;
-      setViewerHeight(Math.max(availableHeight, 300));
+      const extraPadding = landscape ? 8 : 24;
+      const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
+      setViewerHeight(Math.max(availableHeight, 0));
 
-      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 56 : 72);
-      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 150);
+      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 52 : 68);
+      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 140);
       setStackedSectionHeight(computedStacked);
     };
 
@@ -656,7 +659,10 @@ export default function ViewProjectPage() {
             >
               {isLandscape ? (
                 <div className="flex flex-1 gap-2 min-h-0" style={{ height: '100%' }}>
-                  <div className="relative flex-1 basis-1/2 flex flex-col min-h-0" style={{ height: '100%' }}>
+                  <div
+                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={{ height: '100%', minWidth: 0 }}
+                  >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
@@ -702,7 +708,10 @@ export default function ViewProjectPage() {
                     </div>
                   </div>
 
-                  <div className="relative flex-1 basis-1/2 flex flex-col min-h-0" style={{ height: '100%' }}>
+                  <div
+                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={{ height: '100%', minWidth: 0 }}
+                  >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
