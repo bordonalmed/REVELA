@@ -27,25 +27,36 @@ export default function ViewProjectPage() {
   const [newAfterFiles, setNewAfterFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [viewerHeight, setViewerHeight] = useState<number | null>(null);
+  const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
 
   // Detectar orientação
   useEffect(() => {
-    const checkOrientation = () => {
+    const updateLayoutMetrics = () => {
       const landscape = window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
+
+      const header = document.querySelector('header');
+      const headerHeight = header ? header.getBoundingClientRect().height : 0;
+      const mainMarginTop = 36; // margin-top aplicado ao <main>
+      const extraPadding = landscape ? 12 : 24;
+      const availableHeight = window.innerHeight - headerHeight - mainMarginTop - extraPadding;
+      setViewerHeight(Math.max(availableHeight, 300));
+
+      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 56 : 72);
+      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 150);
+      setStackedSectionHeight(computedStacked);
     };
-    
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(checkOrientation, 100);
-    });
-    
+
+    updateLayoutMetrics();
+    window.addEventListener('resize', updateLayoutMetrics);
+    window.addEventListener('orientationchange', updateLayoutMetrics);
+
     return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
+      window.removeEventListener('resize', updateLayoutMetrics);
+      window.removeEventListener('orientationchange', updateLayoutMetrics);
     };
   }, []);
 
@@ -639,11 +650,14 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Dispositivos móveis e tablets */}
-            <div className="lg:hidden flex-1 overflow-y-auto">
+            <div
+              className="lg:hidden flex-1 flex flex-col min-h-0"
+              style={viewerHeight ? { height: `${viewerHeight}px` } : undefined}
+            >
               {isLandscape ? (
-                <div className="flex h-full gap-2">
-                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                    <div className="text-center py-1 flex-shrink-0">
+                <div className="flex flex-1 gap-2 min-h-0" style={{ height: '100%' }}>
+                  <div className="relative flex-1 basis-1/2 flex flex-col min-h-0" style={{ height: '100%' }}>
+                    <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
@@ -688,8 +702,8 @@ export default function ViewProjectPage() {
                     </div>
                   </div>
 
-                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                    <div className="text-center py-1 flex-shrink-0">
+                  <div className="relative flex-1 basis-1/2 flex flex-col min-h-0" style={{ height: '100%' }}>
+                    <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
@@ -735,9 +749,12 @@ export default function ViewProjectPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-[45vh]">
-                    <div className="text-center py-1 flex-shrink-0">
+                <div className="flex flex-col flex-1 min-h-0 gap-1" style={{ height: '100%' }}>
+                  <div
+                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={stackedSectionHeight ? { height: `${stackedSectionHeight}px` } : undefined}
+                  >
+                    <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
@@ -745,7 +762,7 @@ export default function ViewProjectPage() {
                         ANTES
                       </span>
                     </div>
-                    <div className="relative rounded overflow-hidden flex-1">
+                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
                       <img
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
@@ -782,8 +799,11 @@ export default function ViewProjectPage() {
                     </div>
                   </div>
 
-                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-[45vh]">
-                    <div className="text-center py-1 flex-shrink-0">
+                  <div
+                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={stackedSectionHeight ? { height: `${stackedSectionHeight}px` } : undefined}
+                  >
+                    <div className="text-center py-0.5 flex-shrink-0">
                       <span 
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
@@ -791,7 +811,7 @@ export default function ViewProjectPage() {
                         DEPOIS
                       </span>
                     </div>
-                    <div className="relative rounded overflow-hidden flex-1">
+                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
                       <img
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
