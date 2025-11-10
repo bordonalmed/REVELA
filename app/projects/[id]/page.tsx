@@ -541,8 +541,8 @@ export default function ViewProjectPage() {
               Visualização Antes e Depois
             </h2>
             
-            {/* Desktop: Lado a lado */}
-            <div className="hidden sm:grid sm:grid-cols-2 gap-4">
+            {/* Desktop grande: Lado a lado */}
+            <div className="hidden lg:grid lg:grid-cols-2 gap-4">
               {/* Carrossel Antes */}
               <div className="relative">
                 <div className="text-center mb-2">
@@ -638,198 +638,197 @@ export default function ViewProjectPage() {
               </div>
             </div>
 
-            {/* Mobile: Vertical (altura > largura) */}
-            <div className={`sm:hidden h-full overflow-hidden ${isLandscape ? 'hidden' : 'flex flex-col'}`}>
-              {/* Carrossel Antes */}
-              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="text-center py-1 flex-shrink-0">
-                  <span 
-                    className="text-[9px] font-medium" 
-                    style={{ color: '#E8DCC0' }}
-                  >
-                    ANTES
-                  </span>
-                </div>
-                <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                  <img
-                    src={displayBeforeImages[beforeCurrentIndex]}
-                    alt={`Antes ${beforeCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                  {displayBeforeImages.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevBeforeImage}
-                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
+            {/* Dispositivos móveis e tablets */}
+            <div className="lg:hidden flex-1 overflow-y-auto">
+              {isLandscape ? (
+                <div className="flex h-full gap-2">
+                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
+                    <div className="text-center py-1 flex-shrink-0">
+                      <span 
+                        className="text-[9px] sm:text-xs font-medium" 
+                        style={{ color: '#E8DCC0' }}
                       >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={nextBeforeImage}
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                        <span 
-                          className="text-[10px] px-1.5 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        >
-                          {beforeCurrentIndex + 1}/{displayBeforeImages.length}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+                        ANTES
+                      </span>
+                    </div>
+                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
+                      <img
+                        src={displayBeforeImages[beforeCurrentIndex]}
+                        alt={`Antes ${beforeCurrentIndex + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                      {displayBeforeImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={prevBeforeImage}
+                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Imagem anterior"
+                          >
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                          <button
+                            onClick={nextBeforeImage}
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Próxima imagem"
+                          >
+                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                            <span 
+                              className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            >
+                              {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Carrossel Depois */}
-              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="text-center py-1 flex-shrink-0">
-                  <span 
-                    className="text-[9px] font-medium" 
-                    style={{ color: '#E8DCC0' }}
-                  >
-                    DEPOIS
-                  </span>
-                </div>
-                <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                  <img
-                    src={displayAfterImages[afterCurrentIndex]}
-                    alt={`Depois ${afterCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                  {displayAfterImages.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevAfterImage}
-                        className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
+                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
+                    <div className="text-center py-1 flex-shrink-0">
+                      <span 
+                        className="text-[9px] sm:text-xs font-medium" 
+                        style={{ color: '#E8DCC0' }}
                       >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={nextAfterImage}
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                        <span 
-                          className="text-[10px] px-1.5 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        >
-                          {afterCurrentIndex + 1}/{displayAfterImages.length}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                        DEPOIS
+                      </span>
+                    </div>
+                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
+                      <img
+                        src={displayAfterImages[afterCurrentIndex]}
+                        alt={`Depois ${afterCurrentIndex + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                      {displayAfterImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={prevAfterImage}
+                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Imagem anterior"
+                          >
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                          <button
+                            onClick={nextAfterImage}
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Próxima imagem"
+                          >
+                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </button>
+                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                            <span 
+                              className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            >
+                              {afterCurrentIndex + 1}/{displayAfterImages.length}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-[45vh]">
+                    <div className="text-center py-1 flex-shrink-0">
+                      <span 
+                        className="text-[9px] sm:text-xs font-medium" 
+                        style={{ color: '#E8DCC0' }}
+                      >
+                        ANTES
+                      </span>
+                    </div>
+                    <div className="relative rounded overflow-hidden flex-1">
+                      <img
+                        src={displayBeforeImages[beforeCurrentIndex]}
+                        alt={`Antes ${beforeCurrentIndex + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                      {displayBeforeImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={prevBeforeImage}
+                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Imagem anterior"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={nextBeforeImage}
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Próxima imagem"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                            <span 
+                              className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            >
+                              {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
-            {/* Mobile: Horizontal (largura > altura) */}
-            <div className={`sm:hidden h-full overflow-hidden gap-1 ${isLandscape ? 'flex' : 'hidden'}`}>
-              {/* Carrossel Antes */}
-              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="text-center py-0.5 flex-shrink-0">
-                  <span 
-                    className="text-[8px] font-medium" 
-                    style={{ color: '#E8DCC0' }}
-                  >
-                    ANTES
-                  </span>
-                </div>
-                <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                  <img
-                    src={displayBeforeImages[beforeCurrentIndex]}
-                    alt={`Antes ${beforeCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                  {displayBeforeImages.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevBeforeImage}
-                        className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
+                  <div className="relative flex-1 flex flex-col overflow-hidden min-h-[45vh]">
+                    <div className="text-center py-1 flex-shrink-0">
+                      <span 
+                        className="text-[9px] sm:text-xs font-medium" 
+                        style={{ color: '#E8DCC0' }}
                       >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={nextBeforeImage}
-                        className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                      <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
-                        <span 
-                          className="text-[8px] px-1 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        >
-                          {beforeCurrentIndex + 1}/{displayBeforeImages.length}
-                        </span>
-                      </div>
-                    </>
-                  )}
+                        DEPOIS
+                      </span>
+                    </div>
+                    <div className="relative rounded overflow-hidden flex-1">
+                      <img
+                        src={displayAfterImages[afterCurrentIndex]}
+                        alt={`Depois ${afterCurrentIndex + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                      {displayAfterImages.length > 1 && (
+                        <>
+                          <button
+                            onClick={prevAfterImage}
+                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Imagem anterior"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={nextAfterImage}
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            aria-label="Próxima imagem"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                            <span 
+                              className="text-[10px] px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
+                            >
+                              {afterCurrentIndex + 1}/{displayAfterImages.length}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Carrossel Depois */}
-              <div className="relative flex-1 flex flex-col overflow-hidden min-h-0">
-                <div className="text-center py-0.5 flex-shrink-0">
-                  <span 
-                    className="text-[8px] font-medium" 
-                    style={{ color: '#E8DCC0' }}
-                  >
-                    DEPOIS
-                  </span>
-                </div>
-                <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                  <img
-                    src={displayAfterImages[afterCurrentIndex]}
-                    alt={`Depois ${afterCurrentIndex + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                  {displayAfterImages.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevAfterImage}
-                        className="absolute left-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={nextAfterImage}
-                        className="absolute right-0.5 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                      <div className="absolute bottom-0.5 left-1/2 transform -translate-x-1/2">
-                        <span 
-                          className="text-[8px] px-1 py-0.5 rounded"
-                          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                        >
-                          {afterCurrentIndex + 1}/{displayAfterImages.length}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
