@@ -29,7 +29,6 @@ export default function ViewProjectPage() {
   const [isLandscape, setIsLandscape] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
-  const [forceFullscreen, setForceFullscreen] = useState(false);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -45,12 +44,11 @@ export default function ViewProjectPage() {
       const header = document.querySelector('header');
       const headerHeight = header ? header.getBoundingClientRect().height : 0;
       const mainMarginTop = 36; // margin-top aplicado ao <main>
-      const fullscreenActive = forceFullscreen || landscape;
-      const extraPadding = fullscreenActive ? 0 : 24;
+      const extraPadding = landscape ? 0 : 24;
       const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
       setViewerHeight(Math.max(availableHeight, 0));
 
-      const labelAllowance = fullscreenActive ? 0 : (window.innerWidth < 768 ? 52 : 68);
+      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 52 : 68);
       const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 140);
       setStackedSectionHeight(computedStacked);
     };
@@ -63,7 +61,7 @@ export default function ViewProjectPage() {
       window.removeEventListener('resize', updateLayoutMetrics);
       window.removeEventListener('orientationchange', updateLayoutMetrics);
     };
-  }, [forceFullscreen]);
+  }, []);
 
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
@@ -346,22 +344,21 @@ export default function ViewProjectPage() {
     );
   }
 
-  const isFullscreen = forceFullscreen || isLandscape;
-  const shouldHideChrome = isFullscreen;
-  const allowScroll = isLandscape || forceFullscreen;
+  const isFullscreen = isLandscape;
+  const shouldHideChrome = isLandscape;
+  const allowScroll = isLandscape;
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
-      {!shouldHideChrome && <NavigationHeader />}
-      {shouldHideChrome && <div style={{ height: '0px' }} />}
+      <NavigationHeader />
 
       {/* Main Content */}
       <main
         className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden"
-        style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
+        style={{ marginTop: '36px' }}
       >
         {/* Informações do Projeto - Escondido no mobile */}
-        {!shouldHideChrome && (
+        {(
           <div 
             className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
             style={{ 
@@ -554,15 +551,17 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="flex-1 flex flex-col overflow-hidden rounded-lg p-1 sm:p-6 border mb-0 sm:mb-6" 
+            className="flex-1 flex flex-col overflow-hidden rounded-lg border" 
             style={{ 
               backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-              borderColor: 'rgba(232, 220, 192, 0.1)' 
+              borderColor: 'rgba(232, 220, 192, 0.1)',
+              padding: isLandscape ? '6px' : '12px',
+              marginBottom: isLandscape ? 0 : '1.5rem'
             }}
           >
             <h2 
-              className="hidden sm:block text-xs sm:text-xl font-semibold mb-0.5 sm:mb-4 text-center" 
-              style={{ color: '#FFFFFF' }}
+              className="hidden lg:block text-sm sm:text-xl font-semibold mb-2 text-center" 
+              style={{ color: '#FFFFFF', opacity: 0.9 }}
             >
               Visualização Antes e Depois
             </h2>
@@ -666,52 +665,20 @@ export default function ViewProjectPage() {
 
             {/* Dispositivos móveis e tablets */}
             <div
-              className={`lg:hidden relative flex-1 flex flex-col min-h-0 ${allowScroll ? 'overflow-y-auto' : ''}`}
+              className="lg:hidden relative flex-1 flex flex-col min-h-0"
               style={viewerHeight ? { height: `${viewerHeight}px` } : undefined}
             >
-              {!isLandscape && (
-                <div className="flex justify-end mb-2">
-                  <button
-                    onClick={() => setForceFullscreen((prev) => !prev)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all hover:opacity-90"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.05)',
-                      borderColor: 'rgba(232, 220, 192, 0.2)',
-                      color: '#E8DCC0'
-                    }}
-                  >
-                    {isFullscreen ? 'Fechar tela cheia' : 'Tela cheia'}
-                  </button>
-                </div>
-              )}
-
-              {forceFullscreen && !isLandscape && (
-                <div className="absolute top-2 right-2 z-20">
-                  <button
-                    onClick={() => setForceFullscreen(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all hover:opacity-90"
-                    style={{
-                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                      borderColor: 'rgba(232, 220, 192, 0.2)',
-                      color: '#E8DCC0'
-                    }}
-                  >
-                    Fechar tela cheia
-                  </button>
-                </div>
-              )}
-
               {isLandscape ? (
                 <div
-                  className="flex flex-1 gap-2 min-h-0"
+                  className="flex flex-1 gap-1 min-h-0"
                   style={{
                     minHeight: viewerHeight ?? 'auto',
-                    height: isFullscreen ? `${viewerHeight}px` : 'auto'
+                    height: viewerHeight ? `${viewerHeight}px` : 'auto'
                   }}
                 >
                   <div
                     className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0, padding: '4px' }}
                   >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
@@ -760,7 +727,7 @@ export default function ViewProjectPage() {
 
                   <div
                     className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0, padding: '4px' }}
                   >
                     <div className="text-center py-0.5 flex-shrink-0">
                       <span 
@@ -912,7 +879,7 @@ export default function ViewProjectPage() {
           </div>
         )}
       </main>
-      {!shouldHideChrome && <Footer className="hidden sm:block" />}
+      <Footer className="hidden sm:block" />
     </div>
   );
 }
