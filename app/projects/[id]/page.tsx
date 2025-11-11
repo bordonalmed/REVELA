@@ -361,7 +361,7 @@ export default function ViewProjectPage() {
         style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
         {/* Informações do Projeto - Escondido no mobile */}
-        {(
+        {!isLandscape && (
           <div 
             className="hidden sm:block rounded-lg p-1 sm:p-6 mb-1 sm:mb-6 border" 
             style={{ 
