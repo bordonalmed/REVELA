@@ -348,7 +348,7 @@ export default function ViewProjectPage() {
   const shouldHideChrome = isLandscape;
 
   const mainClassName = shouldHideChrome
-    ? 'flex-1 w-full px-2 py-0 flex flex-col overflow-hidden'
+    ? 'flex-1 w-full px-0 py-0 flex flex-col overflow-hidden'
     : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden';
 
   return (
@@ -554,11 +554,11 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className="flex-1 flex flex-col overflow-hidden rounded-lg border" 
+            className={`flex-1 flex flex-col overflow-hidden ${isLandscape ? '' : 'rounded-lg border'}`} 
             style={{ 
-              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-              borderColor: 'rgba(232, 220, 192, 0.1)',
-              padding: isLandscape ? '6px' : '12px',
+              backgroundColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.05)', 
+              borderColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.1)',
+              padding: isLandscape ? '0px' : '12px',
               marginBottom: isLandscape ? 0 : '1.5rem'
             }}
           >
