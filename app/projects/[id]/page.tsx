@@ -219,37 +219,75 @@ export default function ViewProjectPage() {
 
   const handleAddBeforeFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    setNewBeforeFiles([...newBeforeFiles, ...files]);
-    const compressedUrls = await Promise.all(files.map(file => compressImage(file, 1920, 0.85)));
-    setEditingBeforeImages([...editingBeforeImages, ...compressedUrls]);
+    if (!files.length) return;
+
+    try {
+      const compressedUrls = await Promise.all(
+        files.map(file => compressImage(file, 1920, 0.85))
+      );
+
+      setNewBeforeFiles(prev => [...prev, ...files]);
+      setEditingBeforeImages(prev => [...prev, ...compressedUrls]);
+    } catch (error) {
+      console.error('Erro ao processar imagens antes:', error);
+      alert('Não foi possível adicionar algumas imagens. Tente novamente.');
+    }
   };
 
   const handleAddAfterFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    setNewAfterFiles([...newAfterFiles, ...files]);
-    const compressedUrls = await Promise.all(files.map(file => compressImage(file, 1920, 0.85)));
-    setEditingAfterImages([...editingAfterImages, ...compressedUrls]);
+    if (!files.length) return;
+
+    try {
+      const compressedUrls = await Promise.all(
+        files.map(file => compressImage(file, 1920, 0.85))
+      );
+
+      setNewAfterFiles(prev => [...prev, ...files]);
+      setEditingAfterImages(prev => [...prev, ...compressedUrls]);
+    } catch (error) {
+      console.error('Erro ao processar imagens depois:', error);
+      alert('Não foi possível adicionar algumas imagens. Tente novamente.');
+    }
   };
 
   const handleRemoveBeforeImage = (index: number) => {
-    const newImages = editingBeforeImages.filter((_, i) => i !== index);
-    setEditingBeforeImages(newImages);
-    // Ajustar índice atual se necessário
-    if (beforeCurrentIndex >= newImages.length && newImages.length > 0) {
-      setBeforeCurrentIndex(newImages.length - 1);
-    } else if (newImages.length === 0) {
-      setBeforeCurrentIndex(0);
+    setEditingBeforeImages(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+
+      if (beforeCurrentIndex >= updated.length && updated.length > 0) {
+        setBeforeCurrentIndex(updated.length - 1);
+      } else if (updated.length === 0) {
+        setBeforeCurrentIndex(0);
+      }
+
+      return updated;
+    });
+
+    const existingCount = editingBeforeImages.length - newBeforeFiles.length;
+    if (index >= existingCount) {
+      const newIndex = index - existingCount;
+      setNewBeforeFiles(prev => prev.filter((_, i) => i !== newIndex));
     }
   };
 
   const handleRemoveAfterImage = (index: number) => {
-    const newImages = editingAfterImages.filter((_, i) => i !== index);
-    setEditingAfterImages(newImages);
-    // Ajustar índice atual se necessário
-    if (afterCurrentIndex >= newImages.length && newImages.length > 0) {
-      setAfterCurrentIndex(newImages.length - 1);
-    } else if (newImages.length === 0) {
-      setAfterCurrentIndex(0);
+    setEditingAfterImages(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+
+      if (afterCurrentIndex >= updated.length && updated.length > 0) {
+        setAfterCurrentIndex(updated.length - 1);
+      } else if (updated.length === 0) {
+        setAfterCurrentIndex(0);
+      }
+
+      return updated;
+    });
+
+    const existingCount = editingAfterImages.length - newAfterFiles.length;
+    if (index >= existingCount) {
+      const newIndex = index - existingCount;
+      setNewAfterFiles(prev => prev.filter((_, i) => i !== newIndex));
     }
   };
 
