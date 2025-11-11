@@ -1,0 +1,136 @@
+warning: in the working copy of 'app/projects/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/projects/[id]/page.tsx b/app/projects/[id]/page.tsx[m
+[1mindex 4027483..b7a7c96 100644[m
+[1m--- a/app/projects/[id]/page.tsx[m
+[1m+++ b/app/projects/[id]/page.tsx[m
+[36m@@ -35,21 +35,22 @@[m [mexport default function ViewProjectPage() {[m
+   // Detectar orientação[m
+   useEffect(() => {[m
+     const updateLayoutMetrics = () => {[m
+[32m+[m[32m      const landscape = window.innerWidth > window.innerHeight;[m
+[32m+[m[32m      setIsLandscape(landscape);[m
+[32m+[m
+       const viewportHeight = typeof window !== 'undefined' && window.visualViewport[m
+         ? window.visualViewport.height[m
+         : window.innerHeight;[m
+[31m-      const landscape = window.innerWidth > window.innerHeight;[m
+[31m-      setIsLandscape(landscape);[m
+ [m
+       const header = document.querySelector('header');[m
+[31m-      const headerHeight = header ? header.getBoundingClientRect().height : 0;[m
+[31m-      const mainMarginTop = 36; // margin-top aplicado ao <main>[m
+[32m+[m[32m      const headerHeight = landscape ? 0 : header ? header.getBoundingClientRect().height : 0;[m
+[32m+[m[32m      const mainMarginTop = landscape ? 0 : 36;[m
+       const extraPadding = landscape ? 0 : 24;[m
+       const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;[m
+       setViewerHeight(Math.max(availableHeight, 0));[m
+ [m
+[31m-      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 52 : 68);[m
+[31m-      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 140);[m
+[32m+[m[32m      const labelAllowance = landscape ? 36 : (window.innerWidth < 768 ? 52 : 68);[m
+[32m+[m[32m      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 160);[m
+       setStackedSectionHeight(computedStacked);[m
+     };[m
+ [m
+[36m@@ -344,18 +345,20 @@[m [mexport default function ViewProjectPage() {[m
+     );[m
+   }[m
+ [m
+[31m-  const isFullscreen = isLandscape;[m
+   const shouldHideChrome = isLandscape;[m
+[31m-  const allowScroll = isLandscape;[m
+[32m+[m
+[32m+[m[32m  const mainClassName = shouldHideChrome[m
+[32m+[m[32m    ? 'flex-1 w-full px-2 py-0 flex flex-col overflow-hidden'[m
+[32m+[m[32m    : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden';[m
+ [m
+   return ([m
+     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>[m
+[31m-      <NavigationHeader />[m
+[32m+[m[32m      {!shouldHideChrome && <NavigationHeader />}[m
+ [m
+       {/* Main Content */}[m
+       <main[m
+[31m-        className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden"[m
+[31m-        style={{ marginTop: '36px' }}[m
+[32m+[m[32m        className={mainClassName}[m
+[32m+[m[32m        style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}[m
+       >[m
+         {/* Informações do Projeto - Escondido no mobile */}[m
+         {([m
+[36m@@ -670,108 +673,102 @@[m [mexport default function ViewProjectPage() {[m
+             >[m
+               {isLandscape ? ([m
+                 <div[m
+[31m-                  className="flex flex-1 gap-1 min-h-0"[m
+[32m+[m[32m                  className="flex flex-1 gap-2 min-h-0"[m
+                   style={{[m
+                     minHeight: viewerHeight ?? 'auto',[m
+                     height: viewerHeight ? `${viewerHeight}px` : 'auto'[m
+                   }}[m
+                 >[m
+                   <div[m
+[31m-                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"[m
+[31m-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0, padding: '4px' }}[m
+[32m+[m[32m                    className="flex-1 basis-1/2 flex flex-col min-h-0"[m
+[32m+[m[32m                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}[m
+                   >[m
+[31m-                    <div className="text-center py-0.5 flex-shrink-0">[m
+[32m+[m[32m                    <div className="text-center py-1 flex-shrink-0">[m
+                       <span [m
+[31m-                        className="text-[9px] sm:text-xs font-medium" [m
+[32m+[m[32m                        className="text-[10px] font-medium tracking-wide"[m[41m [m
+                         style={{ color: '#E8DCC0' }}[m
+                       >[m
+                         ANTES[m
+                       </span>[m
+                     </div>[m
+[31m-                    <div className="relative rounded overflow-hidden flex-1 min-h-0">[m
+[32m+[m[32m                    <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"[m
+[32m+[m[32m                      style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>[m
+                       <img[m
+                         src={displayBeforeImages[beforeCurrentIndex]}[m
+                         alt={`Antes ${beforeCurrentIndex + 1}`}[m
+                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}[m
+                       />[m
+[31m-                      {displayBeforeImages.length > 1 && ([m
+[31m-                        <>[m
+[31m-                          <button[m
+[31m-                            onClick={prevBeforeImage}[m
+[31m-                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"[m
+[31m-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}[m
+[31m-                            aria-label="Imagem anterior"[m
+[31m-                          >[m
+[31m-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />[m
+[31m-                          </button>[m
+[31m-                          <button[m
+[31m-                            onClick={nextBeforeImage}[m
+[31m-                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"[m
+[31m-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}[m
+[31m-                            aria-label="Próxima imagem"[m
+[31m-                          >[m
+[31m-                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />[m
+[31m-                          </button>[m
+[31m-                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">[m
+[31m-                            <span [m
+[31m-                              className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded"[m
+[31m-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}[m
+[31m-                            >[m
+[31m-                              {beforeCurrentIndex + 1}/{displayBeforeImages.length}[m
+[31m-                            </span>[m
+[31m-                          </div>[m
+[31m-                        </>[m
+[31m-                      )}[m
+                     </div>[m
+[32m+[m[32m                    {displayBeforeImages.length > 1 && ([m
+[32m+[m[32m                      <div className="flex items-center justify-center gap-3 py-2">[m
+[32m+[m[32m                        <button[m
+[32m+[m[32m                          onClick={prevBeforeImage}[m
+[32m+[m[32m                          className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"[m
+[32m+[m[32m                          style={{ color: '#E8DCC0' }}[m
+[32m+[m[32m                          aria-label="Imagem anterior antes"[m
+[32m+[m[32m                        >[m
+[32m+[m[32m                          <ChevronLeft className="w-4 h-4" />[m
+[32m+[m[32m                        </button>[m
+[32m+[m[32m                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"[m
+[32m+[m[32m                          style={{ color: '#E8DCC0', 

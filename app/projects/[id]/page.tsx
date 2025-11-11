@@ -35,21 +35,22 @@ export default function ViewProjectPage() {
   // Detectar orientação
   useEffect(() => {
     const updateLayoutMetrics = () => {
-      const viewportHeight = typeof window !== 'undefined' && window.visualViewport
-        ? window.visualViewport.height
-        : window.innerHeight;
       const landscape = window.innerWidth > window.innerHeight;
       setIsLandscape(landscape);
 
+      const viewportHeight = typeof window !== 'undefined' && window.visualViewport
+        ? window.visualViewport.height
+        : window.innerHeight;
+
       const header = document.querySelector('header');
-      const headerHeight = header ? header.getBoundingClientRect().height : 0;
-      const mainMarginTop = 36; // margin-top aplicado ao <main>
+      const headerHeight = landscape ? 0 : header ? header.getBoundingClientRect().height : 0;
+      const mainMarginTop = landscape ? 0 : 36;
       const extraPadding = landscape ? 0 : 24;
       const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
       setViewerHeight(Math.max(availableHeight, 0));
 
-      const labelAllowance = landscape ? 0 : (window.innerWidth < 768 ? 52 : 68);
-      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 140);
+      const labelAllowance = landscape ? 36 : (window.innerWidth < 768 ? 52 : 68);
+      const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 160);
       setStackedSectionHeight(computedStacked);
     };
 
@@ -344,18 +345,20 @@ export default function ViewProjectPage() {
     );
   }
 
-  const isFullscreen = isLandscape;
   const shouldHideChrome = isLandscape;
-  const allowScroll = isLandscape;
+
+  const mainClassName = shouldHideChrome
+    ? 'flex-1 w-full px-2 py-0 flex flex-col overflow-hidden'
+    : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden';
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
-      <NavigationHeader />
+      {!shouldHideChrome && <NavigationHeader />}
 
       {/* Main Content */}
       <main
-        className="flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden"
-        style={{ marginTop: '36px' }}
+        className={mainClassName}
+        style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
         {/* Informações do Projeto - Escondido no mobile */}
         {(
@@ -670,108 +673,102 @@ export default function ViewProjectPage() {
             >
               {isLandscape ? (
                 <div
-                  className="flex flex-1 gap-1 min-h-0"
+                  className="flex flex-1 gap-2 min-h-0"
                   style={{
                     minHeight: viewerHeight ?? 'auto',
                     height: viewerHeight ? `${viewerHeight}px` : 'auto'
                   }}
                 >
                   <div
-                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0, padding: '4px' }}
+                    className="flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
                   >
-                    <div className="text-center py-0.5 flex-shrink-0">
+                    <div className="text-center py-1 flex-shrink-0">
                       <span 
-                        className="text-[9px] sm:text-xs font-medium" 
+                        className="text-[10px] font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
                         ANTES
                       </span>
                     </div>
-                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
+                    <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
                       <img
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
-                      {displayBeforeImages.length > 1 && (
-                        <>
-                          <button
-                            onClick={prevBeforeImage}
-                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Imagem anterior"
-                          >
-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                          <button
-                            onClick={nextBeforeImage}
-                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Próxima imagem"
-                          >
-                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                            <span 
-                              className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            >
-                              {beforeCurrentIndex + 1}/{displayBeforeImages.length}
-                            </span>
-                          </div>
-                        </>
-                      )}
                     </div>
+                    {displayBeforeImages.length > 1 && (
+                      <div className="flex items-center justify-center gap-3 py-2">
+                        <button
+                          onClick={prevBeforeImage}
+                          className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
+                          style={{ color: '#E8DCC0' }}
+                          aria-label="Imagem anterior antes"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ color: '#E8DCC0', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                          {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                        </span>
+                        <button
+                          onClick={nextBeforeImage}
+                          className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
+                          style={{ color: '#E8DCC0' }}
+                          aria-label="Próxima imagem antes"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div
-                    className="relative flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0, padding: '4px' }}
+                    className="flex-1 basis-1/2 flex flex-col min-h-0"
+                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
                   >
-                    <div className="text-center py-0.5 flex-shrink-0">
+                    <div className="text-center py-1 flex-shrink-0">
                       <span 
-                        className="text-[9px] sm:text-xs font-medium" 
+                        className="text-[10px] font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
                         DEPOIS
                       </span>
                     </div>
-                    <div className="relative rounded overflow-hidden flex-1 min-h-0">
+                    <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
+                      style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
                       <img
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
-                      {displayAfterImages.length > 1 && (
-                        <>
-                          <button
-                            onClick={prevAfterImage}
-                            className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Imagem anterior"
-                          >
-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                          <button
-                            onClick={nextAfterImage}
-                            className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
-                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Próxima imagem"
-                          >
-                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                          </button>
-                          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                            <span 
-                              className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            >
-                              {afterCurrentIndex + 1}/{displayAfterImages.length}
-                            </span>
-                          </div>
-                        </>
-                      )}
                     </div>
+                    {displayAfterImages.length > 1 && (
+                      <div className="flex items-center justify-center gap-3 py-2">
+                        <button
+                          onClick={prevAfterImage}
+                          className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
+                          style={{ color: '#E8DCC0' }}
+                          aria-label="Imagem anterior depois"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ color: '#E8DCC0', backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                          {afterCurrentIndex + 1}/{displayAfterImages.length}
+                        </span>
+                        <button
+                          onClick={nextAfterImage}
+                          className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
+                          style={{ color: '#E8DCC0' }}
+                          aria-label="Próxima imagem depois"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -879,7 +876,7 @@ export default function ViewProjectPage() {
           </div>
         )}
       </main>
-      <Footer className="hidden sm:block" />
+      {!shouldHideChrome && <Footer className="hidden sm:block" />}
     </div>
   );
 }
