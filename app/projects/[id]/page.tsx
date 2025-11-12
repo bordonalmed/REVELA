@@ -9,7 +9,6 @@ import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
-import Image from 'next/image';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -516,12 +515,9 @@ export default function ViewProjectPage() {
                     <div className="flex flex-wrap gap-2">
                       {displayBeforeImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <Image
+                          <img
                             src={img}
                             alt={`Antes ${index + 1}`}
-                            width={64}
-                            height={64}
-                            unoptimized
                             className="w-16 h-16 object-cover rounded-lg"
                           />
                           <button
@@ -571,12 +567,9 @@ export default function ViewProjectPage() {
                     <div className="flex flex-wrap gap-2">
                       {displayAfterImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <Image
+                          <img
                             src={img}
                             alt={`Depois ${index + 1}`}
-                            width={64}
-                            height={64}
-                            unoptimized
                             className="w-16 h-16 object-cover rounded-lg"
                           />
                           <button
@@ -627,12 +620,9 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <Image
+                  <img
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    width={1200}
-                    height={900}
-                    unoptimized
                     className="w-full h-auto max-h-[500px] object-contain"
                   />
                   {displayBeforeImages.length > 1 && (
@@ -677,12 +667,9 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <Image
+                  <img
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    width={1200}
-                    height={900}
-                    unoptimized
                     className="w-full h-auto max-h-[500px] object-contain"
                   />
                   {displayAfterImages.length > 1 && (
@@ -744,12 +731,9 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <Image
+                      <img
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        width={1200}
-                        height={900}
-                        unoptimized
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                     </div>
@@ -793,12 +777,9 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <Image
+                      <img
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        width={1200}
-                        height={900}
-                        unoptimized
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                     </div>
@@ -843,12 +824,9 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <Image
+                      <img
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        width={1200}
-                        height={900}
-                        unoptimized
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       {displayBeforeImages.length > 1 && (
@@ -895,12 +873,9 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <Image
+                      <img
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        width={1200}
-                        height={900}
-                        unoptimized
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                       {displayAfterImages.length > 1 && (
