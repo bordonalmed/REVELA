@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -21,16 +21,7 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) router.push('/login');
-    });
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
     if (session?.user) {
@@ -40,7 +31,16 @@ export default function SettingsPage() {
       router.push('/login');
     }
     setLoading(false);
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session) router.push('/login');
+    });
+    return () => subscription.unsubscribe();
+  }, [router, checkUser]);
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();

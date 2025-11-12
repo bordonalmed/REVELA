@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -26,34 +26,16 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        router.push('/login');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  useEffect(() => {
-    if (user) {
-      fetchPhotos();
-    }
-  }, [user]);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
     if (!session) {
       router.push('/login');
     }
     setLoading(false);
-  };
+  }, [router]);
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -68,7 +50,25 @@ export default function GalleryPage() {
     } catch (error) {
       console.error('Error fetching photos:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session) {
+        router.push('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router, checkUser]);
+
+  useEffect(() => {
+    if (user) {
+      fetchPhotos();
+    }
+  }, [user, fetchPhotos]);
 
 
   if (loading) {

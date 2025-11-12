@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +31,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const checkUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+    if (!session) router.push('/login');
+    setLoading(false);
+  }, [router]);
+
   useEffect(() => {
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -38,14 +45,7 @@ export default function DashboardPage() {
       if (!session) router.push('/login');
     });
     return () => subscription.unsubscribe();
-  }, [router]);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user ?? null);
-    if (!session) router.push('/login');
-    setLoading(false);
-  };
+  }, [router, checkUser]);
 
   const handleNew = () => {
     router.push('/new-project');

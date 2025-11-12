@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Save, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js';
 import { saveProject } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
+import Image from 'next/image';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -26,6 +27,15 @@ export default function NewProjectPage() {
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
 
+  const checkUser = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+    if (!session) {
+      router.push('/login');
+    }
+    setLoading(false);
+  }, [router]);
+
   useEffect(() => {
     checkUser();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -33,16 +43,7 @@ export default function NewProjectPage() {
       if (!session) router.push('/login');
     });
     return () => subscription.unsubscribe();
-  }, [router]);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user ?? null);
-    if (!session) {
-      router.push('/login');
-    }
-    setLoading(false);
-  };
+  }, [router, checkUser]);
 
   if (loading) {
     return (
@@ -477,10 +478,13 @@ export default function NewProjectPage() {
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   {beforePreviewUrls.length > 0 && (
                     <>
-                      <img
+                      <Image
                         src={beforePreviewUrls[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        className="w-full h-auto max-h-[500px] object-contain"
+                        width={1200}
+                        height={900}
+                        unoptimized
+                        style={{ width: '100%', height: 'auto', maxHeight: '500px', objectFit: 'contain' }}
                       />
                       {beforePreviewUrls.length > 1 && (
                         <>
@@ -526,10 +530,13 @@ export default function NewProjectPage() {
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   {afterPreviewUrls.length > 0 && (
                     <>
-                      <img
+                      <Image
                         src={afterPreviewUrls[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        className="w-full h-auto max-h-[500px] object-contain"
+                        width={1200}
+                        height={900}
+                        unoptimized
+                        style={{ width: '100%', height: 'auto', maxHeight: '500px', objectFit: 'contain' }}
                       />
                       {afterPreviewUrls.length > 1 && (
                         <>
@@ -578,10 +585,13 @@ export default function NewProjectPage() {
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   {beforePreviewUrls.length > 0 && (
                     <>
-                      <img
+                      <Image
                         src={beforePreviewUrls[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        className="w-full h-auto max-h-[400px] object-contain"
+                        width={1200}
+                        height={900}
+                        unoptimized
+                        style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain' }}
                       />
                       {beforePreviewUrls.length > 1 && (
                         <>
@@ -627,10 +637,13 @@ export default function NewProjectPage() {
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   {afterPreviewUrls.length > 0 && (
                     <>
-                      <img
+                      <Image
                         src={afterPreviewUrls[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        className="w-full h-auto max-h-[400px] object-contain"
+                        width={1200}
+                        height={900}
+                        unoptimized
+                        style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain' }}
                       />
                       {afterPreviewUrls.length > 1 && (
                         <>

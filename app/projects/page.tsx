@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, Trash2, Calendar } from 'lucide-react';
@@ -9,6 +9,7 @@ import type { User } from '@supabase/supabase-js';
 import { getAllProjects, deleteProjectFromIndexedDB, type Project } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
+import Image from 'next/image';
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -17,31 +18,16 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
-  useEffect(() => {
-    checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) router.push('/login');
-    });
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  useEffect(() => {
-    if (user) {
-      loadProjects();
-    }
-  }, [user]);
-
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     setUser(session?.user ?? null);
     if (!session) {
       router.push('/login');
     }
     setLoading(false);
-  };
+  }, [router]);
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoadingProjects(true);
       const allProjects = await getAllProjects();
@@ -53,7 +39,22 @@ export default function ProjectsPage() {
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session) router.push('/login');
+    });
+    return () => subscription.unsubscribe();
+  }, [router, checkUser]);
+
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    }
+  }, [user, loadProjects]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este projeto?')) {
@@ -160,9 +161,12 @@ export default function ProjectsPage() {
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   {project.beforeImages.length > 0 && (
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                      <img
+                      <Image
                         src={project.beforeImages[0]}
                         alt="Antes"
+                        width={400}
+                        height={256}
+                        unoptimized
                         className="w-full h-24 sm:h-32 object-cover"
                       />
                       <div 
@@ -175,9 +179,12 @@ export default function ProjectsPage() {
                   )}
                   {project.afterImages.length > 0 && (
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                      <img
+                      <Image
                         src={project.afterImages[0]}
                         alt="Depois"
+                        width={400}
+                        height={256}
+                        unoptimized
                         className="w-full h-24 sm:h-32 object-cover"
                       />
                       <div 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 interface BeforeAfterViewerProps {
@@ -70,10 +71,12 @@ export function BeforeAfterViewer({
       >
         {/* After Image */}
         <div className="relative w-full pb-[75%] bg-slate-200">
-          <img 
+          <Image 
             src={afterImage} 
-            alt="After" 
-            className="absolute top-0 left-0 w-full h-full object-cover"
+            alt="After"
+            fill
+            unoptimized
+            className="object-cover"
           />
         </div>
 
@@ -83,10 +86,12 @@ export function BeforeAfterViewer({
           style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
         >
           <div className="relative w-full h-full bg-slate-200">
-            <img 
+            <Image 
               src={beforeImage} 
-              alt="Before" 
-              className="w-full h-full object-cover"
+              alt="Before"
+              fill
+              unoptimized
+              className="object-cover"
             />
           </div>
         </div>
