@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function ViewProjectPage() {
   const projectId = params.id as string;
   
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [projectLoading, setProjectLoading] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
   const [beforeCurrentIndex, setBeforeCurrentIndex] = useState(0);
   const [afterCurrentIndex, setAfterCurrentIndex] = useState(0);
@@ -68,32 +68,25 @@ export default function ViewProjectPage() {
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
   const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
 
-  const checkUser = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (!session) {
-        router.push('/login');
-      }
-    } catch (error) {
-      console.error('Erro ao verificar usuário:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
   const loadProject = useCallback(async () => {
+    if (!projectId) return;
+    
     try {
-      setLoading(true);
+      setProjectLoading(true);
       // Tentar IndexedDB primeiro
       let loadedProject = await getProjectFromIndexedDB(projectId);
       
-      // Se não encontrar, tentar localStorage
-      if (!loadedProject) {
-        const stored = localStorage.getItem('revela_projects');
-        if (stored) {
-          const projects = JSON.parse(stored);
-          loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+      // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
+      if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const stored = localStorage.getItem('revela_projects');
+          if (stored) {
+            const projects = JSON.parse(stored);
+            loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+          }
+        } catch (storageError) {
+          console.warn('Erro ao acessar localStorage:', storageError);
+          // Continuar mesmo se localStorage falhar
         }
       }
       
@@ -102,37 +95,32 @@ export default function ViewProjectPage() {
         setEditingBeforeImages([...loadedProject.beforeImages]);
         setEditingAfterImages([...loadedProject.afterImages]);
       } else {
-        alert('Projeto não encontrado');
+        console.warn('Projeto não encontrado:', projectId);
         router.push('/projects');
       }
     } catch (error) {
       console.error('Erro ao carregar projeto:', error);
-      alert('Erro ao carregar projeto');
       router.push('/projects');
     } finally {
-      setLoading(false);
+      setProjectLoading(false);
     }
   }, [projectId, router]);
 
+  // Usar hook de autenticação customizado
+  const { user: authUser, loading: authLoading } = useAuth();
+  
   useEffect(() => {
-    checkUser();
-  }, [checkUser]);
+    setUser(authUser);
+  }, [authUser]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (!session) {
-        router.push('/login');
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  useEffect(() => {
-    if (user && projectId) {
+    if (authUser && projectId && !authLoading) {
       loadProject();
     }
-  }, [user, projectId, loadProject]);
+  }, [authUser, projectId, authLoading, loadProject]);
+
+  // Loading geral combina autenticação e projeto
+  const isLoading = authLoading || projectLoading;
 
   const nextBeforeImage = () => {
     if (displayBeforeImages.length > 0) {
@@ -345,7 +333,7 @@ export default function ViewProjectPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center" 

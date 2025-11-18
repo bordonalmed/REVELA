@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
   title: "Revela - Visualização de Fotos Antes e Depois",
@@ -25,7 +26,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }
