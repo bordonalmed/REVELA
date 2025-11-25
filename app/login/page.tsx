@@ -55,9 +55,6 @@ export default function LoginPage() {
                     priority
                     unoptimized
                     sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
-                    onError={() => {
-                      console.error('Erro ao carregar logo na página de login');
-                    }}
                   />
                 </div>
         </div>

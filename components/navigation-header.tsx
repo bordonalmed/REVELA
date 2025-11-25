@@ -43,9 +43,6 @@ export function NavigationHeader() {
                 className="w-full h-auto object-contain" 
                 priority
                 unoptimized
-                onError={() => {
-                  console.error('Erro ao carregar logo no header');
-                }}
               />
             </div>
           </Link>

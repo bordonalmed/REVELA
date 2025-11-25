@@ -547,9 +547,6 @@ export default function ViewProjectPage() {
                             src={img}
                             alt={`Antes ${index + 1}`}
                             className="w-16 h-16 object-cover rounded-lg"
-                            onError={() => {
-                              console.warn(`Erro ao carregar imagem antes ${index + 1}`);
-                            }}
                           />
                           <button
                             onClick={() => handleRemoveBeforeImage(index)}
@@ -602,9 +599,6 @@ export default function ViewProjectPage() {
                             src={img}
                             alt={`Depois ${index + 1}`}
                             className="w-16 h-16 object-cover rounded-lg"
-                            onError={() => {
-                              console.warn(`Erro ao carregar imagem depois ${index + 1}`);
-                            }}
                           />
                           <button
                             onClick={() => handleRemoveAfterImage(index)}
@@ -658,9 +652,6 @@ export default function ViewProjectPage() {
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
                     className="w-full h-auto max-h-[500px] object-contain"
-                    onError={() => {
-                      console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1}`);
-                    }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -708,9 +699,6 @@ export default function ViewProjectPage() {
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
                     className="w-full h-auto max-h-[500px] object-contain"
-                    onError={() => {
-                      console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1}`);
-                    }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
@@ -775,9 +763,6 @@ export default function ViewProjectPage() {
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={() => {
-                          console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1} (landscape)`);
-                        }}
                       />
                     </div>
                     {displayBeforeImages.length > 1 && (
@@ -824,9 +809,6 @@ export default function ViewProjectPage() {
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={() => {
-                          console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1} (landscape)`);
-                        }}
                       />
                     </div>
                     {displayAfterImages.length > 1 && (
@@ -874,9 +856,6 @@ export default function ViewProjectPage() {
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={() => {
-                          console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1} (portrait)`);
-                        }}
                       />
                       {displayBeforeImages.length > 1 && (
                         <>
@@ -926,9 +905,6 @@ export default function ViewProjectPage() {
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={() => {
-                          console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1} (portrait)`);
-                        }}
                       />
                       {displayAfterImages.length > 1 && (
                         <>

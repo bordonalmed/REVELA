@@ -26,9 +26,6 @@ export default function Home() {
                 priority
                 unoptimized
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 40vw, (max-width: 1024px) 35vw, 280px"
-                onError={() => {
-                  console.error('Erro ao carregar logo na página inicial');
-                }}
               />
             </div>
           </div>

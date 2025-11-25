@@ -1,7 +1,11 @@
 /**
  * Utilitário para logging de erros e diagnóstico
  * Ajuda a identificar problemas de instabilidade
+ * 
+ * Compatível com SSR (Server-Side Rendering)
  */
+
+'use client';
 
 interface ErrorLog {
   timestamp: string;
@@ -172,26 +176,35 @@ class ErrorLogger {
 // Singleton
 export const errorLogger = new ErrorLogger();
 
-// Logar problemas comuns na inicialização
+// Inicializar apenas no cliente (navegador)
+// Isso previne erros durante SSR (Server-Side Rendering)
 if (typeof window !== 'undefined') {
-  errorLogger.checkCommonIssues();
-  
-  // Capturar erros não tratados
-  window.addEventListener('error', (event) => {
-    errorLogger.error('Erro não tratado', {
-      message: event.message,
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-      error: event.error,
-    });
-  });
+  // Usar setTimeout para garantir que está no contexto do navegador
+  setTimeout(() => {
+    try {
+      errorLogger.checkCommonIssues();
+      
+      // Capturar erros não tratados
+      window.addEventListener('error', (event) => {
+        errorLogger.error('Erro não tratado', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          error: event.error,
+        });
+      });
 
-  // Capturar promessas rejeitadas não tratadas
-  window.addEventListener('unhandledrejection', (event) => {
-    errorLogger.error('Promessa rejeitada não tratada', {
-      reason: event.reason,
-    });
-  });
+      // Capturar promessas rejeitadas não tratadas
+      window.addEventListener('unhandledrejection', (event) => {
+        errorLogger.error('Promessa rejeitada não tratada', {
+          reason: event.reason,
+        });
+      });
+    } catch (e) {
+      // Ignorar erros durante inicialização
+      console.warn('Erro ao inicializar errorLogger:', e);
+    }
+  }, 0);
 }
 
