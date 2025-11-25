@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import Image from 'next/image';
 import { Footer } from '@/components/footer';
+import { SafeImage } from '@/components/safe-image';
 
 export default function Home() {
   return (
@@ -17,7 +17,7 @@ export default function Home() {
                 minHeight: '100px'
               }}
             >
-              <Image
+              <SafeImage
                 src="/revela3.png"
                 alt="Revela Logo"
                 width={280}
@@ -26,6 +26,9 @@ export default function Home() {
                 priority
                 unoptimized
                 sizes="(max-width: 640px) 50vw, (max-width: 768px) 40vw, (max-width: 1024px) 35vw, 280px"
+                onError={() => {
+                  console.error('Erro ao carregar logo na página inicial');
+                }}
               />
             </div>
           </div>

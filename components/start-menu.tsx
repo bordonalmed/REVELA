@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, FolderOpen } from 'lucide-react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/safe-image';
 
 interface StartMenuProps {
   onNew: () => void;
@@ -18,14 +18,18 @@ export function StartMenu({ onNew, onStored }: StartMenuProps) {
         {/* Logotipo e Nome */}
         <div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-4 duration-800">
           <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
-            <Image
+            <SafeImage
               src="/revela3.png"
               alt="Revela Logo"
               width={280}
               height={160}
               className="w-full h-auto object-contain"
               priority
+              unoptimized
               sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
+              onError={() => {
+                console.error('Erro ao carregar logo no menu inicial');
+              }}
             />
           </div>
         </div>

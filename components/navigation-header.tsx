@@ -1,10 +1,10 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Home, LogOut, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { SafeImage } from '@/components/safe-image';
 
 export function NavigationHeader() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export function NavigationHeader() {
           {/* Logotipo à esquerda */}
           <Link href="/dashboard">
             <div className="relative w-[40px] sm:w-[70px] h-auto">
-              <Image 
+              <SafeImage 
                 src="/revela3.png" 
                 alt="Revela Logo" 
                 width={70} 
@@ -43,6 +43,9 @@ export function NavigationHeader() {
                 className="w-full h-auto object-contain" 
                 priority
                 unoptimized
+                onError={() => {
+                  console.error('Erro ao carregar logo no header');
+                }}
               />
             </div>
           </Link>

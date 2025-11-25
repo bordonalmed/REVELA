@@ -9,6 +9,8 @@ import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/stor
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
+import { SafeBase64Image } from '@/components/safe-image';
+import { errorLogger } from '@/lib/error-logger';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -73,8 +75,21 @@ export default function ViewProjectPage() {
     
     try {
       setProjectLoading(true);
+      errorLogger.info('Iniciando carregamento de projeto', { projectId });
+      
       // Tentar IndexedDB primeiro
-      let loadedProject = await getProjectFromIndexedDB(projectId);
+      let loadedProject: Project | null = null;
+      try {
+        loadedProject = await getProjectFromIndexedDB(projectId);
+        if (loadedProject) {
+          errorLogger.info('Projeto carregado do IndexedDB', { projectId });
+        }
+      } catch (indexedDBError) {
+        errorLogger.warn('Erro ao carregar do IndexedDB, tentando localStorage', { 
+          projectId, 
+          error: indexedDBError 
+        });
+      }
       
       // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
       if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
@@ -83,23 +98,48 @@ export default function ViewProjectPage() {
           if (stored) {
             const projects = JSON.parse(stored);
             loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+            if (loadedProject) {
+              errorLogger.info('Projeto carregado do localStorage', { projectId });
+            }
           }
         } catch (storageError) {
-          console.warn('Erro ao acessar localStorage:', storageError);
+          errorLogger.warn('Erro ao acessar localStorage', { 
+            projectId, 
+            error: storageError 
+          });
           // Continuar mesmo se localStorage falhar
         }
       }
       
       if (loadedProject) {
+        // Validar estrutura do projeto
+        if (!loadedProject.beforeImages || !Array.isArray(loadedProject.beforeImages)) {
+          errorLogger.warn('Projeto com estrutura inválida: beforeImages', { projectId });
+          loadedProject.beforeImages = [];
+        }
+        if (!loadedProject.afterImages || !Array.isArray(loadedProject.afterImages)) {
+          errorLogger.warn('Projeto com estrutura inválida: afterImages', { projectId });
+          loadedProject.afterImages = [];
+        }
+        
         setProject(loadedProject);
         setEditingBeforeImages([...loadedProject.beforeImages]);
         setEditingAfterImages([...loadedProject.afterImages]);
+        errorLogger.info('Projeto carregado com sucesso', { 
+          projectId, 
+          beforeCount: loadedProject.beforeImages.length,
+          afterCount: loadedProject.afterImages.length
+        });
       } else {
-        console.warn('Projeto não encontrado:', projectId);
+        errorLogger.warn('Projeto não encontrado', { projectId });
         router.push('/projects');
       }
     } catch (error) {
-      console.error('Erro ao carregar projeto:', error);
+      errorLogger.error('Erro ao carregar projeto', { 
+        projectId, 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       router.push('/projects');
     } finally {
       setProjectLoading(false);
@@ -503,10 +543,13 @@ export default function ViewProjectPage() {
                     <div className="flex flex-wrap gap-2">
                       {displayBeforeImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <img
+                          <SafeBase64Image
                             src={img}
                             alt={`Antes ${index + 1}`}
                             className="w-16 h-16 object-cover rounded-lg"
+                            onError={() => {
+                              console.warn(`Erro ao carregar imagem antes ${index + 1}`);
+                            }}
                           />
                           <button
                             onClick={() => handleRemoveBeforeImage(index)}
@@ -555,10 +598,13 @@ export default function ViewProjectPage() {
                     <div className="flex flex-wrap gap-2">
                       {displayAfterImages.map((img, index) => (
                         <div key={index} className="relative group">
-                          <img
+                          <SafeBase64Image
                             src={img}
                             alt={`Depois ${index + 1}`}
                             className="w-16 h-16 object-cover rounded-lg"
+                            onError={() => {
+                              console.warn(`Erro ao carregar imagem depois ${index + 1}`);
+                            }}
                           />
                           <button
                             onClick={() => handleRemoveAfterImage(index)}
@@ -608,10 +654,13 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <img
+                  <SafeBase64Image
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
                     className="w-full h-auto max-h-[500px] object-contain"
+                    onError={() => {
+                      console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1}`);
+                    }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -655,10 +704,13 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <img
+                  <SafeBase64Image
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
                     className="w-full h-auto max-h-[500px] object-contain"
+                    onError={() => {
+                      console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1}`);
+                    }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
@@ -719,10 +771,13 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <img
+                      <SafeBase64Image
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={() => {
+                          console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1} (landscape)`);
+                        }}
                       />
                     </div>
                     {displayBeforeImages.length > 1 && (
@@ -765,10 +820,13 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <img
+                      <SafeBase64Image
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={() => {
+                          console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1} (landscape)`);
+                        }}
                       />
                     </div>
                     {displayAfterImages.length > 1 && (
@@ -812,10 +870,13 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <img
+                      <SafeBase64Image
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={() => {
+                          console.warn(`Erro ao carregar imagem antes ${beforeCurrentIndex + 1} (portrait)`);
+                        }}
                       />
                       {displayBeforeImages.length > 1 && (
                         <>
@@ -861,10 +922,13 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <img
+                      <SafeBase64Image
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={() => {
+                          console.warn(`Erro ao carregar imagem depois ${afterCurrentIndex + 1} (portrait)`);
+                        }}
                       />
                       {displayAfterImages.length > 1 && (
                         <>

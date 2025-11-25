@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { SafeImage } from '@/components/safe-image';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
@@ -60,7 +60,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="flex justify-center mb-6 sm:mb-8">
                 <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
-                  <Image
+                  <SafeImage
                     src="/revela3.png"
                     alt="Revela Logo"
                     width={280}
@@ -69,6 +69,9 @@ export default function SignupPage() {
                     priority
                     unoptimized
                     sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
+                    onError={() => {
+                      console.error('Erro ao carregar logo na página de signup');
+                    }}
                   />
                 </div>
         </div>
