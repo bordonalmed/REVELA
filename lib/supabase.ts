@@ -81,6 +81,11 @@ export function getSupabaseClient(): SupabaseClient {
   return supabaseClient;
 }
 
+// Função para verificar se o Supabase está disponível (opcional, não bloqueia)
+function isSupabaseConfigured(): boolean {
+  return !!(supabaseUrl && supabaseAnonKey);
+}
+
 // Exportar cliente diretamente (para compatibilidade com código existente)
 // Mas com verificação de segurança
 export const supabase = (() => {
@@ -91,8 +96,34 @@ export const supabase = (() => {
     console.error('Supabase não disponível:', error);
     return {
       auth: {
-        getSession: async () => ({ data: { session: null }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        getSession: async () => {
+          // Se as variáveis estão configuradas, tentar criar cliente novamente
+          if (isSupabaseConfigured()) {
+            try {
+              // Resetar cliente para tentar novamente
+              supabaseClient = null;
+              const client = getSupabaseClient();
+              return await client.auth.getSession();
+            } catch (e) {
+              console.warn('Erro ao reconectar Supabase:', e);
+              return { data: { session: null }, error: { message: 'Erro ao conectar' } };
+            }
+          }
+          return { data: { session: null }, error: null };
+        },
+        onAuthStateChange: (callback: any) => {
+          // Tentar criar subscription real se disponível
+          if (isSupabaseConfigured()) {
+            try {
+              supabaseClient = null;
+              const client = getSupabaseClient();
+              return client.auth.onAuthStateChange(callback);
+            } catch (e) {
+              console.warn('Erro ao criar subscription:', e);
+            }
+          }
+          return { data: { subscription: { unsubscribe: () => {} } } };
+        },
         signInWithPassword: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
         signOut: async () => ({ error: null }),
       },

@@ -8,11 +8,8 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Redirect rules
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# O plugin @netlify/plugin-nextjs já cuida do roteamento do Next.js
+# Não precisamos de redirects manuais que podem interferir
 
 # Headers for security
 [[headers]]

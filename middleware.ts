@@ -18,19 +18,23 @@ export function middleware(request: NextRequest) {
   }
 
   // CSP - Política mais permissiva para evitar bloqueios de conexão
+  // Ajustada para funcionar melhor com Next.js e Supabase
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:",
     "style-src 'self' 'unsafe-inline' https:",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
-    "connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.supabase.io wss://*.supabase.co wss://*.supabase.in",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.supabase.io wss://*.supabase.co wss://*.supabase.in https://*.netlify.app",
     "frame-src 'self' https:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "upgrade-insecure-requests"
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    // Não usar upgrade-insecure-requests se estiver causando problemas
+    // "upgrade-insecure-requests"
   ].join('; ');
 
   response.headers.set('Content-Security-Policy', csp);

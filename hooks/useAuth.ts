@@ -35,7 +35,16 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
     setError(null);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Adicionar timeout para evitar travamentos
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao verificar sessão')), 10000);
+      });
+
+      const sessionPromise = supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await Promise.race([
+        sessionPromise,
+        timeoutPromise,
+      ]) as any;
       
       if (!mountedRef.current) return;
 
@@ -43,7 +52,9 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
         console.error('Erro ao verificar sessão:', sessionError);
         setError(sessionError.message);
         setUser(null);
-        if (redirectToLogin) {
+        // Não redirecionar imediatamente em caso de erro de rede
+        // Permitir que o usuário tente novamente
+        if (redirectToLogin && !sessionError.message.includes('network') && !sessionError.message.includes('fetch')) {
           router.push('/login');
         }
         return;
@@ -51,16 +62,28 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
 
       setUser(session?.user ?? null);
       
+      // Só redirecionar se realmente não houver sessão (não em caso de erro)
       if (!session && redirectToLogin) {
-        router.push('/login');
+        // Pequeno delay para evitar loops
+        setTimeout(() => {
+          if (mountedRef.current && !user) {
+            router.push('/login');
+          }
+        }, 100);
       }
     } catch (err: any) {
       console.error('Erro inesperado ao verificar autenticação:', err);
       if (mountedRef.current) {
-        setError(err.message || 'Erro ao verificar autenticação');
+        const errorMessage = err.message || 'Erro ao verificar autenticação';
+        setError(errorMessage);
         setUser(null);
-        if (redirectToLogin) {
-          router.push('/login');
+        // Não redirecionar em caso de timeout ou erro de rede
+        if (redirectToLogin && !errorMessage.includes('Timeout') && !errorMessage.includes('network') && !errorMessage.includes('fetch')) {
+          setTimeout(() => {
+            if (mountedRef.current && !user) {
+              router.push('/login');
+            }
+          }, 100);
         }
       }
     } finally {
@@ -69,7 +92,7 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
         isCheckingRef.current = false;
       }
     }
-  }, [router, redirectToLogin]);
+  }, [router, redirectToLogin, user]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -79,7 +102,7 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
 
     // Configurar listener de mudanças de autenticação
     try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      const { data: { subscription }, error: subscriptionError } = supabase.auth.onAuthStateChange(
         async (event: string, session: Session | null) => {
           if (!mountedRef.current) return;
 
@@ -88,24 +111,32 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
             return;
           }
 
-          setUser(session?.user ?? null);
-          
-          if (!session && redirectToLogin) {
-            router.push('/login');
-          } else if (session && event === 'SIGNED_IN') {
-            // Recarregar sessão após login
-            await checkSession();
+          try {
+            setUser(session?.user ?? null);
+            
+            // Só redirecionar se realmente não houver sessão e não for um erro de rede
+            if (!session && redirectToLogin && event !== 'TOKEN_REFRESHED') {
+              // Pequeno delay para evitar loops
+              setTimeout(() => {
+                if (mountedRef.current && !user) {
+                  router.push('/login');
+                }
+              }, 100);
+            } else if (session && event === 'SIGNED_IN') {
+              // Recarregar sessão após login
+              await checkSession();
+            }
+          } catch (err) {
+            console.error('Erro no listener de autenticação:', err);
           }
         }
       );
 
-      subscriptionRef.current = subscription;
-
-      return () => {
-        if (subscriptionRef.current) {
-          subscriptionRef.current.unsubscribe();
-        }
-      };
+      if (subscriptionError) {
+        console.error('Erro ao criar subscription de autenticação:', subscriptionError);
+      } else {
+        subscriptionRef.current = subscription;
+      }
     } catch (err) {
       console.error('Erro ao configurar listener de autenticação:', err);
     }
