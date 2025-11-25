@@ -69,47 +69,70 @@ export default function ViewProjectPage() {
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
   const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
-
+  
   const loadProject = useCallback(async () => {
     if (!projectId) return;
+    
+    // Prevenir múltiplas chamadas simultâneas (race condition)
+    if (loadProjectRef.current) {
+      errorLogger.warn('loadProject já em execução, ignorando chamada duplicada', { projectId });
+      return;
+    }
+    
+    loadProjectRef.current = true;
     
     try {
       setProjectLoading(true);
       errorLogger.info('Iniciando carregamento de projeto', { projectId });
       
-      // Tentar IndexedDB primeiro
-      let loadedProject: Project | null = null;
-      try {
-        loadedProject = await getProjectFromIndexedDB(projectId);
-        if (loadedProject) {
-          errorLogger.info('Projeto carregado do IndexedDB', { projectId });
-        }
-      } catch (indexedDBError) {
-        errorLogger.warn('Erro ao carregar do IndexedDB, tentando localStorage', { 
-          projectId, 
-          error: indexedDBError 
-        });
-      }
-      
-      // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
-      if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
+      // Adicionar timeout geral para evitar travamentos
+      const loadPromise = (async () => {
+        // Tentar IndexedDB primeiro (já tem timeout interno de 5s)
+        let loadedProject: Project | null = null;
         try {
-          const stored = localStorage.getItem('revela_projects');
-          if (stored) {
-            const projects = JSON.parse(stored);
-            loadedProject = projects.find((p: Project) => p.id === projectId) || null;
-            if (loadedProject) {
-              errorLogger.info('Projeto carregado do localStorage', { projectId });
-            }
+          loadedProject = await getProjectFromIndexedDB(projectId);
+          if (loadedProject) {
+            errorLogger.info('Projeto carregado do IndexedDB', { projectId });
           }
-        } catch (storageError) {
-          errorLogger.warn('Erro ao acessar localStorage', { 
+        } catch (indexedDBError) {
+          errorLogger.warn('Erro ao carregar do IndexedDB, tentando localStorage', { 
             projectId, 
-            error: storageError 
+            error: indexedDBError 
           });
-          // Continuar mesmo se localStorage falhar
         }
-      }
+        
+        // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
+        if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const stored = localStorage.getItem('revela_projects');
+            if (stored) {
+              const projects = JSON.parse(stored);
+              loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+              if (loadedProject) {
+                errorLogger.info('Projeto carregado do localStorage', { projectId });
+              }
+            }
+          } catch (storageError) {
+            errorLogger.warn('Erro ao acessar localStorage', { 
+              projectId, 
+              error: storageError 
+            });
+            // Continuar mesmo se localStorage falhar
+          }
+        }
+        
+        return loadedProject;
+      })();
+      
+      // Timeout geral de 10 segundos
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          errorLogger.warn('Timeout ao carregar projeto', { projectId });
+          resolve(null);
+        }, 10000);
+      });
+      
+      const loadedProject = await Promise.race([loadPromise, timeoutPromise]);
       
       if (loadedProject) {
         // Validar estrutura do projeto
@@ -122,6 +145,14 @@ export default function ViewProjectPage() {
           loadedProject.afterImages = [];
         }
         
+        // Validar que as imagens não estão corrompidas
+        loadedProject.beforeImages = loadedProject.beforeImages.filter(img => 
+          img && typeof img === 'string' && img.length > 0
+        );
+        loadedProject.afterImages = loadedProject.afterImages.filter(img => 
+          img && typeof img === 'string' && img.length > 0
+        );
+        
         setProject(loadedProject);
         setEditingBeforeImages([...loadedProject.beforeImages]);
         setEditingAfterImages([...loadedProject.afterImages]);
@@ -131,7 +162,7 @@ export default function ViewProjectPage() {
           afterCount: loadedProject.afterImages.length
         });
       } else {
-        errorLogger.warn('Projeto não encontrado', { projectId });
+        errorLogger.warn('Projeto não encontrado ou timeout', { projectId });
         router.push('/projects');
       }
     } catch (error) {
@@ -143,6 +174,7 @@ export default function ViewProjectPage() {
       router.push('/projects');
     } finally {
       setProjectLoading(false);
+      loadProjectRef.current = false;
     }
   }, [projectId, router]);
 

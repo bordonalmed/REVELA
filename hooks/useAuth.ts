@@ -92,7 +92,7 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
         isCheckingRef.current = false;
       }
     }
-  }, [router, redirectToLogin, user]);
+  }, [router, redirectToLogin]); // Removido 'user' das dependências para evitar loops
 
   useEffect(() => {
     mountedRef.current = true;

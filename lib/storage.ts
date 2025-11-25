@@ -106,12 +106,41 @@ export const getAllProjectsFromIndexedDB = (): Promise<Project[]> => {
   });
 };
 
-// Obter um projeto específico do IndexedDB
-export const getProjectFromIndexedDB = (id: string): Promise<Project | null> => {
+// Obter um projeto específico do IndexedDB com timeout
+export const getProjectFromIndexedDB = (id: string, timeout: number = 5000): Promise<Project | null> => {
   return new Promise((resolve) => {
+    let resolved = false;
+    
+    // Timeout para evitar travamentos
+    const timeoutId = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        console.warn('Timeout ao acessar IndexedDB, tentando localStorage');
+        // Tentar localStorage como fallback
+        if (isLocalStorageAvailable()) {
+          try {
+            const stored = getLocalStorageItem('revela_projects');
+            if (stored) {
+              const projects = JSON.parse(stored);
+              const project = projects.find((p: Project) => p.id === id);
+              resolve(project || null);
+              return;
+            }
+          } catch (error) {
+            console.warn('Erro ao acessar localStorage após timeout:', error);
+          }
+        }
+        resolve(null);
+      }
+    }, timeout);
+
     const request = indexedDB.open('RevelaDB', 1);
 
     request.onerror = () => {
+      clearTimeout(timeoutId);
+      if (resolved) return;
+      resolved = true;
+      
       // Se IndexedDB falhar, tentar localStorage
       if (isLocalStorageAvailable()) {
         try {
@@ -133,8 +162,12 @@ export const getProjectFromIndexedDB = (id: string): Promise<Project | null> => 
     };
     
     request.onsuccess = () => {
+      clearTimeout(timeoutId);
+      if (resolved) return;
+      
       const db = request.result;
       if (!db.objectStoreNames.contains('projects')) {
+        resolved = true;
         // Se não existir no IndexedDB, tentar localStorage
         if (isLocalStorageAvailable()) {
           try {
@@ -156,49 +189,70 @@ export const getProjectFromIndexedDB = (id: string): Promise<Project | null> => 
         return;
       }
 
-      const transaction = db.transaction(['projects'], 'readonly');
-      const store = transaction.objectStore('projects');
-      const getRequest = store.get(id);
+      try {
+        const transaction = db.transaction(['projects'], 'readonly');
+        const store = transaction.objectStore('projects');
+        const getRequest = store.get(id);
 
-      getRequest.onsuccess = () => {
-        if (getRequest.result) {
-          resolve(getRequest.result);
-        } else {
-          // Se não encontrar no IndexedDB, tentar localStorage
-          try {
-            const stored = getLocalStorageItem('revela_projects');
-            if (stored) {
-              const projects = JSON.parse(stored);
-              const project = projects.find((p: Project) => p.id === id);
-              resolve(project || null);
+        getRequest.onsuccess = () => {
+          if (resolved) return;
+          clearTimeout(timeoutId);
+          resolved = true;
+          
+          if (getRequest.result) {
+            resolve(getRequest.result);
+          } else {
+            // Se não encontrar no IndexedDB, tentar localStorage
+            if (isLocalStorageAvailable()) {
+              try {
+                const stored = getLocalStorageItem('revela_projects');
+                if (stored) {
+                  const projects = JSON.parse(stored);
+                  const project = projects.find((p: Project) => p.id === id);
+                  resolve(project || null);
+                } else {
+                  resolve(null);
+                }
+              } catch (error) {
+                resolve(null);
+              }
             } else {
               resolve(null);
             }
-          } catch (error) {
-            resolve(null);
           }
-        }
-      };
-      getRequest.onerror = () => {
-        // Se erro, tentar localStorage
-        if (isLocalStorageAvailable()) {
-          try {
-            const stored = getLocalStorageItem('revela_projects');
-            if (stored) {
-              const projects = JSON.parse(stored);
-              const project = projects.find((p: Project) => p.id === id);
-              resolve(project || null);
-            } else {
+        };
+        
+        getRequest.onerror = () => {
+          if (resolved) return;
+          clearTimeout(timeoutId);
+          resolved = true;
+          
+          // Se erro, tentar localStorage
+          if (isLocalStorageAvailable()) {
+            try {
+              const stored = getLocalStorageItem('revela_projects');
+              if (stored) {
+                const projects = JSON.parse(stored);
+                const project = projects.find((p: Project) => p.id === id);
+                resolve(project || null);
+              } else {
+                resolve(null);
+              }
+            } catch (error) {
+              console.warn('Erro ao acessar localStorage:', error);
               resolve(null);
             }
-          } catch (error) {
-            console.warn('Erro ao acessar localStorage:', error);
+          } else {
             resolve(null);
           }
-        } else {
-          resolve(null);
-        }
-      };
+        };
+      } catch (error) {
+        if (resolved) return;
+        clearTimeout(timeoutId);
+        resolved = true;
+        console.warn('Erro na transação IndexedDB:', error);
+        resolve(null);
+      }
     };
 
     request.onupgradeneeded = (event) => {
