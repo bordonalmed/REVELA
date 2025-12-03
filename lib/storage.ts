@@ -34,12 +34,36 @@ function setLocalStorageItem(key: string, value: string): boolean {
   }
 }
 
+export interface Folder {
+  id: string;
+  name: string;
+  color?: string; // Cor opcional para identificação visual
+  createdAt: string;
+}
+
+export interface Measurement {
+  id: string;
+  imageType: 'before' | 'after'; // Tipo de imagem (antes ou depois)
+  imageIndex: number; // Índice da imagem no array
+  startX: number; // Coordenada X inicial (em pixels)
+  startY: number; // Coordenada Y inicial (em pixels)
+  endX: number; // Coordenada X final (em pixels)
+  endY: number; // Coordenada Y final (em pixels)
+  length?: number; // Comprimento em pixels (calculado)
+  label?: string; // Rótulo opcional para a medida
+  unit?: string; // Unidade de medida (cm, mm, etc.)
+  scale?: number; // Escala de conversão (pixels por unidade)
+}
+
 export interface Project {
   id: string;
   name: string;
   date: string;
   beforeImages: string[];
   afterImages: string[];
+  notes?: string; // Campo opcional para notas/observações
+  folderId?: string; // ID da pasta/categoria (null = sem pasta)
+  measurements?: Measurement[]; // Medidas anotadas nas imagens
   createdAt: string;
 }
 
@@ -47,16 +71,69 @@ export interface Project {
 export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('RevelaDB', 1);
+    
+    // Criar backup automático após salvar (se habilitado)
+    const createAutoBackupAfterSave = () => {
+      if (isAutoBackupEnabled()) {
+        exportBackup().then(backup => {
+          setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
+          setLocalStorageItem('revela_backup_date', new Date().toISOString());
+        }).catch(error => {
+          console.warn('Erro ao criar backup automático após salvar:', error);
+        });
+      }
+    };
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const db = request.result;
+      if (!db.objectStoreNames.contains('projects')) {
+        db.createObjectStore('projects', { keyPath: 'id', autoIncrement: false });
+      }
+      
       const transaction = db.transaction(['projects'], 'readwrite');
       const store = transaction.objectStore('projects');
-      const addRequest = store.add(project);
+      const putRequest = store.put(project);
 
-      addRequest.onsuccess = () => resolve();
-      addRequest.onerror = () => reject(addRequest.error);
+      putRequest.onsuccess = () => {
+        // Salvar também no localStorage como fallback
+        try {
+          const stored = getLocalStorageItem('revela_projects');
+          const projects = stored ? JSON.parse(stored) : [];
+          const index = projects.findIndex((p: Project) => p.id === project.id);
+          if (index >= 0) {
+            projects[index] = project;
+          } else {
+            projects.push(project);
+          }
+          setLocalStorageItem('revela_projects', JSON.stringify(projects));
+        } catch (error) {
+          console.warn('Erro ao salvar no localStorage:', error);
+        }
+        
+        // Criar backup automático
+        createAutoBackupAfterSave();
+        resolve();
+      };
+      
+      putRequest.onerror = () => {
+        // Tentar localStorage como fallback
+        try {
+          const stored = getLocalStorageItem('revela_projects');
+          const projects = stored ? JSON.parse(stored) : [];
+          const index = projects.findIndex((p: Project) => p.id === project.id);
+          if (index >= 0) {
+            projects[index] = project;
+          } else {
+            projects.push(project);
+          }
+          setLocalStorageItem('revela_projects', JSON.stringify(projects));
+          createAutoBackupAfterSave();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      };
     };
 
     request.onupgradeneeded = (event) => {
@@ -434,6 +511,17 @@ export const updateProjectInIndexedDB = (project: Project): Promise<void> => {
         } catch (error) {
           // Ignorar erro
         }
+        
+        // Criar backup automático
+        if (isAutoBackupEnabled()) {
+          exportBackup().then(backup => {
+            setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
+            setLocalStorageItem('revela_backup_date', new Date().toISOString());
+          }).catch(error => {
+            console.warn('Erro ao criar backup automático após atualizar:', error);
+          });
+        }
+        
         resolve();
       };
       updateRequest.onerror = () => reject(updateRequest.error);
@@ -528,5 +616,244 @@ export const getAllProjects = async (): Promise<Project[]> => {
   return allProjects.sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+};
+
+// Interface para backup
+export interface BackupData {
+  version: string;
+  exportDate: string;
+  projects: Project[];
+  metadata?: {
+    totalProjects: number;
+    totalBeforeImages: number;
+    totalAfterImages: number;
+  };
+}
+
+// Exportar todos os projetos como backup (JSON)
+export const exportBackup = async (): Promise<BackupData> => {
+  const projects = await getAllProjects();
+  
+  // Calcular metadados
+  const totalBeforeImages = projects.reduce((sum, p) => sum + p.beforeImages.length, 0);
+  const totalAfterImages = projects.reduce((sum, p) => sum + p.afterImages.length, 0);
+  
+  const backup: BackupData = {
+    version: '1.0.0',
+    exportDate: new Date().toISOString(),
+    projects,
+    metadata: {
+      totalProjects: projects.length,
+      totalBeforeImages,
+      totalAfterImages,
+    },
+  };
+  
+  return backup;
+};
+
+// Importar backup e restaurar projetos
+export const importBackup = async (backupData: BackupData): Promise<{ success: number; failed: number; errors: string[] }> => {
+  const results = { success: 0, failed: 0, errors: [] as string[] };
+  
+  if (!backupData.projects || !Array.isArray(backupData.projects)) {
+    throw new Error('Formato de backup inválido: projetos não encontrados');
+  }
+  
+  // Validar e importar cada projeto
+  for (const project of backupData.projects) {
+    try {
+      // Validar estrutura do projeto
+      if (!project.id || !project.name || !project.date || !project.createdAt) {
+        results.failed++;
+        results.errors.push(`Projeto inválido: ${project.name || 'sem nome'}`);
+        continue;
+      }
+      
+      // Garantir que arrays de imagens existem
+      const validProject: Project = {
+        id: project.id,
+        name: project.name,
+        date: project.date,
+        createdAt: project.createdAt,
+        beforeImages: Array.isArray(project.beforeImages) ? project.beforeImages : [],
+        afterImages: Array.isArray(project.afterImages) ? project.afterImages : [],
+        notes: project.notes || undefined,
+      };
+      
+      // Salvar projeto (substitui se já existir)
+      await saveProjectToIndexedDB(validProject);
+      results.success++;
+    } catch (error) {
+      results.failed++;
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      results.errors.push(`Erro ao importar ${project.name || 'projeto'}: ${errorMessage}`);
+    }
+  }
+  
+  return results;
+};
+
+// Backup automático (salva no localStorage como fallback)
+export const enableAutoBackup = (): void => {
+  if (typeof window === 'undefined') return;
+  
+  // Salvar preferência
+  setLocalStorageItem('revela_auto_backup', 'enabled');
+  
+  // Criar backup inicial
+  exportBackup().then(backup => {
+    setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
+    setLocalStorageItem('revela_backup_date', new Date().toISOString());
+  }).catch(error => {
+    console.error('Erro ao criar backup automático:', error);
+  });
+};
+
+// Desabilitar backup automático
+export const disableAutoBackup = (): void => {
+  if (typeof window === 'undefined') return;
+  setLocalStorageItem('revela_auto_backup', 'disabled');
+};
+
+// Verificar se backup automático está habilitado
+export const isAutoBackupEnabled = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return getLocalStorageItem('revela_auto_backup') === 'enabled';
+};
+
+// Obter último backup automático
+export const getLastAutoBackup = (): BackupData | null => {
+  if (typeof window === 'undefined') return null;
+  const backupStr = getLocalStorageItem('revela_last_backup');
+  if (!backupStr) return null;
+  try {
+    return JSON.parse(backupStr) as BackupData;
+  } catch {
+    return null;
+  }
+};
+
+// ========== GERENCIAMENTO DE PASTAS ==========
+
+// Obter todas as pastas
+export const getAllFolders = (): Promise<Folder[]> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve([]);
+      return;
+    }
+
+    try {
+      const stored = getLocalStorageItem('revela_folders');
+      if (stored) {
+        const folders = JSON.parse(stored) as Folder[];
+        resolve(folders.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')));
+      } else {
+        resolve([]);
+      }
+    } catch (error) {
+      console.error('Erro ao ler pastas:', error);
+      resolve([]);
+    }
+  });
+};
+
+// Criar nova pasta
+export const createFolder = async (name: string, color?: string): Promise<Folder> => {
+  if (typeof window === 'undefined') {
+    throw new Error('Não é possível criar pasta no servidor');
+  }
+
+  const folders = await getAllFolders();
+  
+  // Verificar se já existe pasta com mesmo nome
+  if (folders.some(f => f.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error('Já existe uma pasta com este nome');
+  }
+
+  const newFolder: Folder = {
+    id: `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name: name.trim(),
+    color: color || undefined,
+    createdAt: new Date().toISOString(),
+  };
+
+  folders.push(newFolder);
+  setLocalStorageItem('revela_folders', JSON.stringify(folders));
+
+  return newFolder;
+};
+
+// Atualizar pasta
+export const updateFolder = async (folderId: string, updates: { name?: string; color?: string }): Promise<void> => {
+  if (typeof window === 'undefined') {
+    throw new Error('Não é possível atualizar pasta no servidor');
+  }
+
+  const folders = await getAllFolders();
+  const folderIndex = folders.findIndex(f => f.id === folderId);
+
+  if (folderIndex === -1) {
+    throw new Error('Pasta não encontrada');
+  }
+
+  // Verificar se novo nome já existe (se estiver mudando o nome)
+  if (updates.name && updates.name !== folders[folderIndex].name) {
+    if (folders.some(f => f.id !== folderId && f.name.toLowerCase() === updates.name!.toLowerCase())) {
+      throw new Error('Já existe uma pasta com este nome');
+    }
+  }
+
+  folders[folderIndex] = {
+    ...folders[folderIndex],
+    ...updates,
+  };
+
+  setLocalStorageItem('revela_folders', JSON.stringify(folders));
+};
+
+// Deletar pasta
+export const deleteFolder = async (folderId: string): Promise<void> => {
+  if (typeof window === 'undefined') {
+    throw new Error('Não é possível deletar pasta no servidor');
+  }
+
+  const folders = await getAllFolders();
+  const filteredFolders = folders.filter(f => f.id !== folderId);
+
+  if (filteredFolders.length === folders.length) {
+    throw new Error('Pasta não encontrada');
+  }
+
+  setLocalStorageItem('revela_folders', JSON.stringify(filteredFolders));
+
+  // Mover projetos desta pasta para "sem pasta" (folderId = undefined)
+  const allProjects = await getAllProjects();
+  const projectsToUpdate = allProjects.filter(p => p.folderId === folderId);
+  
+  for (const project of projectsToUpdate) {
+    const updatedProject = { ...project, folderId: undefined };
+    await updateProject(updatedProject);
+  }
+};
+
+// Mover projeto para pasta
+export const moveProjectToFolder = async (projectId: string, folderId: string | undefined): Promise<void> => {
+  const project = await getProjectFromIndexedDB(projectId);
+  if (!project) {
+    throw new Error('Projeto não encontrado');
+  }
+
+  // Se folderId for fornecido, verificar se a pasta existe
+  if (folderId) {
+    const folders = await getAllFolders();
+    if (!folders.some(f => f.id === folderId)) {
+      throw new Error('Pasta não encontrada');
+    }
+  }
+
+  const updatedProject = { ...project, folderId };
+  await updateProject(updatedProject);
 };
 

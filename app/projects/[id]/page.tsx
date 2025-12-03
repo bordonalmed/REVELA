@@ -3,14 +3,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
 import { SafeBase64Image } from '@/components/safe-image';
+import { ZoomableImage } from '@/components/zoomable-image';
+import { ComparisonSlider } from '@/components/comparison-slider';
 import { errorLogger } from '@/lib/error-logger';
+import { exportComparisonImage } from '@/lib/export-utils';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -25,14 +28,24 @@ export default function ViewProjectPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingBeforeImages, setEditingBeforeImages] = useState<string[]>([]);
   const [editingAfterImages, setEditingAfterImages] = useState<string[]>([]);
+  const [editingNotes, setEditingNotes] = useState<string>('');
   const [newBeforeFiles, setNewBeforeFiles] = useState<File[]>([]);
   const [newAfterFiles, setNewAfterFiles] = useState<File[]>([]);
+  const [draggedBeforeIndex, setDraggedBeforeIndex] = useState<number | null>(null);
+  const [draggedAfterIndex, setDraggedAfterIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [tempNotes, setTempNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [isSliderMode, setIsSliderMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
+  const loadProjectRef = React.useRef(false);
 
   // Detectar orientação
   useEffect(() => {
@@ -69,7 +82,7 @@ export default function ViewProjectPage() {
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
   const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
-  
+
   const loadProject = useCallback(async () => {
     if (!projectId) return;
     
@@ -100,26 +113,26 @@ export default function ViewProjectPage() {
             error: indexedDBError 
           });
         }
-        
-        // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
-        if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
-          try {
-            const stored = localStorage.getItem('revela_projects');
-            if (stored) {
-              const projects = JSON.parse(stored);
-              loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+      
+      // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
+      if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const stored = localStorage.getItem('revela_projects');
+          if (stored) {
+            const projects = JSON.parse(stored);
+            loadedProject = projects.find((p: Project) => p.id === projectId) || null;
               if (loadedProject) {
                 errorLogger.info('Projeto carregado do localStorage', { projectId });
               }
-            }
-          } catch (storageError) {
+          }
+        } catch (storageError) {
             errorLogger.warn('Erro ao acessar localStorage', { 
               projectId, 
               error: storageError 
             });
-            // Continuar mesmo se localStorage falhar
-          }
+          // Continuar mesmo se localStorage falhar
         }
+      }
         
         return loadedProject;
       })();
@@ -156,6 +169,7 @@ export default function ViewProjectPage() {
         setProject(loadedProject);
         setEditingBeforeImages([...loadedProject.beforeImages]);
         setEditingAfterImages([...loadedProject.afterImages]);
+        setEditingNotes(loadedProject.notes || '');
         errorLogger.info('Projeto carregado com sucesso', { 
           projectId, 
           beforeCount: loadedProject.beforeImages.length,
@@ -260,10 +274,113 @@ export default function ViewProjectPage() {
       setIsEditing(true);
       setEditingBeforeImages([...project.beforeImages]);
       setEditingAfterImages([...project.afterImages]);
+      setEditingNotes(project.notes || '');
       setNewBeforeFiles([]);
       setNewAfterFiles([]);
     }
   };
+
+  const handleOpenNotes = () => {
+    if (project) {
+      setTempNotes(project.notes || '');
+      setShowNotesModal(true);
+    }
+  };
+
+  const handleCloseNotes = () => {
+    setShowNotesModal(false);
+    setTempNotes('');
+  };
+
+  const handleSaveNotes = async () => {
+    if (!project) return;
+
+    try {
+      setSavingNotes(true);
+      
+      const updatedProject: Project = {
+        ...project,
+        notes: tempNotes.trim() || undefined,
+      };
+
+      await updateProject(updatedProject);
+      setProject(updatedProject);
+      setShowNotesModal(false);
+      alert('Notas salvas com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao salvar notas:', error);
+      alert('Erro ao salvar notas. Tente novamente.');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const handleEnterPresentationMode = () => {
+    setIsPresentationMode(true);
+    setIsSliderMode(false); // Desativar slider ao entrar em apresentação
+    // Tentar entrar em fullscreen se suportado
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {
+        // Ignora erro se não conseguir entrar em fullscreen
+      });
+    }
+  };
+
+  const handleToggleSliderMode = () => {
+    setIsSliderMode(!isSliderMode);
+    setIsPresentationMode(false); // Desativar apresentação ao ativar slider
+  };
+
+  const handleExitPresentationMode = () => {
+    setIsPresentationMode(false);
+    // Sair do fullscreen se estiver
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {
+        // Ignora erro se não conseguir sair
+      });
+    }
+  };
+
+  // Navegação por teclado no modo apresentação
+  useEffect(() => {
+    if (!isPresentationMode) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleExitPresentationMode();
+      } else if (e.key === 'ArrowLeft' && !e.shiftKey) {
+        // ← : Navegar imagem ANTES para trás
+        if (displayBeforeImages.length > 0) {
+          setBeforeCurrentIndex((prev) => (prev - 1 + displayBeforeImages.length) % displayBeforeImages.length);
+        }
+      } else if (e.key === 'ArrowRight' && !e.shiftKey) {
+        // → : Navegar imagem ANTES para frente
+        if (displayBeforeImages.length > 0) {
+          setBeforeCurrentIndex((prev) => (prev + 1) % displayBeforeImages.length);
+        }
+      } else if (e.key === 'ArrowLeft' && e.shiftKey) {
+        // Shift + ← : Navegar imagem DEPOIS para trás
+        if (displayAfterImages.length > 0) {
+          setAfterCurrentIndex((prev) => (prev - 1 + displayAfterImages.length) % displayAfterImages.length);
+        }
+      } else if (e.key === 'ArrowRight' && e.shiftKey) {
+        // Shift + → : Navegar imagem DEPOIS para frente
+        if (displayAfterImages.length > 0) {
+          setAfterCurrentIndex((prev) => (prev + 1) % displayAfterImages.length);
+        }
+      } else if (e.key === 'f' || e.key === 'F') {
+        // Toggle fullscreen com F
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isPresentationMode, displayBeforeImages.length, displayAfterImages.length]);
 
   const handleCancelEdit = () => {
     setIsEditing(false);
@@ -351,6 +468,91 @@ export default function ViewProjectPage() {
     }
   };
 
+  // Drag and Drop para reordenar imagens ANTES
+  const handleBeforeDragStart = (index: number) => {
+    setDraggedBeforeIndex(index);
+  };
+
+  const handleBeforeDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedBeforeIndex === null || draggedBeforeIndex === index) return;
+
+    setEditingBeforeImages(prev => {
+      const newImages = [...prev];
+      const draggedItem = newImages[draggedBeforeIndex];
+      newImages.splice(draggedBeforeIndex, 1);
+      newImages.splice(index, 0, draggedItem);
+      return newImages;
+    });
+
+    setDraggedBeforeIndex(index);
+  };
+
+  const handleBeforeDragEnd = () => {
+    setDraggedBeforeIndex(null);
+  };
+
+  // Drag and Drop para reordenar imagens DEPOIS
+  const handleAfterDragStart = (index: number) => {
+    setDraggedAfterIndex(index);
+  };
+
+  const handleAfterDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedAfterIndex === null || draggedAfterIndex === index) return;
+
+    setEditingAfterImages(prev => {
+      const newImages = [...prev];
+      const draggedItem = newImages[draggedAfterIndex];
+      newImages.splice(draggedAfterIndex, 1);
+      newImages.splice(index, 0, draggedItem);
+      return newImages;
+    });
+
+    setDraggedAfterIndex(index);
+  };
+
+  const handleAfterDragEnd = () => {
+    setDraggedAfterIndex(null);
+  };
+
+  const handleExportImage = async () => {
+    if (!project || displayBeforeImages.length === 0 || displayAfterImages.length === 0) {
+      alert('É necessário ter pelo menos uma imagem antes e uma depois para exportar.');
+      return;
+    }
+
+    try {
+      setExporting(true);
+      
+      const beforeImage = displayBeforeImages[beforeCurrentIndex];
+      const afterImage = displayAfterImages[afterCurrentIndex];
+
+      await exportComparisonImage(
+        beforeImage,
+        afterImage,
+        project.name,
+        project.date,
+        {
+          format: 'png',
+          quality: 0.95,
+          layout: 'side-by-side',
+          includeLabels: true,
+          includeInfo: true,
+        }
+      );
+
+      // Pequeno delay para mostrar feedback
+      setTimeout(() => {
+        setExporting(false);
+      }, 500);
+    } catch (error: any) {
+      console.error('Erro ao exportar imagem:', error);
+      alert(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      setExporting(false);
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!project) return;
 
@@ -387,6 +589,7 @@ export default function ViewProjectPage() {
         ...project,
         beforeImages: beforeToSave,
         afterImages: afterToSave,
+        notes: editingNotes.trim() || undefined,
       };
 
       await updateProject(updatedProject);
@@ -443,7 +646,123 @@ export default function ViewProjectPage() {
     );
   }
 
-  const shouldHideChrome = isLandscape;
+  // Modo Apresentação - Tela Cheia
+  if (isPresentationMode && displayBeforeImages.length > 0 && displayAfterImages.length > 0) {
+    return (
+      <div 
+        className="fixed inset-0 flex flex-col overflow-hidden z-50" 
+        style={{ backgroundColor: '#000000' }}
+      >
+        {/* Controles de Navegação (aparecem ao passar o mouse) */}
+        <div className="group relative w-full h-full flex items-center">
+          {/* Botão Sair (canto superior direito) */}
+          <button
+            onClick={handleExitPresentationMode}
+            className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100"
+            style={{ color: '#FFFFFF' }}
+            title="Sair (ESC)"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Controles para Imagem ANTES (lado esquerdo) */}
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {beforeCurrentIndex > 0 && (
+              <button
+                onClick={prevBeforeImage}
+                className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
+                style={{ color: '#FFFFFF' }}
+                title="Anterior ANTES (←)"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            {beforeCurrentIndex < displayBeforeImages.length - 1 && (
+              <button
+                onClick={nextBeforeImage}
+                className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
+                style={{ color: '#FFFFFF' }}
+                title="Próximo ANTES (→)"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Controles para Imagem DEPOIS (lado direito) */}
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {afterCurrentIndex > 0 && (
+              <button
+                onClick={prevAfterImage}
+                className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
+                style={{ color: '#FFFFFF' }}
+                title="Anterior DEPOIS (Shift + ←)"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            {afterCurrentIndex < displayAfterImages.length - 1 && (
+              <button
+                onClick={nextAfterImage}
+                className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
+                style={{ color: '#FFFFFF' }}
+                title="Próximo DEPOIS (Shift + →)"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Imagens em Tela Cheia */}
+          <div className="w-full h-full flex items-center justify-center gap-4 p-4">
+            {/* Imagem Antes */}
+            <div className="flex-1 h-full flex items-center justify-center relative">
+              <SafeBase64Image
+                src={displayBeforeImages[beforeCurrentIndex]}
+                alt={`Antes ${beforeCurrentIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+              <div 
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: '#FFFFFF' }}
+              >
+                <span className="text-sm font-medium">ANTES ({beforeCurrentIndex + 1}/{displayBeforeImages.length})</span>
+              </div>
+            </div>
+
+            {/* Separador */}
+            <div className="w-px h-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+            {/* Imagem Depois */}
+            <div className="flex-1 h-full flex items-center justify-center relative">
+              <ZoomableImage
+                src={displayAfterImages[afterCurrentIndex]}
+                alt={`Depois ${afterCurrentIndex + 1}`}
+                className="w-full h-full"
+                style={{ maxWidth: '100%', maxHeight: '100%' }}
+              />
+              <div 
+                className="absolute bottom-4 right-1/2 transform translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: '#FFFFFF' }}
+              >
+                <span className="text-sm font-medium">DEPOIS ({afterCurrentIndex + 1}/{displayAfterImages.length})</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Indicador de Teclas (canto inferior esquerdo) */}
+          <div 
+            className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+            style={{ color: '#FFFFFF' }}
+          >
+            <div>← → ANTES | Shift+← → DEPOIS | ESC Sair | F Fullscreen</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const shouldHideChrome = isLandscape || isPresentationMode;
 
   const mainClassName = shouldHideChrome
     ? 'flex-1 w-full px-0 py-0 flex flex-col overflow-hidden'
@@ -458,6 +777,23 @@ export default function ViewProjectPage() {
         className={mainClassName}
         style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
+        {/* Botão Voltar */}
+        <div className="mb-4 sm:mb-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
+            style={{ 
+              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+              color: '#E8DCC0', 
+              borderColor: 'rgba(232, 220, 192, 0.1)' 
+            }}
+            title="Voltar para página anterior"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Voltar</span>
+          </button>
+        </div>
+
         {/* Informações do Projeto - Escondido no mobile */}
         {!isLandscape && (
           <div 
@@ -481,8 +817,106 @@ export default function ViewProjectPage() {
                 >
                   Data: {new Date(project.date).toLocaleDateString('pt-BR')}
                 </p>
+                {!isEditing && project.notes && (
+                  <div 
+                    className="mt-3 p-3 rounded-lg border"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                      borderColor: 'rgba(232, 220, 192, 0.1)' 
+                    }}
+                  >
+                    <p 
+                      className="text-xs font-medium mb-1" 
+                      style={{ color: '#E8DCC0', opacity: 0.9 }}
+                    >
+                      Notas / Observações:
+                    </p>
+                    <p 
+                      className="text-xs sm:text-sm whitespace-pre-wrap" 
+                      style={{ color: '#E8DCC0', opacity: 0.8 }}
+                    >
+                      {project.notes}
+                    </p>
+                  </div>
+                )}
               </div>
               {!isEditing ? (
+                <div className="flex flex-wrap gap-2">
+                  {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+                    <>
+                      <button
+                        onClick={handleExportImage}
+                        disabled={exporting}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ 
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                          color: '#E8DCC0', 
+                          borderColor: 'rgba(232, 220, 192, 0.1)' 
+                        }}
+                        title="Exportar comparação atual como imagem"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        {exporting ? 'Exportando...' : 'Exportar'}
+                      </button>
+                      <button
+                        onClick={handleEnterPresentationMode}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{ 
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                          color: '#E8DCC0', 
+                          borderColor: 'rgba(232, 220, 192, 0.1)' 
+                        }}
+                        title="Modo Apresentação (F11 ou F para fullscreen)"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Apresentação</span>
+                      </button>
+                      <button
+                        onClick={handleToggleSliderMode}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border ${
+                          isSliderMode ? 'ring-2' : ''
+                        }`}
+                        style={{ 
+                          backgroundColor: isSliderMode 
+                            ? 'rgba(0, 168, 143, 0.2)' 
+                            : 'rgba(232, 220, 192, 0.05)', 
+                          color: '#E8DCC0', 
+                          borderColor: isSliderMode 
+                            ? '#00A88F' 
+                            : 'rgba(232, 220, 192, 0.1)',
+                          ...(isSliderMode && { boxShadow: '0 0 0 2px #00A88F' })
+                        }}
+                        title="Modo Comparação com Slider"
+                      >
+                        <SlidersHorizontal className="w-4 h-4" />
+                        <span className="hidden sm:inline">Slider</span>
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={handleOpenNotes}
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                      color: '#E8DCC0', 
+                      borderColor: 'rgba(232, 220, 192, 0.1)' 
+                    }}
+                    title="Ver/Editar anotações do projeto"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Notas</span>
+                    {project.notes && (
+                      <span 
+                        className="ml-1 px-1.5 py-0.5 rounded-full text-xs"
+                        style={{ 
+                          backgroundColor: '#00A88F', 
+                          color: '#FFFFFF' 
+                        }}
+                      >
+                        •
+                      </span>
+                    )}
+                  </button>
                 <button
                   onClick={handleEdit}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
@@ -495,6 +929,7 @@ export default function ViewProjectPage() {
                   <Edit2 className="w-4 h-4" />
                   Editar
                 </button>
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <button
@@ -574,19 +1009,47 @@ export default function ViewProjectPage() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {displayBeforeImages.map((img, index) => (
-                        <div key={index} className="relative group">
+                        <div
+                          key={index}
+                          draggable={isEditing}
+                          onDragStart={() => handleBeforeDragStart(index)}
+                          onDragOver={(e) => handleBeforeDragOver(e, index)}
+                          onDragEnd={handleBeforeDragEnd}
+                          className={`relative group transition-all ${
+                            draggedBeforeIndex === index ? 'opacity-50 scale-95' : 'hover:scale-105'
+                          }`}
+                          style={{
+                            cursor: draggedBeforeIndex === index ? 'grabbing' : (isEditing ? 'grab' : 'default')
+                          }}
+                        >
                           <SafeBase64Image
                             src={img}
                             alt={`Antes ${index + 1}`}
-                            className="w-16 h-16 object-cover rounded-lg"
+                            className="w-16 h-16 object-cover rounded-lg pointer-events-none"
                           />
+                          {isEditing && (
+                            <div 
+                              className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <span className="text-xs text-white font-medium">Arrastar</span>
+                            </div>
+                          )}
                           <button
                             onClick={() => handleRemoveBeforeImage(index)}
-                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             style={{ backgroundColor: '#ef4444' }}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
+                          <div 
+                            className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ 
+                              backgroundColor: '#00A88F', 
+                              color: '#FFFFFF' 
+                            }}
+                          >
+                            {index + 1}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -626,25 +1089,79 @@ export default function ViewProjectPage() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {displayAfterImages.map((img, index) => (
-                        <div key={index} className="relative group">
+                        <div
+                          key={index}
+                          draggable={isEditing}
+                          onDragStart={() => handleAfterDragStart(index)}
+                          onDragOver={(e) => handleAfterDragOver(e, index)}
+                          onDragEnd={handleAfterDragEnd}
+                          className={`relative group transition-all ${
+                            draggedAfterIndex === index ? 'opacity-50 scale-95' : 'hover:scale-105'
+                          }`}
+                          style={{
+                            cursor: draggedAfterIndex === index ? 'grabbing' : (isEditing ? 'grab' : 'default')
+                          }}
+                        >
                           <SafeBase64Image
                             src={img}
                             alt={`Depois ${index + 1}`}
-                            className="w-16 h-16 object-cover rounded-lg"
+                            className="w-16 h-16 object-cover rounded-lg pointer-events-none"
                           />
+                          {isEditing && (
+                            <div 
+                              className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <span className="text-xs text-white font-medium">Arrastar</span>
+                            </div>
+                          )}
                           <button
                             onClick={() => handleRemoveAfterImage(index)}
-                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             style={{ backgroundColor: '#ef4444' }}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
+                          <div 
+                            className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ 
+                              backgroundColor: '#00A88F', 
+                              color: '#FFFFFF' 
+                            }}
+                          >
+                            {index + 1}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Campo de Notas/Observações */}
+            <div className="mt-4">
+              <label 
+                htmlFor="edit-notes" 
+                className="block text-sm font-medium mb-2"
+                style={{ color: '#E8DCC0' }}
+              >
+                Notas / Observações <span className="text-xs opacity-70">(opcional)</span>
+              </label>
+              <textarea
+                id="edit-notes"
+                value={editingNotes}
+                onChange={(e) => setEditingNotes(e.target.value)}
+                placeholder="Adicione observações sobre o tratamento, procedimento, resultados, etc..."
+                rows={4}
+                className="w-full px-4 py-2 rounded-lg text-sm bg-transparent border border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F] resize-y"
+                style={{ 
+                  minHeight: '100px',
+                  borderColor: 'rgba(232, 220, 192, 0.1)'
+                }}
+              />
+              <p className="text-xs mt-1" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+                {editingNotes.length} caracteres
+              </p>
             </div>
           </div>
         )}
@@ -660,13 +1177,100 @@ export default function ViewProjectPage() {
               marginBottom: isLandscape ? 0 : '1.5rem'
             }}
           >
+            <div className="flex justify-between items-center mb-2">
             <h2 
-              className="hidden lg:block text-sm sm:text-xl font-semibold mb-2 text-center" 
+                className="hidden lg:block text-sm sm:text-xl font-semibold text-center flex-1" 
               style={{ color: '#FFFFFF', opacity: 0.9 }}
             >
               Visualização Antes e Depois
             </h2>
+              {/* Botão de Notas para Mobile (quando header está escondido) */}
+              {!isEditing && isLandscape && (
+                <button
+                  onClick={handleOpenNotes}
+                  className="p-2 rounded-lg transition-all hover:opacity-90 border lg:hidden"
+                  style={{ 
+                    backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                    color: '#E8DCC0', 
+                    borderColor: 'rgba(232, 220, 192, 0.1)' 
+                  }}
+                  title="Ver/Editar anotações"
+                >
+                  <FileText className="w-5 h-5" />
+                  {project.notes && (
+                    <span 
+                      className="absolute -top-1 -right-1 w-2 h-2 rounded-full"
+                      style={{ backgroundColor: '#00A88F' }}
+                    />
+                  )}
+                </button>
+              )}
+            </div>
             
+            {/* Modo Slider - Comparação Side-by-Side */}
+            {isSliderMode && displayBeforeImages.length > 0 && displayAfterImages.length > 0 ? (
+              <div className="relative w-full h-[500px] sm:h-[600px] lg:h-[700px] rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <ComparisonSlider
+                  beforeImage={displayBeforeImages[beforeCurrentIndex]}
+                  afterImage={displayAfterImages[afterCurrentIndex]}
+                  beforeLabel="ANTES"
+                  afterLabel="DEPOIS"
+                  className="w-full h-full"
+                />
+                {/* Navegação de imagens no modo slider */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col sm:flex-row gap-2 sm:gap-4 items-center z-20">
+                  {/* Navegação ANTES */}
+                  {displayBeforeImages.length > 1 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+                      <button
+                        onClick={prevBeforeImage}
+                        className="p-1 rounded hover:bg-white/20 transition-colors"
+                        style={{ color: '#E8DCC0' }}
+                        aria-label="Imagem anterior (Antes)"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs px-2" style={{ color: '#E8DCC0' }}>
+                        Antes: {beforeCurrentIndex + 1}/{displayBeforeImages.length}
+                      </span>
+                      <button
+                        onClick={nextBeforeImage}
+                        className="p-1 rounded hover:bg-white/20 transition-colors"
+                        style={{ color: '#E8DCC0' }}
+                        aria-label="Próxima imagem (Antes)"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  {/* Navegação DEPOIS */}
+                  {displayAfterImages.length > 1 && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+                      <button
+                        onClick={prevAfterImage}
+                        className="p-1 rounded hover:bg-white/20 transition-colors"
+                        style={{ color: '#E8DCC0' }}
+                        aria-label="Imagem anterior (Depois)"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs px-2" style={{ color: '#E8DCC0' }}>
+                        Depois: {afterCurrentIndex + 1}/{displayAfterImages.length}
+                      </span>
+                      <button
+                        onClick={nextAfterImage}
+                        className="p-1 rounded hover:bg-white/20 transition-colors"
+                        style={{ color: '#E8DCC0' }}
+                        aria-label="Próxima imagem (Depois)"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
             {/* Desktop grande: Lado a lado */}
             <div className="hidden lg:grid lg:grid-cols-2 gap-4">
               {/* Carrossel Antes */}
@@ -680,10 +1284,11 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <SafeBase64Image
+                  <ZoomableImage
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[500px] object-contain"
+                    className="w-full h-auto max-h-[500px]"
+                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -727,10 +1332,11 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <SafeBase64Image
+                  <ZoomableImage
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[500px] object-contain"
+                    className="w-full h-auto max-h-[500px]"
+                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
@@ -791,10 +1397,11 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <SafeBase64Image
+                      <ZoomableImage
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        className="w-full h-full"
+                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
                       />
                     </div>
                     {displayBeforeImages.length > 1 && (
@@ -837,10 +1444,11 @@ export default function ViewProjectPage() {
                     </div>
                     <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
-                      <SafeBase64Image
+                      <ZoomableImage
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        className="w-full h-full"
+                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
                       />
                     </div>
                     {displayAfterImages.length > 1 && (
@@ -884,10 +1492,11 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <SafeBase64Image
+                      <ZoomableImage
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        className="w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
                       />
                       {displayBeforeImages.length > 1 && (
                         <>
@@ -933,10 +1542,11 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
-                      <SafeBase64Image
+                      <ZoomableImage
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        className="w-full h-full"
+                        style={{ width: '100%', height: '100%' }}
                       />
                       {displayAfterImages.length > 1 && (
                         <>
@@ -970,6 +1580,202 @@ export default function ViewProjectPage() {
                   </div>
                 </div>
               )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Botões Flutuantes (apenas quando header está escondido - landscape) */}
+        {!isEditing && isLandscape && (
+          <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+            {/* Botão Voltar (landscape) */}
+            <button
+              onClick={() => router.back()}
+              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                color: '#E8DCC0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              }}
+              title="Voltar para página anterior"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+              <>
+                <button
+                  onClick={handleExportImage}
+                  disabled={exporting}
+                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ 
+                    backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                    color: '#E8DCC0',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                  }}
+                  title="Exportar comparação como imagem"
+                  aria-label="Exportar imagem"
+                >
+                  {exporting ? (
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6" />
+                  )}
+                </button>
+                <button
+                  onClick={handleEnterPresentationMode}
+                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+                  style={{ 
+                    backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                    color: '#E8DCC0',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                  }}
+                  title="Modo Apresentação / Tela Cheia"
+                  aria-label="Apresentação"
+                >
+                  <Maximize2 className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={handleToggleSliderMode}
+                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+                  style={{ 
+                    backgroundColor: isSliderMode 
+                      ? 'rgba(0, 168, 143, 0.2)' 
+                      : 'rgba(232, 220, 192, 0.1)', 
+                    color: '#E8DCC0',
+                    boxShadow: isSliderMode 
+                      ? '0 0 0 2px #00A88F, 0 4px 12px rgba(0, 0, 0, 0.3)'
+                      : '0 4px 12px rgba(0, 0, 0, 0.3)'
+                  }}
+                  title="Modo Comparação com Slider"
+                  aria-label="Slider"
+                >
+                  <SlidersHorizontal className="w-6 h-6" />
+                </button>
+              </>
+            )}
+            <button
+              onClick={handleOpenNotes}
+              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                color: '#E8DCC0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                border: project.notes ? '2px solid #00A88F' : 'none'
+              }}
+              title="Ver/Editar anotações do projeto"
+              aria-label="Anotações"
+            >
+              <FileText className="w-6 h-6" />
+            </button>
+            <button
+              onClick={handleEdit}
+              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                color: '#E8DCC0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              }}
+              title="Editar projeto"
+              aria-label="Editar"
+            >
+              <Edit2 className="w-6 h-6" />
+            </button>
+          </div>
+        )}
+
+        {/* Modal de Notas */}
+        {showNotesModal && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+            onClick={handleCloseNotes}
+          >
+            <div 
+              className="rounded-lg border max-w-2xl w-full max-h-[80vh] flex flex-col"
+              style={{ 
+                backgroundColor: '#1B3C45', 
+                borderColor: 'rgba(232, 220, 192, 0.1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header do Modal */}
+              <div 
+                className="flex justify-between items-center p-4 border-b"
+                style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}
+              >
+                <h2 
+                  className="text-lg sm:text-xl font-medium"
+                  style={{ color: '#E8DCC0' }}
+                >
+                  Anotações do Projeto
+                </h2>
+                <button
+                  onClick={handleCloseNotes}
+                  className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+                  style={{ color: '#E8DCC0' }}
+                  aria-label="Fechar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Conteúdo do Modal */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <textarea
+                  value={tempNotes}
+                  onChange={(e) => setTempNotes(e.target.value)}
+                  placeholder="Digite suas anotações sobre este projeto...&#10;&#10;Exemplo:&#10;- Detalhes do procedimento&#10;- Observações importantes&#10;- Resultados esperados&#10;- Próximos passos"
+                  rows={12}
+                  className="w-full px-4 py-3 rounded-lg text-sm bg-transparent border resize-y"
+                  style={{ 
+                    minHeight: '200px',
+                    borderColor: 'rgba(232, 220, 192, 0.1)',
+                    color: '#E8DCC0'
+                  }}
+                />
+                <p className="text-xs mt-2" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+                  {tempNotes.length} caracteres
+                </p>
+              </div>
+
+              {/* Footer do Modal */}
+              <div 
+                className="flex justify-end gap-2 p-4 border-t"
+                style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}
+              >
+                <button
+                  onClick={handleCloseNotes}
+                  disabled={savingNotes}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border disabled:opacity-50"
+                  style={{ 
+                    backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                    color: '#E8DCC0', 
+                    borderColor: 'rgba(232, 220, 192, 0.1)' 
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={savingNotes}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+                >
+                  {savingNotes ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Salvar
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

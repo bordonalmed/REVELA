@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Save, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { saveProject } from '@/lib/storage';
@@ -16,6 +16,7 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('');
   const [projectDate, setProjectDate] = useState('');
+  const [projectNotes, setProjectNotes] = useState('');
   const [beforeImages, setBeforeImages] = useState<File[]>([]);
   const [afterImages, setAfterImages] = useState<File[]>([]);
   const [beforePreviewUrls, setBeforePreviewUrls] = useState<string[]>([]);
@@ -140,6 +141,7 @@ export default function NewProjectPage() {
   const clearForm = () => {
     setProjectName('');
     setProjectDate('');
+    setProjectNotes('');
     setBeforeImages([]);
     setAfterImages([]);
     setBeforePreviewUrls([]);
@@ -174,6 +176,7 @@ export default function NewProjectPage() {
         date: projectDate,
         beforeImages: beforeBase64,
         afterImages: afterBase64,
+        notes: projectNotes.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
 
@@ -218,6 +221,23 @@ export default function NewProjectPage() {
       
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl pt-20 sm:pt-24">
+        {/* Botão Voltar */}
+        <div className="mb-4 sm:mb-6">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
+            style={{ 
+              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+              color: '#E8DCC0', 
+              borderColor: 'rgba(232, 220, 192, 0.1)' 
+            }}
+            title="Voltar para dashboard"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Voltar</span>
+          </button>
+        </div>
+
         {/* Informações do Projeto */}
         <div 
           className="rounded-2xl p-4 sm:p-6 mb-6 border" 
