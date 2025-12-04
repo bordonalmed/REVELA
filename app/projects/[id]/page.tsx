@@ -41,6 +41,7 @@ export default function ViewProjectPage() {
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [isSliderMode, setIsSliderMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
@@ -778,22 +779,41 @@ export default function ViewProjectPage() {
         className={mainClassName}
         style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
-        {/* Botão Voltar */}
-        <div className="mb-4 sm:mb-6">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
-            style={{ 
-              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-              color: '#E8DCC0', 
-              borderColor: 'rgba(232, 220, 192, 0.1)' 
-            }}
-            title="Voltar para página anterior"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Voltar</span>
-          </button>
-        </div>
+        {/* Botão Voltar - Escondido no mobile portrait (já está no menu) */}
+        {!isLandscape && (
+          <div className="mb-2 sm:mb-6 hidden sm:block">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                color: '#E8DCC0', 
+                borderColor: 'rgba(232, 220, 192, 0.1)' 
+              }}
+              title="Voltar para página anterior"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Voltar</span>
+            </button>
+          </div>
+        )}
+        {isLandscape && (
+          <div className="mb-2 sm:mb-6">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90 border"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                color: '#E8DCC0', 
+                borderColor: 'rgba(232, 220, 192, 0.1)' 
+              }}
+              title="Voltar"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Voltar</span>
+            </button>
+          </div>
+        )}
 
         {/* Informações do Projeto - Escondido no mobile */}
         {!isLandscape && (
@@ -1587,103 +1607,257 @@ export default function ViewProjectPage() {
           </div>
         )}
 
-        {/* Botões Flutuantes (mobile portrait e landscape) */}
-        {!isEditing && (
-          <div className={`fixed ${isLandscape ? 'bottom-6 right-6' : 'bottom-4 right-4'} z-50 flex flex-col gap-3`}>
-            {/* Botão Voltar */}
-            {isLandscape && (
+        {/* Botões Flutuantes - Mobile Portrait: Menu Compacto */}
+        {!isEditing && !isLandscape && (
+          <div className="fixed bottom-4 right-4 z-50">
+            {/* Menu Principal (botão hambúrguer) */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                color: '#E8DCC0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(10px)'
+              }}
+              title="Menu"
+              aria-label="Menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Menu Expandido */}
+            {showMobileMenu && (
+              <>
+                {/* Overlay para fechar ao clicar fora */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowMobileMenu(false)}
+                />
+                <div className="absolute bottom-14 right-0 flex flex-col gap-2 mb-2 z-50">
+                  {/* Botão Voltar */}
+                  <button
+                    onClick={() => {
+                      router.back();
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Voltar"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Voltar</span>
+                  </button>
+              {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+                <>
+                  <button
+                    onClick={() => {
+                      handleExportImage();
+                      setShowMobileMenu(false);
+                    }}
+                    disabled={exporting}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Exportar"
+                  >
+                    {exporting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                    <span>Exportar</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleEnterPresentationMode();
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Apresentação"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                    <span>Apresentação</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleToggleSliderMode();
+                      setShowMobileMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
+                      isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
+                    }`}
+                    style={{ 
+                      backgroundColor: isSliderMode 
+                        ? 'rgba(0, 168, 143, 0.25)' 
+                        : 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Slider"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Slider</span>
+                  </button>
+                </>
+              )}
               <button
-                onClick={() => router.back()}
-                className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
-                style={{ 
-                  backgroundColor: 'rgba(232, 220, 192, 0.1)', 
-                  color: '#E8DCC0',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                onClick={() => {
+                  handleOpenNotes();
+                  setShowMobileMenu(false);
                 }}
-                title="Voltar para página anterior"
-                aria-label="Voltar"
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
+                  project.notes ? 'ring-2 ring-[#00A88F]' : ''
+                }`}
+                style={{ 
+                  backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                  color: '#E8DCC0',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(10px)'
+                }}
+                title="Notas"
               >
-                <ArrowLeft className="w-6 h-6" />
+                <FileText className="w-4 h-4" />
+                <span>Notas</span>
               </button>
+              <button
+                onClick={() => {
+                  handleEdit();
+                  setShowMobileMenu(false);
+                }}
+                className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                style={{ 
+                  backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                  color: '#E8DCC0',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  backdropFilter: 'blur(10px)'
+                }}
+                title="Editar"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Editar</span>
+              </button>
+                </div>
+              </>
             )}
+          </div>
+        )}
+
+        {/* Botões Flutuantes - Landscape: Mantém estilo original mas menor */}
+        {!isEditing && isLandscape && (
+          <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+            {/* Botão Voltar */}
+            <button
+              onClick={() => router.back()}
+              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
+              style={{ 
+                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                color: '#E8DCC0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(10px)'
+              }}
+              title="Voltar"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
               <>
                 <button
                   onClick={handleExportImage}
                   disabled={exporting}
-                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95 disabled:opacity-50"
                   style={{ 
-                    backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                    backgroundColor: 'rgba(232, 220, 192, 0.15)', 
                     color: '#E8DCC0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(10px)'
                   }}
-                  title="Exportar comparação como imagem"
-                  aria-label="Exportar imagem"
+                  title="Exportar"
                 >
                   {exporting ? (
-                    <div className={`${isLandscape ? 'w-6 h-6' : 'w-5 h-5'} border-2 border-white border-t-transparent rounded-full animate-spin`} />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <ImageIcon className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
+                    <ImageIcon className="w-4 h-4" />
                   )}
                 </button>
                 <button
                   onClick={handleEnterPresentationMode}
-                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
+                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
                   style={{ 
-                    backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                    backgroundColor: 'rgba(232, 220, 192, 0.15)', 
                     color: '#E8DCC0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(10px)'
                   }}
-                  title="Modo Apresentação / Tela Cheia"
-                  aria-label="Apresentação"
+                  title="Apresentação"
                 >
-                  <Maximize2 className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleToggleSliderMode}
-                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
+                  className={`p-2.5 rounded-full shadow-lg transition-all active:scale-95 ${
+                    isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
+                  }`}
                   style={{ 
                     backgroundColor: isSliderMode 
-                      ? 'rgba(0, 168, 143, 0.2)' 
-                      : 'rgba(232, 220, 192, 0.1)', 
+                      ? 'rgba(0, 168, 143, 0.25)' 
+                      : 'rgba(232, 220, 192, 0.15)', 
                     color: '#E8DCC0',
-                    boxShadow: isSliderMode 
-                      ? '0 0 0 2px #00A88F, 0 4px 12px rgba(0, 0, 0, 0.3)'
-                      : '0 4px 12px rgba(0, 0, 0, 0.3)'
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(10px)'
                   }}
-                  title="Modo Comparação com Slider"
-                  aria-label="Slider"
+                  title="Slider"
                 >
-                  <SlidersHorizontal className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
+                  <SlidersHorizontal className="w-4 h-4" />
                 </button>
               </>
             )}
             <button
               onClick={handleOpenNotes}
-              className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
+              className={`p-2.5 rounded-full shadow-lg transition-all active:scale-95 ${
+                project.notes ? 'ring-2 ring-[#00A88F]' : ''
+              }`}
               style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
                 color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                border: project.notes ? '2px solid #00A88F' : 'none'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(10px)'
               }}
-              title="Ver/Editar anotações do projeto"
-              aria-label="Anotações"
+              title="Notas"
             >
-              <FileText className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
+              <FileText className="w-4 h-4" />
             </button>
             <button
               onClick={handleEdit}
-              className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
+              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
               style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
                 color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(10px)'
               }}
-              title="Editar projeto"
-              aria-label="Editar"
+              title="Editar"
             >
-              <Edit2 className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
+              <Edit2 className="w-4 h-4" />
             </button>
           </div>
         )}
