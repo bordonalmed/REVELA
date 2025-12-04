@@ -882,15 +882,14 @@ export default function ProjectsPage() {
 
                 {/* Botões de ação */}
                 <div className="flex gap-2">
-                  <Link href={`/projects/${project.id}`} className="flex-1">
-                    <button
-                      className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all hover:opacity-80 flex items-center justify-center gap-2"
-                      style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.1)' }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      Visualizar
-                    </button>
-                  </Link>
+                  <button
+                    onClick={() => router.push(`/projects/${project.id}`)}
+                    className="flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all hover:opacity-80 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.1)' }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Visualizar
+                  </button>
                   <button
                     onClick={() => {
                       setProjectToMove(project.id);

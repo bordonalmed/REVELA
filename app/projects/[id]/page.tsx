@@ -192,18 +192,19 @@ export default function ViewProjectPage() {
     }
   }, [projectId, router]);
 
-  // Usar hook de autenticação customizado
-  const { user: authUser, loading: authLoading } = useAuth();
+  // Usar hook de autenticação customizado (sem redirecionamento automático)
+  const { user: authUser, loading: authLoading } = useAuth(false);
   
   useEffect(() => {
     setUser(authUser);
   }, [authUser]);
 
   useEffect(() => {
-    if (authUser && projectId && !authLoading) {
+    // Carregar projeto independente de autenticação (dados locais)
+    if (projectId && !authLoading) {
       loadProject();
     }
-  }, [authUser, projectId, authLoading, loadProject]);
+  }, [projectId, authLoading, loadProject]);
 
   // Loading geral combina autenticação e projeto
   const isLoading = authLoading || projectLoading;
@@ -765,11 +766,11 @@ export default function ViewProjectPage() {
   const shouldHideChrome = isLandscape || isPresentationMode;
 
   const mainClassName = shouldHideChrome
-    ? 'flex-1 w-full px-0 py-0 flex flex-col overflow-hidden'
-    : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-hidden';
+    ? 'flex-1 w-full px-0 py-0 flex flex-col overflow-y-auto'
+    : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-y-auto';
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#1A2B32' }}>
+    <div className={`fixed inset-0 flex flex-col ${isLandscape ? 'overflow-y-auto' : 'overflow-hidden'}`} style={{ backgroundColor: '#1A2B32' }}>
       {!shouldHideChrome && <NavigationHeader />}
 
       {/* Main Content */}
@@ -1169,7 +1170,7 @@ export default function ViewProjectPage() {
         {/* Visualização Antes e Depois */}
         {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
           <div 
-            className={`flex-1 flex flex-col overflow-hidden ${isLandscape ? '' : 'rounded-lg border'}`} 
+            className={`flex-1 flex flex-col ${isLandscape ? 'overflow-y-auto' : 'overflow-hidden'} ${isLandscape ? '' : 'rounded-lg border'}`} 
             style={{ 
               backgroundColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.05)', 
               borderColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.1)',
@@ -1586,29 +1587,31 @@ export default function ViewProjectPage() {
           </div>
         )}
 
-        {/* Botões Flutuantes (apenas quando header está escondido - landscape) */}
-        {!isEditing && isLandscape && (
-          <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-            {/* Botão Voltar (landscape) */}
-            <button
-              onClick={() => router.back()}
-              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.1)', 
-                color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
-              }}
-              title="Voltar para página anterior"
-              aria-label="Voltar"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
+        {/* Botões Flutuantes (mobile portrait e landscape) */}
+        {!isEditing && (
+          <div className={`fixed ${isLandscape ? 'bottom-6 right-6' : 'bottom-4 right-4'} z-50 flex flex-col gap-3`}>
+            {/* Botão Voltar */}
+            {isLandscape && (
+              <button
+                onClick={() => router.back()}
+                className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+                style={{ 
+                  backgroundColor: 'rgba(232, 220, 192, 0.1)', 
+                  color: '#E8DCC0',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                }}
+                title="Voltar para página anterior"
+                aria-label="Voltar"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+            )}
             {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
               <>
                 <button
                   onClick={handleExportImage}
                   disabled={exporting}
-                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed`}
                   style={{ 
                     backgroundColor: 'rgba(232, 220, 192, 0.1)', 
                     color: '#E8DCC0',
@@ -1618,14 +1621,14 @@ export default function ViewProjectPage() {
                   aria-label="Exportar imagem"
                 >
                   {exporting ? (
-                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className={`${isLandscape ? 'w-6 h-6' : 'w-5 h-5'} border-2 border-white border-t-transparent rounded-full animate-spin`} />
                   ) : (
-                    <ImageIcon className="w-6 h-6" />
+                    <ImageIcon className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
                   )}
                 </button>
                 <button
                   onClick={handleEnterPresentationMode}
-                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
                   style={{ 
                     backgroundColor: 'rgba(232, 220, 192, 0.1)', 
                     color: '#E8DCC0',
@@ -1634,11 +1637,11 @@ export default function ViewProjectPage() {
                   title="Modo Apresentação / Tela Cheia"
                   aria-label="Apresentação"
                 >
-                  <Maximize2 className="w-6 h-6" />
+                  <Maximize2 className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
                 </button>
                 <button
                   onClick={handleToggleSliderMode}
-                  className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+                  className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
                   style={{ 
                     backgroundColor: isSliderMode 
                       ? 'rgba(0, 168, 143, 0.2)' 
@@ -1651,13 +1654,13 @@ export default function ViewProjectPage() {
                   title="Modo Comparação com Slider"
                   aria-label="Slider"
                 >
-                  <SlidersHorizontal className="w-6 h-6" />
+                  <SlidersHorizontal className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
                 </button>
               </>
             )}
             <button
               onClick={handleOpenNotes}
-              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+              className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
               style={{ 
                 backgroundColor: 'rgba(232, 220, 192, 0.1)', 
                 color: '#E8DCC0',
@@ -1667,11 +1670,11 @@ export default function ViewProjectPage() {
               title="Ver/Editar anotações do projeto"
               aria-label="Anotações"
             >
-              <FileText className="w-6 h-6" />
+              <FileText className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
             </button>
             <button
               onClick={handleEdit}
-              className="p-4 rounded-full shadow-lg transition-all hover:scale-110"
+              className={`${isLandscape ? 'p-4' : 'p-3'} rounded-full shadow-lg transition-all hover:scale-110`}
               style={{ 
                 backgroundColor: 'rgba(232, 220, 192, 0.1)', 
                 color: '#E8DCC0',
@@ -1680,7 +1683,7 @@ export default function ViewProjectPage() {
               title="Editar projeto"
               aria-label="Editar"
             >
-              <Edit2 className="w-6 h-6" />
+              <Edit2 className={isLandscape ? 'w-6 h-6' : 'w-5 h-5'} />
             </button>
           </div>
         )}
