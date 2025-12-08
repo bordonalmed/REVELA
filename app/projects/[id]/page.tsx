@@ -48,35 +48,75 @@ export default function ViewProjectPage() {
   const afterInputRef = React.useRef<HTMLInputElement>(null);
   const loadProjectRef = React.useRef(false);
 
-  // Detectar orientação
+  // Detectar orientação e calcular dimensões responsivas
   useEffect(() => {
     const updateLayoutMetrics = () => {
-      const landscape = window.innerWidth > window.innerHeight;
-      setIsLandscape(landscape);
-
-      const viewportHeight = typeof window !== 'undefined' && window.visualViewport
+      const width = window.innerWidth;
+      const height = typeof window !== 'undefined' && window.visualViewport
         ? window.visualViewport.height
         : window.innerHeight;
+      
+      // Detectar se é tablet (768px - 1023px) ou mobile (< 768px)
+      const isTablet = width >= 768 && width < 1024;
+      const isMobile = width < 768;
+      
+      const landscape = width > height;
+      setIsLandscape(landscape);
 
       const header = document.querySelector('header');
       const headerHeight = landscape ? 0 : header ? header.getBoundingClientRect().height : 0;
       const mainMarginTop = landscape ? 0 : 36;
-      const extraPadding = landscape ? 0 : 24;
-      const availableHeight = viewportHeight - headerHeight - mainMarginTop - extraPadding;
+      const extraPadding = landscape ? 0 : (isTablet ? 20 : 24);
+      
+      // Em landscape, usar toda a altura disponível menos pequenos espaços
+      // Em tablets landscape, deixar mais espaço para controles
+      const landscapePadding = isTablet ? 12 : 8;
+      const availableHeight = landscape 
+        ? height - (header ? header.getBoundingClientRect().height : 0) - landscapePadding
+        : height - headerHeight - mainMarginTop - extraPadding;
+      
       setViewerHeight(Math.max(availableHeight, 0));
 
-      const labelAllowance = landscape ? 36 : (window.innerWidth < 768 ? 52 : 68);
+      // Para modo empilhado (portrait), calcular altura de cada seção
+      // Tablets precisam de mais espaço para labels
+      const labelAllowance = landscape 
+        ? (isTablet ? 40 : 36) 
+        : (isMobile ? 52 : isTablet ? 64 : 68);
       const computedStacked = Math.max((availableHeight - labelAllowance) / 2, 160);
       setStackedSectionHeight(computedStacked);
     };
 
     updateLayoutMetrics();
-    window.addEventListener('resize', updateLayoutMetrics);
-    window.addEventListener('orientationchange', updateLayoutMetrics);
+    
+    // Usar timeout para garantir que o visualViewport está atualizado após mudança de orientação
+    const handleOrientationChange = () => {
+      setTimeout(updateLayoutMetrics, 150);
+    };
+    
+    // Debounce para resize em desktop
+    let resizeTimeout: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(updateLayoutMetrics, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // Visual Viewport API para melhor suporte mobile
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateLayoutMetrics);
+      window.visualViewport.addEventListener('scroll', updateLayoutMetrics);
+    }
 
     return () => {
-      window.removeEventListener('resize', updateLayoutMetrics);
-      window.removeEventListener('orientationchange', updateLayoutMetrics);
+      clearTimeout(resizeTimeout);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateLayoutMetrics);
+        window.visualViewport.removeEventListener('scroll', updateLayoutMetrics);
+      }
     };
   }, []);
 
@@ -1398,26 +1438,36 @@ export default function ViewProjectPage() {
             >
               {isLandscape ? (
                 <div
-                  className="flex flex-1 gap-2 min-h-0"
+                  className="flex flex-1 gap-2 min-h-0 w-full"
                   style={{
                     minHeight: viewerHeight ?? 'auto',
-                    height: viewerHeight ? `${viewerHeight}px` : 'auto'
+                    height: viewerHeight ? `${viewerHeight}px` : 'auto',
+                    maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
                   }}
                 >
                   <div
-                    className="flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
+                    className="flex-1 basis-1/2 flex flex-col min-h-0 min-w-0"
+                    style={{ 
+                      minHeight: viewerHeight ? `${viewerHeight}px` : 'auto',
+                      maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
+                    }}
                   >
                     <div className="text-center py-1 flex-shrink-0">
                       <span 
-                        className="text-[10px] font-medium tracking-wide" 
+                        className="text-[10px] sm:text-xs font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
                         ANTES
                       </span>
                     </div>
-                    <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                    <div 
+                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden min-h-0"
+                      style={{ 
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        minHeight: 0,
+                        maxHeight: viewerHeight ? `${(viewerHeight ?? 0) - 60}px` : 'none'
+                      }}
+                    >
                       <ZoomableImage
                         src={displayBeforeImages[beforeCurrentIndex]}
                         alt={`Antes ${beforeCurrentIndex + 1}`}
@@ -1452,19 +1502,28 @@ export default function ViewProjectPage() {
                   </div>
 
                   <div
-                    className="flex-1 basis-1/2 flex flex-col min-h-0"
-                    style={{ minHeight: viewerHeight ?? 'auto', minWidth: 0 }}
+                    className="flex-1 basis-1/2 flex flex-col min-h-0 min-w-0"
+                    style={{ 
+                      minHeight: viewerHeight ? `${viewerHeight}px` : 'auto',
+                      maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
+                    }}
                   >
                     <div className="text-center py-1 flex-shrink-0">
                       <span 
-                        className="text-[10px] font-medium tracking-wide" 
+                        className="text-[10px] sm:text-xs font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
                         DEPOIS
                       </span>
                     </div>
-                    <div className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
-                      style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                    <div 
+                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden min-h-0"
+                      style={{ 
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        minHeight: 0,
+                        maxHeight: viewerHeight ? `${(viewerHeight ?? 0) - 60}px` : 'none'
+                      }}
+                    >
                       <ZoomableImage
                         src={displayAfterImages[afterCurrentIndex]}
                         alt={`Depois ${afterCurrentIndex + 1}`}

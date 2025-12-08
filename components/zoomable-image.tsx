@@ -15,12 +15,71 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
   const minScale = 1;
   const maxScale = 5;
   const zoomStep = 0.25;
+
+  // Calcular tamanho da imagem para caber no container (object-fit: contain)
+  useEffect(() => {
+    const updateSizes = () => {
+      if (!containerRef.current || !imageRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const img = imageRef.current;
+      
+      if (img.complete && img.naturalWidth && img.naturalHeight) {
+        const containerWidth = containerRect.width;
+        const containerHeight = containerRect.height;
+        const imageAspect = img.naturalWidth / img.naturalHeight;
+        const containerAspect = containerWidth / containerHeight;
+
+        let displayWidth: number;
+        let displayHeight: number;
+
+        if (imageAspect > containerAspect) {
+          // Imagem é mais larga - ajustar pela largura
+          displayWidth = containerWidth;
+          displayHeight = containerWidth / imageAspect;
+        } else {
+          // Imagem é mais alta - ajustar pela altura
+          displayHeight = containerHeight;
+          displayWidth = containerHeight * imageAspect;
+        }
+
+        setContainerSize({ width: containerWidth, height: containerHeight });
+        setImageSize({ width: displayWidth, height: displayHeight });
+      }
+    };
+
+    const img = imageRef.current;
+    if (img) {
+      if (img.complete) {
+        updateSizes();
+      } else {
+        img.onload = updateSizes;
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(updateSizes);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateSizes);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateSizes);
+      if (img) {
+        img.onload = null;
+      }
+    };
+  }, [src]);
 
   const handleZoomIn = () => {
     setScale(prev => Math.min(prev + zoomStep, maxScale));
@@ -164,10 +223,42 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
     }
   }, [scale]);
 
+  // Calcular posição inicial para centralizar a imagem
+  const getImageStyle = () => {
+    if (!imageSize || !containerSize) {
+      return {
+        maxWidth: '100%',
+        maxHeight: '100%',
+        width: 'auto',
+        height: 'auto',
+        objectFit: 'contain' as const,
+        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+        transformOrigin: 'center center',
+        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+        willChange: 'transform',
+      };
+    }
+
+    const centerX = (containerSize.width - imageSize.width) / 2;
+    const centerY = (containerSize.height - imageSize.height) / 2;
+
+    return {
+      width: `${imageSize.width}px`,
+      height: `${imageSize.height}px`,
+      position: 'absolute' as const,
+      top: '50%',
+      left: '50%',
+      transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
+      transformOrigin: 'center center',
+      transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+      willChange: 'transform',
+    };
+  };
+
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden ${className}`}
+      className={`relative overflow-hidden flex items-center justify-center ${className}`}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -187,12 +278,7 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
         src={src}
         alt={alt}
         className="select-none"
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-          transformOrigin: '0 0',
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          willChange: 'transform',
-        }}
+        style={getImageStyle()}
         draggable={false}
       />
       
