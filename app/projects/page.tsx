@@ -9,6 +9,7 @@ import type { User } from '@supabase/supabase-js';
 import { getAllProjects, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
+import { SafeBase64Image } from '@/components/safe-image';
 
 type SortOption = 'recent' | 'oldest' | 'name-asc' | 'name-desc';
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
@@ -848,12 +849,13 @@ export default function ProjectsPage() {
                 
                 {/* Preview das imagens */}
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                  {project.beforeImages.length > 0 && (
+                  {project.beforeImages.length > 0 && project.beforeImages[0] ? (
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                      <img
+                      <SafeBase64Image
                         src={project.beforeImages[0]}
                         alt="Antes"
                         className="w-full h-24 sm:h-32 object-cover"
+                        style={{ minHeight: '96px' }}
                       />
                       <div 
                         className="absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs"
@@ -862,13 +864,18 @@ export default function ProjectsPage() {
                         Antes ({project.beforeImages.length})
                       </div>
                     </div>
+                  ) : (
+                    <div className="relative rounded-lg overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', minHeight: '96px' }}>
+                      <span className="text-xs" style={{ color: '#E8DCC0', opacity: 0.5 }}>Sem imagem</span>
+                    </div>
                   )}
-                  {project.afterImages.length > 0 && (
+                  {project.afterImages.length > 0 && project.afterImages[0] ? (
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                      <img
+                      <SafeBase64Image
                         src={project.afterImages[0]}
                         alt="Depois"
                         className="w-full h-24 sm:h-32 object-cover"
+                        style={{ minHeight: '96px' }}
                       />
                       <div 
                         className="absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs"
@@ -876,6 +883,10 @@ export default function ProjectsPage() {
                       >
                         Depois ({project.afterImages.length})
                       </div>
+                    </div>
+                  ) : (
+                    <div className="relative rounded-lg overflow-hidden flex items-center justify-center" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', minHeight: '96px' }}>
+                      <span className="text-xs" style={{ color: '#E8DCC0', opacity: 0.5 }}>Sem imagem</span>
                     </div>
                   )}
                 </div>

@@ -211,6 +211,7 @@ export function SafeBase64Image({
         }
       }}
       loading="lazy"
+      draggable={false}
     />
   );
 }

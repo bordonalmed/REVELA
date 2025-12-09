@@ -140,6 +140,9 @@ export default function ViewProjectPage() {
       errorLogger.info('Iniciando carregamento de projeto', { projectId });
       
       // Adicionar timeout geral para evitar travamentos
+      let timeoutId: NodeJS.Timeout | null = null;
+      let timeoutResolved = false;
+      
       const loadPromise = (async () => {
         // Tentar IndexedDB primeiro (já tem timeout interno de 5s)
         let loadedProject: Project | null = null;
@@ -147,6 +150,13 @@ export default function ViewProjectPage() {
           loadedProject = await getProjectFromIndexedDB(projectId);
           if (loadedProject) {
             errorLogger.info('Projeto carregado do IndexedDB', { projectId });
+            // Cancelar timeout se projeto foi carregado
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+              timeoutResolved = true;
+            }
+            return loadedProject;
           }
         } catch (indexedDBError) {
           errorLogger.warn('Erro ao carregar do IndexedDB, tentando localStorage', { 
@@ -155,38 +165,57 @@ export default function ViewProjectPage() {
           });
         }
       
-      // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
-      if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
-        try {
-          const stored = localStorage.getItem('revela_projects');
-          if (stored) {
-            const projects = JSON.parse(stored);
-            loadedProject = projects.find((p: Project) => p.id === projectId) || null;
+        // Se não encontrar, tentar localStorage (com verificação de disponibilidade)
+        if (!loadedProject && typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const stored = localStorage.getItem('revela_projects');
+            if (stored) {
+              const projects = JSON.parse(stored);
+              loadedProject = projects.find((p: Project) => p.id === projectId) || null;
               if (loadedProject) {
                 errorLogger.info('Projeto carregado do localStorage', { projectId });
+                // Cancelar timeout se projeto foi carregado
+                if (timeoutId) {
+                  clearTimeout(timeoutId);
+                  timeoutId = null;
+                  timeoutResolved = true;
+                }
+                return loadedProject;
               }
-          }
-        } catch (storageError) {
+            }
+          } catch (storageError) {
             errorLogger.warn('Erro ao acessar localStorage', { 
               projectId, 
               error: storageError 
             });
-          // Continuar mesmo se localStorage falhar
+            // Continuar mesmo se localStorage falhar
+          }
         }
-      }
         
         return loadedProject;
       })();
       
-      // Timeout geral de 10 segundos
+      // Timeout geral de 10 segundos (só dispara se não foi resolvido)
       const timeoutPromise = new Promise<null>((resolve) => {
-        setTimeout(() => {
-          errorLogger.warn('Timeout ao carregar projeto', { projectId });
-          resolve(null);
+        timeoutId = setTimeout(() => {
+          if (!timeoutResolved) {
+            errorLogger.warn('Timeout ao carregar projeto', { projectId });
+            timeoutResolved = true;
+            resolve(null);
+          } else {
+            // Se já foi resolvido, não fazer nada
+            resolve(null);
+          }
         }, 10000);
       });
       
       const loadedProject = await Promise.race([loadPromise, timeoutPromise]);
+      
+      // Limpar timeout se ainda estiver ativo (caso o loadPromise tenha vencido primeiro)
+      if (timeoutId && !timeoutResolved) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
       
       if (loadedProject) {
         // Validar estrutura do projeto
