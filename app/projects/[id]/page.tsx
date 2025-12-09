@@ -1264,7 +1264,8 @@ export default function ViewProjectPage() {
               backgroundColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.05)', 
               borderColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.1)',
               padding: isLandscape ? '0px' : '12px',
-              marginBottom: isLandscape ? 0 : '1.5rem'
+              marginBottom: isLandscape ? 0 : '1.5rem',
+              minHeight: isLandscape ? 'auto' : '600px'
             }}
           >
             <div className="flex justify-between items-center mb-2">
@@ -1362,10 +1363,10 @@ export default function ViewProjectPage() {
             ) : (
               <>
             {/* Desktop grande: Lado a lado */}
-            <div className="hidden lg:grid lg:grid-cols-2 gap-4">
+            <div className="hidden lg:grid lg:grid-cols-2 gap-4 lg:gap-6" style={{ minHeight: '600px' }}>
               {/* Carrossel Antes */}
-              <div className="relative">
-                <div className="text-center mb-2">
+              <div className="relative flex flex-col">
+                <div className="text-center mb-3 flex-shrink-0">
                   <span 
                     className="text-sm font-medium" 
                     style={{ color: '#E8DCC0' }}
@@ -1373,12 +1374,12 @@ export default function ViewProjectPage() {
                     ANTES
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <ZoomableImage
                     src={displayBeforeImages[beforeCurrentIndex]}
                     alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[500px]"
-                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}
+                    className="w-full h-full max-w-full max-h-full"
+                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
                   />
                   {displayBeforeImages.length > 1 && (
                     <>
@@ -1412,8 +1413,8 @@ export default function ViewProjectPage() {
               </div>
 
               {/* Carrossel Depois */}
-              <div className="relative">
-                <div className="text-center mb-2">
+              <div className="relative flex flex-col">
+                <div className="text-center mb-3 flex-shrink-0">
                   <span 
                     className="text-sm font-medium" 
                     style={{ color: '#E8DCC0' }}
@@ -1421,12 +1422,12 @@ export default function ViewProjectPage() {
                     DEPOIS
                   </span>
                 </div>
-                <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <ZoomableImage
                     src={displayAfterImages[afterCurrentIndex]}
                     alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-auto max-h-[500px]"
-                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}
+                    className="w-full h-full max-w-full max-h-full"
+                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
                   />
                   {displayAfterImages.length > 1 && (
                     <>
