@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline' https:",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
-    "connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.supabase.io wss://*.supabase.co wss://*.supabase.in https://*.netlify.app",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.in https://*.supabase.io wss://*.supabase.co wss://*.supabase.in https://*.netlify.app https://www.googletagmanager.com",
     "frame-src 'self' https:",
     "object-src 'none'",
     "base-uri 'self'",
