@@ -8,19 +8,43 @@ import { useEffect } from 'react';
  */
 export function OpenGraphHead() {
   useEffect(() => {
+    // Verificar se estamos no cliente e se document.head existe
+    if (typeof document === 'undefined' || !document.head) {
+      return;
+    }
+
     // Adiciona tags Open Graph adicionais que podem não estar no Metadata do Next.js
     const addMetaTag = (property: string, content: string) => {
-      // Remove tag existente se houver
-      const existing = document.querySelector(`meta[property="${property}"]`);
-      if (existing) {
-        existing.remove();
-      }
+      try {
+        // Verificar se document.head ainda existe
+        if (!document.head) {
+          return;
+        }
 
-      // Adiciona nova tag
-      const meta = document.createElement('meta');
-      meta.setAttribute('property', property);
-      meta.setAttribute('content', content);
-      document.head.appendChild(meta);
+        // Remove tag existente se houver e se tiver parentNode
+        const existing = document.querySelector(`meta[property="${property}"]`);
+        if (existing && existing.parentNode) {
+          try {
+            existing.parentNode.removeChild(existing);
+          } catch (e) {
+            // Se falhar ao remover, tenta usar remove() se disponível
+            if (typeof existing.remove === 'function') {
+              existing.remove();
+            }
+          }
+        }
+
+        // Adiciona nova tag apenas se document.head ainda existir
+        if (document.head) {
+          const meta = document.createElement('meta');
+          meta.setAttribute('property', property);
+          meta.setAttribute('content', content);
+          document.head.appendChild(meta);
+        }
+      } catch (error) {
+        // Silenciosamente ignora erros de manipulação do DOM
+        console.warn(`Erro ao adicionar meta tag ${property}:`, error);
+      }
     };
 
     // Open Graph básico (reforço)
@@ -42,13 +66,8 @@ export function OpenGraphHead() {
     addMetaTag('twitter:image', 'https://revela.app/revela3.png');
     addMetaTag('twitter:image:alt', 'Revela - Comparação de Fotos Antes e Depois');
 
-    // Facebook específico
-    addMetaTag('fb:app_id', ''); // Adicionar quando tiver App ID do Facebook
-
-    // Limpeza ao desmontar
-    return () => {
-      // Não precisa limpar, as tags ficam no head
-    };
+    // Facebook específico (apenas se tiver conteúdo)
+    // addMetaTag('fb:app_id', ''); // Comentado pois está vazio
   }, []);
 
   return null;
