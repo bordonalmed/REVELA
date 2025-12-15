@@ -8,8 +8,11 @@ import { SafeImage } from '@/components/safe-image';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
+import { LanguageSelector } from '@/components/language-selector';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function SignupPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,13 +26,13 @@ export default function SignupPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(t.signup.passwordMismatch);
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+      setError(t.signup.passwordTooShort);
       setLoading(false);
       return;
     }
@@ -45,7 +48,7 @@ export default function SignupPage() {
       // Redirecionar direto para o dashboard após criar conta
       router.push('/dashboard');
     } catch (error: any) {
-      setError(error.message || 'Erro ao criar conta');
+      setError(error.message || t.signup.error);
     } finally {
       setLoading(false);
     }
@@ -56,6 +59,11 @@ export default function SignupPage() {
       className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8"
       style={{ backgroundColor: '#1A2B32' }}
     >
+      {/* Language Selector - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSelector />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-6 sm:mb-8">
@@ -83,10 +91,10 @@ export default function SignupPage() {
         >
           <div className="text-center mb-6">
             <h1 className="text-2xl sm:text-3xl font-light mb-2" style={{ color: '#E8DCC0' }}>
-              Criar Conta
+              {t.signup.title}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              Crie sua conta profissional
+              {t.signup.subtitle}
             </p>
           </div>
 
@@ -107,12 +115,12 @@ export default function SignupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" style={{ color: '#E8DCC0' }}>
-                  Email
+                  {t.signup.email}
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder={t.signup.emailPlaceholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -123,12 +131,12 @@ export default function SignupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password" style={{ color: '#E8DCC0' }}>
-                  Senha
+                  {t.signup.password}
                 </Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t.signup.passwordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -139,12 +147,12 @@ export default function SignupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" style={{ color: '#E8DCC0' }}>
-                  Confirmar Senha
+                  {t.signup.confirmPassword}
                 </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t.signup.confirmPasswordPlaceholder}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -162,18 +170,18 @@ export default function SignupPage() {
                   color: '#FFFFFF'
                 }}
               >
-                {loading ? 'Criando conta...' : 'Criar Conta'}
+                {loading ? t.signup.submitting : t.signup.submit}
               </button>
 
               <div className="text-center space-y-3 pt-4">
                 <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                  Já tem uma conta?{' '}
+                  {t.signup.hasAccount}{' '}
                   <Link 
                     href="/login" 
                     className="hover:opacity-80 transition-opacity underline"
                     style={{ color: '#00A88F' }}
                   >
-                    Entrar
+                    {t.signup.login}
                   </Link>
                 </p>
                 <Link 
@@ -181,7 +189,7 @@ export default function SignupPage() {
                   className="text-sm hover:opacity-80 transition-opacity inline-block"
                   style={{ color: '#E8DCC0', opacity: 0.7 }}
                 >
-                  ← Voltar para início
+                  {t.signup.backToHome}
                 </Link>
               </div>
             </div>

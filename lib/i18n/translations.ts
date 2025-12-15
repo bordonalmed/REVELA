@@ -33,6 +33,65 @@ export interface Translations {
     createFreeAccount: string;
     alreadyHaveAccount: string;
   };
+  // Login
+  login: {
+    title: string;
+    subtitle: string;
+    email: string;
+    password: string;
+    emailPlaceholder: string;
+    passwordPlaceholder: string;
+    submit: string;
+    submitting: string;
+    noAccount: string;
+    createAccount: string;
+    backToHome: string;
+    error: string;
+  };
+  // Signup
+  signup: {
+    title: string;
+    subtitle: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    emailPlaceholder: string;
+    passwordPlaceholder: string;
+    confirmPasswordPlaceholder: string;
+    submit: string;
+    submitting: string;
+    hasAccount: string;
+    login: string;
+    backToHome: string;
+    passwordMismatch: string;
+    passwordTooShort: string;
+    error: string;
+  };
+  // Dashboard
+  dashboard: {
+    welcome: string;
+    slogan: string;
+    newProject: string;
+    storedProjects: string;
+    loading: string;
+  };
+  // Settings
+    settings: {
+      title: string;
+      accountInfo: string;
+      changePassword: string;
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+      emailCannotChange: string;
+      update: string;
+      updating: string;
+      success: string;
+      passwordMismatch: string;
+      passwordTooShort: string;
+      error: string;
+      loading: string;
+    };
   // Common
   common: {
     loading: string;
@@ -42,6 +101,21 @@ export interface Translations {
     delete: string;
     edit: string;
     close: string;
+    email: string;
+    password: string;
+    name: string;
+    date: string;
+    notes: string;
+    before: string;
+    after: string;
+    logout: string;
+    logoutError: string;
+    settings: string;
+    dashboard: string;
+  };
+  // Footer
+  footer: {
+    copyright: string;
   };
 }
 
@@ -78,6 +152,61 @@ export const translations: Record<Language, Translations> = {
       createFreeAccount: 'Criar conta grátis',
       alreadyHaveAccount: 'Já tenho conta',
     },
+    login: {
+      title: 'Entrar',
+      subtitle: 'Entre com seu email e senha',
+      email: 'Email',
+      password: 'Senha',
+      emailPlaceholder: 'seu@email.com',
+      passwordPlaceholder: '••••••••',
+      submit: 'Entrar',
+      submitting: 'Entrando...',
+      noAccount: 'Não tem uma conta?',
+      createAccount: 'Criar conta',
+      backToHome: '← Voltar para início',
+      error: 'Erro ao fazer login',
+    },
+    signup: {
+      title: 'Criar Conta',
+      subtitle: 'Crie sua conta profissional',
+      email: 'Email',
+      password: 'Senha',
+      confirmPassword: 'Confirmar Senha',
+      emailPlaceholder: 'seu@email.com',
+      passwordPlaceholder: '••••••••',
+      confirmPasswordPlaceholder: '••••••••',
+      submit: 'Criar Conta',
+      submitting: 'Criando conta...',
+      hasAccount: 'Já tem uma conta?',
+      login: 'Entrar',
+      backToHome: '← Voltar para início',
+      passwordMismatch: 'As senhas não coincidem',
+      passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
+      error: 'Erro ao criar conta',
+    },
+    dashboard: {
+      welcome: 'Bem-vindo ao Revela',
+      slogan: 'Cada imagem Revela uma Evolução',
+      newProject: 'Novo projeto',
+      storedProjects: 'Armazenados',
+      loading: 'Carregando...',
+    },
+    settings: {
+      title: 'Configurações da Conta',
+      accountInfo: 'Informações da Conta',
+      changePassword: 'Alterar Senha',
+      currentPassword: 'Senha Atual',
+      newPassword: 'Nova Senha',
+      confirmPassword: 'Confirmar Nova Senha',
+      emailCannotChange: 'O email não pode ser alterado',
+      update: 'Atualizar Senha',
+      updating: 'Atualizando...',
+      success: 'Senha atualizada com sucesso!',
+      passwordMismatch: 'As senhas não coincidem',
+      passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
+      error: 'Erro ao atualizar senha',
+      loading: 'Carregando...',
+    },
     common: {
       loading: 'Carregando...',
       back: 'Voltar',
@@ -86,6 +215,20 @@ export const translations: Record<Language, Translations> = {
       delete: 'Excluir',
       edit: 'Editar',
       close: 'Fechar',
+      email: 'Email',
+      password: 'Senha',
+      name: 'Nome',
+      date: 'Data',
+      notes: 'Anotações',
+      before: 'Antes',
+      after: 'Depois',
+      logout: 'Sair',
+      logoutError: 'Erro ao sair. Tente novamente.',
+      settings: 'Configurações',
+      dashboard: 'Dashboard',
+    },
+    footer: {
+      copyright: '© 2025 Revela - Powered by Equipe Revela',
     },
   },
   'en-US': {
@@ -120,6 +263,61 @@ export const translations: Record<Language, Translations> = {
       createFreeAccount: 'Create free account',
       alreadyHaveAccount: 'I already have an account',
     },
+    login: {
+      title: 'Login',
+      subtitle: 'Enter your email and password',
+      email: 'Email',
+      password: 'Password',
+      emailPlaceholder: 'your@email.com',
+      passwordPlaceholder: '••••••••',
+      submit: 'Login',
+      submitting: 'Logging in...',
+      noAccount: "Don't have an account?",
+      createAccount: 'Create account',
+      backToHome: '← Back to home',
+      error: 'Error logging in',
+    },
+    signup: {
+      title: 'Create Account',
+      subtitle: 'Create your professional account',
+      email: 'Email',
+      password: 'Password',
+      confirmPassword: 'Confirm Password',
+      emailPlaceholder: 'your@email.com',
+      passwordPlaceholder: '••••••••',
+      confirmPasswordPlaceholder: '••••••••',
+      submit: 'Create Account',
+      submitting: 'Creating account...',
+      hasAccount: 'Already have an account?',
+      login: 'Login',
+      backToHome: '← Back to home',
+      passwordMismatch: 'Passwords do not match',
+      passwordTooShort: 'Password must be at least 6 characters',
+      error: 'Error creating account',
+    },
+    dashboard: {
+      welcome: 'Welcome to Revela',
+      slogan: 'Each Image Reveals an Evolution',
+      newProject: 'New project',
+      storedProjects: 'Stored',
+      loading: 'Loading...',
+    },
+    settings: {
+      title: 'Account Settings',
+      accountInfo: 'Account Information',
+      changePassword: 'Change Password',
+      currentPassword: 'Current Password',
+      newPassword: 'New Password',
+      confirmPassword: 'Confirm New Password',
+      emailCannotChange: 'Email cannot be changed',
+      update: 'Update Password',
+      updating: 'Updating...',
+      success: 'Password updated successfully!',
+      passwordMismatch: 'Passwords do not match',
+      passwordTooShort: 'Password must be at least 6 characters',
+      error: 'Error updating password',
+      loading: 'Loading...',
+    },
     common: {
       loading: 'Loading...',
       back: 'Back',
@@ -128,6 +326,20 @@ export const translations: Record<Language, Translations> = {
       delete: 'Delete',
       edit: 'Edit',
       close: 'Close',
+      email: 'Email',
+      password: 'Password',
+      name: 'Name',
+      date: 'Date',
+      notes: 'Notes',
+      before: 'Before',
+      after: 'After',
+      logout: 'Logout',
+      logoutError: 'Error logging out. Please try again.',
+      settings: 'Settings',
+      dashboard: 'Dashboard',
+    },
+    footer: {
+      copyright: '© 2025 Revela - Powered by Revela Team',
     },
   },
 };

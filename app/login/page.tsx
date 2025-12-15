@@ -8,8 +8,11 @@ import { SafeImage } from '@/components/safe-image';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
+import { LanguageSelector } from '@/components/language-selector';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +34,7 @@ export default function LoginPage() {
 
       router.push('/dashboard');
     } catch (error: any) {
-      setError(error.message || 'Erro ao fazer login');
+      setError(error.message || t.login.error);
     } finally {
       setLoading(false);
     }
@@ -42,6 +45,11 @@ export default function LoginPage() {
       className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8"
       style={{ backgroundColor: '#1A2B32' }}
     >
+      {/* Language Selector - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSelector />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-6 sm:mb-8">
@@ -69,10 +77,10 @@ export default function LoginPage() {
         >
           <div className="text-center mb-6">
             <h1 className="text-2xl sm:text-3xl font-light mb-2" style={{ color: '#E8DCC0' }}>
-              Entrar
+              {t.login.title}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              Entre com seu email e senha
+              {t.login.subtitle}
             </p>
           </div>
 
@@ -93,12 +101,12 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" style={{ color: '#E8DCC0' }}>
-                  Email
+                  {t.login.email}
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder={t.login.emailPlaceholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -109,12 +117,12 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password" style={{ color: '#E8DCC0' }}>
-                  Senha
+                  {t.login.password}
                 </Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -132,18 +140,18 @@ export default function LoginPage() {
                   color: '#FFFFFF'
                 }}
               >
-                {loading ? 'Entrando...' : 'Entrar'}
+                {loading ? t.login.submitting : t.login.submit}
               </button>
 
               <div className="text-center space-y-3 pt-4">
                 <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                  Não tem uma conta?{' '}
+                  {t.login.noAccount}{' '}
                   <Link 
                     href="/signup" 
                     className="hover:opacity-80 transition-opacity underline"
                     style={{ color: '#00A88F' }}
                   >
-                    Criar conta
+                    {t.login.createAccount}
                   </Link>
                 </p>
                 <Link 
@@ -151,7 +159,7 @@ export default function LoginPage() {
                   className="text-sm hover:opacity-80 transition-opacity inline-block"
                   style={{ color: '#E8DCC0', opacity: 0.7 }}
                 >
-                  ← Voltar para início
+                  {t.login.backToHome}
                 </Link>
               </div>
             </div>

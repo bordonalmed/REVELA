@@ -6,8 +6,10 @@ import { Home, LogOut, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { SafeImage } from '@/components/safe-image';
 import { LanguageSelector } from '@/components/language-selector';
+import { useLanguage } from '@/contexts/language-context';
 
 export function NavigationHeader() {
+  const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const isDashboard = pathname === '/dashboard';
@@ -18,7 +20,7 @@ export function NavigationHeader() {
       router.push('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
-      alert('Erro ao sair. Tente novamente.');
+      alert(t.common.logoutError);
     }
   };
 
@@ -59,7 +61,7 @@ export function NavigationHeader() {
               <button
                 onClick={() => router.push('/settings')}
                 className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label="Configurações"
+                aria-label={t.common.settings}
                 style={{ color: '#E8DCC0' }}
               >
                 <Settings className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
@@ -68,7 +70,7 @@ export function NavigationHeader() {
               <button
                 onClick={() => router.push('/dashboard')}
                 className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label="Dashboard"
+                aria-label={t.common.dashboard}
                 style={{ color: '#E8DCC0' }}
               >
                 <Home className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
@@ -79,7 +81,7 @@ export function NavigationHeader() {
             <button
               onClick={handleLogout}
                 className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label="Sair"
+                aria-label={t.common.logout}
                 style={{ color: '#E8DCC0' }}
             >
               <LogOut className="w-3.5 h-3.5 sm:w-5 sm:h-5" />

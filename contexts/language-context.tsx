@@ -79,7 +79,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    // Retorna valores padrão durante SSR ou quando o provider não está disponível
+    return {
+      language: defaultLanguage,
+      setLanguage: () => {},
+      t: getTranslations(defaultLanguage),
+    };
   }
   return context;
 }

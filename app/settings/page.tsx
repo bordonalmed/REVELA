@@ -8,8 +8,10 @@ import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,13 +51,13 @@ export default function SettingsPage() {
     setSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(t.settings.passwordMismatch);
       setUpdating(false);
       return;
     }
 
     if (newPassword.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
+      setError(t.settings.passwordTooShort);
       setUpdating(false);
       return;
     }
@@ -67,12 +69,12 @@ export default function SettingsPage() {
 
       if (error) throw error;
 
-      setSuccess('Senha atualizada com sucesso!');
+      setSuccess(t.settings.success);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
-      setError(error.message || 'Erro ao atualizar senha');
+      setError(error.message || t.settings.error);
     } finally {
       setUpdating(false);
     }
@@ -89,7 +91,7 @@ export default function SettingsPage() {
             className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
             style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
           ></div>
-          <p style={{ color: '#E8DCC0' }}>Carregando...</p>
+          <p style={{ color: '#E8DCC0' }}>{t.settings.loading}</p>
         </div>
       </div>
     );
@@ -104,7 +106,7 @@ export default function SettingsPage() {
           className="text-2xl sm:text-3xl font-light mb-6" 
           style={{ color: '#E8DCC0' }}
         >
-          Configurações da Conta
+          {t.settings.title}
         </h1>
 
         {/* Informações da Conta */}
@@ -119,12 +121,12 @@ export default function SettingsPage() {
             className="text-lg sm:text-xl font-light mb-4" 
             style={{ color: '#E8DCC0' }}
           >
-            Informações da Conta
+            {t.settings.accountInfo}
           </h2>
           
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label style={{ color: '#E8DCC0' }}>Email</Label>
+              <Label style={{ color: '#E8DCC0' }}>{t.common.email}</Label>
               <Input
                 type="email"
                 value={email}
@@ -132,7 +134,7 @@ export default function SettingsPage() {
                 className="bg-transparent border-gray-600 text-white placeholder:text-gray-500"
               />
               <p className="text-xs" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                O email não pode ser alterado
+                {t.settings.emailCannotChange}
               </p>
             </div>
           </div>
@@ -150,7 +152,7 @@ export default function SettingsPage() {
             className="text-lg sm:text-xl font-light mb-4" 
             style={{ color: '#E8DCC0' }}
           >
-            Alterar Senha
+            {t.settings.changePassword}
           </h2>
 
           <form onSubmit={handleUpdatePassword}>
@@ -183,12 +185,12 @@ export default function SettingsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="newPassword" style={{ color: '#E8DCC0' }}>
-                  Nova Senha
+                  {t.settings.newPassword}
                 </Label>
                 <Input
                   id="newPassword"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -199,12 +201,12 @@ export default function SettingsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" style={{ color: '#E8DCC0' }}>
-                  Confirmar Nova Senha
+                  {t.settings.confirmPassword}
                 </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -222,7 +224,7 @@ export default function SettingsPage() {
                   color: '#FFFFFF'
                 }}
               >
-                {updating ? 'Atualizando...' : 'Atualizar Senha'}
+                {updating ? t.settings.updating : t.settings.update}
               </button>
             </div>
           </form>

@@ -1,4 +1,10 @@
+'use client';
+
+import { useLanguage } from '@/contexts/language-context';
+
 export function Footer({ className = "" }: { className?: string }) {
+  const { t } = useLanguage();
+  
   return (
     <footer 
       className={`border-t py-4 sm:py-6 ${className}`}
@@ -11,7 +17,7 @@ export function Footer({ className = "" }: { className?: string }) {
           className="text-xs sm:text-sm text-center"
           style={{ color: '#E8DCC0', opacity: 0.7 }}
         >
-          © 2025 Revela - Powered by Equipe Revela
+          {t.footer.copyright}
         </p>
       </div>
     </footer>
