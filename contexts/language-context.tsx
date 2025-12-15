@@ -36,19 +36,31 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
-    // Atualizar atributo lang do HTML
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = lang;
+    try {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    } catch (e) {
+      // Ignora erros de localStorage (modo privado, etc)
+    }
+    // Atualizar atributo lang do HTML de forma segura
+    if (typeof document !== 'undefined' && document.documentElement) {
+      try {
+        document.documentElement.lang = lang;
+      } catch (e) {
+        // Ignora erros de manipulação do DOM
+      }
     }
   };
 
   // Atualizar lang do HTML quando o idioma mudar
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = language;
+    if (typeof document !== 'undefined' && document.documentElement && mounted) {
+      try {
+        document.documentElement.lang = language;
+      } catch (e) {
+        // Ignora erros de manipulação do DOM
+      }
     }
-  }, [language]);
+  }, [language, mounted]);
 
   // Não renderizar até montar para evitar hydration mismatch
   if (!mounted) {

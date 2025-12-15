@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/footer';
 import { SafeImage } from '@/components/safe-image';
 import { StructuredData } from '@/components/structured-data';
-import { OpenGraphHead } from '@/components/open-graph-head';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
 import { getTranslations, defaultLanguage, type Translations } from '@/lib/i18n/translations';
@@ -255,7 +254,6 @@ function HomeContent() {
       </section>
       <Footer />
       <StructuredData />
-      <OpenGraphHead />
     </div>
   );
 }
