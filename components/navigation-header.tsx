@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Home, LogOut, Settings } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { SafeImage } from '@/components/safe-image';
+import { LanguageSelector } from '@/components/language-selector';
 
 export function NavigationHeader() {
   const router = useRouter();
@@ -49,6 +50,9 @@ export function NavigationHeader() {
 
           {/* Ícones à direita */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Seletor de Idioma */}
+            <LanguageSelector />
+            
             {/* Na dashboard: botão Configurações e botão Sair */}
             {/* Nas demais páginas: botão Dashboard e botão Sair */}
             {isDashboard ? (

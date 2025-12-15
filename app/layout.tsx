@@ -3,13 +3,56 @@ import "./globals.css";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
+import { LanguageProvider } from "@/contexts/language-context";
 
 export const metadata: Metadata = {
-  title: "Revela - Visualização de Fotos Antes e Depois",
-  description: "Plataforma profissional para visualização de fotos de antes e depois",
+  title: "Revela - App de Fotos Antes e Depois para Profissionais | Comparação Profissional",
+  description: "Plataforma profissional para comparar fotos antes e depois. Ideal para médicos, dentistas, esteticistas e profissionais de saúde. Privacidade total, armazenamento local.",
+  keywords: ["fotos antes depois", "comparador fotos", "app antes depois", "ferramenta comparação fotos", "visualizador antes depois", "app fotos médicos", "software antes depois profissional"],
   applicationName: "Revela",
   manifest: "/manifest.json",
   themeColor: "#1A2B32",
+  authors: [{ name: "Revela" }],
+  creator: "Revela",
+  publisher: "Revela",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "https://revela.app",
+    siteName: "Revela",
+    title: "Revela - App de Fotos Antes e Depois para Profissionais",
+    description: "Compare fotos antes e depois com privacidade total. Ferramenta profissional para médicos, dentistas e esteticistas.",
+    images: [
+      {
+        url: "https://revela.app/revela3.png",
+        width: 1200,
+        height: 630,
+        alt: "Revela - Comparação de Fotos Antes e Depois",
+        type: "image/png",
+        secureUrl: "https://revela.app/revela3.png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Revela - App de Fotos Antes e Depois",
+    description: "Compare fotos antes e depois com privacidade total. Ferramenta profissional para profissionais de saúde e estética.",
+    images: ["/revela3.png"],
+  },
+  alternates: {
+    canonical: "https://revela.app",
+  },
   icons: {
     icon: [
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
@@ -51,11 +94,13 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased">
-        <ErrorBoundary>
-          {children}
-        </ErrorBoundary>
-        <ServiceWorkerRegistration />
-        <PWAInstallPrompt />
+        <LanguageProvider>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+          <ServiceWorkerRegistration />
+          <PWAInstallPrompt />
+        </LanguageProvider>
       </body>
     </html>
   );

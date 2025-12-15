@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /login
+Disallow: /signup
+Disallow: /settings
+Disallow: /new-project
+Disallow: /projects/
+Disallow: /gallery
+Disallow: /debug
+Disallow: /api/
+
+# Permitir páginas públicas compartilháveis (quando implementadas)
+Allow: /share/
+
+# Sitemap
+Sitemap: https://revela.app/sitemap.xml
+

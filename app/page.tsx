@@ -1,11 +1,27 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/footer';
 import { SafeImage } from '@/components/safe-image';
+import { StructuredData } from '@/components/structured-data';
+import { OpenGraphHead } from '@/components/open-graph-head';
+import { LanguageSelector } from '@/components/language-selector';
+import { useLanguage } from '@/contexts/language-context';
+import { getTranslations, defaultLanguage, type Translations } from '@/lib/i18n/translations';
 
-export default function Home() {
+// Componente interno que usa o hook
+function HomeContent() {
+  const { t } = useLanguage();
+  
   return (
     <div style={{ backgroundColor: '#1A2B32', minHeight: '100vh' }}>
+      {/* Language Selector - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSelector />
+      </div>
+
       {/* Hero Section */}
       <section className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12">
         <div className="text-center w-full max-w-5xl px-2 sm:px-4 md:px-6">
@@ -33,7 +49,7 @@ export default function Home() {
           {/* Slogan */}
           <div className="mb-6 sm:mb-8 md:mb-10">
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl italic px-2" style={{ color: '#E8DCC0', opacity: 0.9 }}>
-              Cada imagem Revela uma Evolução
+              {t.home.slogan}
             </p>
           </div>
           
@@ -47,7 +63,7 @@ export default function Home() {
                   color: '#FFFFFF'
                 }}
               >
-                Criar conta
+                {t.home.createAccount}
               </button>
             </Link>
             <Link href="/login" className="w-full sm:flex-1">
@@ -58,7 +74,7 @@ export default function Home() {
                   color: '#1A2B32'
                 }}
               >
-                Entrar
+                {t.home.login}
               </button>
             </Link>
           </div>
@@ -67,15 +83,15 @@ export default function Home() {
           <div className="max-w-3xl mx-auto mb-6 sm:mb-8 px-4 sm:px-6">
             <div className="space-y-4 sm:space-y-5">
               <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed px-2" style={{ color: '#E8DCC0', opacity: 0.9 }}>
-                O Revela é um programa de fotos desenvolvido para qualquer profissional que precise visualizar transformações — seja na saúde, estética, design, arquitetura, moda ou arte.
+                {t.home.description1}
               </p>
               
               <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed px-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Compare imagens antes e depois lado a lado, ou deslize entre elas em um carrossel interativo. Tudo na mesma tela, com leveza e precisão.
+                {t.home.description2}
               </p>
               
               <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed px-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Compatível com smartphones, tablets e notebooks, o Revela funciona sem depender da nuvem — suas fotos ficam armazenadas com segurança no seu dispositivo, garantindo privacidade total e acesso exclusivo.
+                {t.home.description3}
               </p>
             </div>
           </div>
@@ -87,10 +103,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8 sm:mb-10 md:mb-12">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-3 sm:mb-4 px-2" style={{ color: '#E8DCC0' }}>
-              Por que Revela?
+              {t.home.whyRevela}
             </h2>
             <p className="text-sm sm:text-base md:text-lg font-light px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              Tudo que você precisa para comparar e mostrar transformações
+              {t.home.whyRevelaSubtitle}
             </p>
           </div>
 
@@ -99,10 +115,10 @@ export default function Home() {
             <div className="p-4 sm:p-5 md:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }}>
               <div className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">📸</div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-3" style={{ color: '#E8DCC0' }}>
-                Comparação Simultânea
+                {t.home.comparison}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Veja antes e depois na mesma tela, lado a lado ou em carrossel interativo. Sem abas, sem complicação.
+                {t.home.comparisonDesc}
               </p>
             </div>
 
@@ -110,10 +126,10 @@ export default function Home() {
             <div className="p-4 sm:p-5 md:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }}>
               <div className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">🔒</div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-3" style={{ color: '#E8DCC0' }}>
-                Privacidade Total
+                {t.home.privacy}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Suas fotos ficam salvas apenas no dispositivo. Sem nuvem, sem compartilhamento. Acesso exclusivo para você.
+                {t.home.privacyDesc}
               </p>
             </div>
 
@@ -121,10 +137,10 @@ export default function Home() {
             <div className="p-4 sm:p-5 md:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }}>
               <div className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">⚡</div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-3" style={{ color: '#E8DCC0' }}>
-                Rápido e Intuitivo
+                {t.home.fast}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Interface fluida e responsiva, feita para o seu ritmo. Comparações instantâneas, resultados claros.
+                {t.home.fastDesc}
               </p>
             </div>
 
@@ -132,10 +148,10 @@ export default function Home() {
             <div className="p-4 sm:p-5 md:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }}>
               <div className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">💼</div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-3" style={{ color: '#E8DCC0' }}>
-                Para Todos os Profissionais
+                {t.home.professionals}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Ideal para médicos, dentistas, fisioterapeutas, designers, maquiadores, restauradores e muito mais.
+                {t.home.professionalsDesc}
               </p>
             </div>
 
@@ -143,10 +159,10 @@ export default function Home() {
             <div className="p-4 sm:p-5 md:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }}>
               <div className="text-2xl sm:text-3xl md:text-4xl mb-3 sm:mb-4">🌎</div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium mb-2 sm:mb-3" style={{ color: '#E8DCC0' }}>
-                Funciona em Qualquer Dispositivo
+                {t.home.devices}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Mobile, tablet ou notebook. Tudo sincronizado localmente, sempre acessível onde você estiver.
+                {t.home.devicesDesc}
               </p>
             </div>
           </div>
@@ -157,7 +173,7 @@ export default function Home() {
       <section className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-8 sm:mb-10 md:mb-12 px-2" style={{ color: '#E8DCC0' }}>
-            Como Funciona?
+            {t.home.howItWorks}
           </h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 md:gap-10 mb-8 sm:mb-10 md:mb-12">
@@ -166,10 +182,10 @@ export default function Home() {
                 1
               </div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium px-2" style={{ color: '#E8DCC0' }}>
-                Tire ou envie suas fotos
+                {t.home.step1}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed px-4 sm:px-2" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Adicione as imagens diretamente do seu dispositivo
+                {t.home.step1Desc}
               </p>
             </div>
 
@@ -178,10 +194,10 @@ export default function Home() {
                 2
               </div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium px-2" style={{ color: '#E8DCC0' }}>
-                Compare em carrossel
+                {t.home.step2}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed px-4 sm:px-2" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Visualize lado a lado ou navegue de forma interativa
+                {t.home.step2Desc}
               </p>
             </div>
 
@@ -190,10 +206,10 @@ export default function Home() {
                 3
               </div>
               <h3 className="text-base sm:text-lg md:text-xl font-medium px-2" style={{ color: '#E8DCC0' }}>
-                Mostre evolução real
+                {t.home.step3}
               </h3>
               <p className="text-xs sm:text-sm md:text-base font-light leading-relaxed px-4 sm:px-2" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Apresente resultados de forma clara e profissional
+                {t.home.step3Desc}
               </p>
             </div>
           </div>
@@ -204,10 +220,10 @@ export default function Home() {
       <section className="py-16 sm:py-20 md:py-24 lg:py-28 px-4 sm:px-6 md:px-8">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-4 sm:mb-6 px-2" style={{ color: '#E8DCC0' }}>
-            Pronto para Revelar Resultados?
+            {t.home.ready}
           </h2>
           <p className="text-sm sm:text-base md:text-lg lg:text-xl font-light mb-8 sm:mb-10 md:mb-12 leading-relaxed px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.9 }}>
-            Comece agora - Cada imagem Revela uma Evolução
+            {t.home.readySubtitle}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-5 justify-center items-center w-full max-w-md sm:max-w-lg mx-auto px-4">
@@ -219,7 +235,7 @@ export default function Home() {
                   color: '#FFFFFF'
                 }}
               >
-                Criar conta grátis
+                {t.home.createFreeAccount}
               </button>
             </Link>
             <Link href="/login" className="w-full sm:flex-1">
@@ -231,13 +247,42 @@ export default function Home() {
                   backgroundColor: 'transparent'
                 }}
               >
-                Já tenho conta
+                {t.home.alreadyHaveAccount}
               </button>
             </Link>
           </div>
         </div>
       </section>
       <Footer />
+      <StructuredData />
+      <OpenGraphHead />
     </div>
   );
+}
+
+// Componente wrapper que renderiza apenas no cliente
+export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  const [translations, setTranslations] = useState<Translations>(getTranslations(defaultLanguage));
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Durante SSR, renderizar com traduções padrão
+  if (!mounted) {
+    return (
+      <div style={{ backgroundColor: '#1A2B32', minHeight: '100vh' }}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}></div>
+            <p style={{ color: '#E8DCC0' }}>{translations.common.loading}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Após montar, renderizar conteúdo completo com contexto
+  return <HomeContent />;
 }
