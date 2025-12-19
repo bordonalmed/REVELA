@@ -310,3 +310,465 @@ export async function exportProjectAsZip(
   throw new Error('Exportação ZIP ainda não implementada. Use a exportação individual.');
 }
 
+/**
+ * Tipos de formato para redes sociais
+ */
+export type SocialMediaFormat = 
+  | 'instagram-feed-1x1'      // 1080x1080px (quadrado)
+  | 'instagram-feed-4x5'       // 1080x1350px (retangular)
+  | 'instagram-stories'        // 1080x1920px (vertical - 2 imagens separadas)
+  | 'instagram-stories-single'; // 1080x1920px (vertical - 1 imagem com antes/depois)
+
+/**
+ * Especificações de formato para redes sociais
+ */
+const SOCIAL_FORMATS = {
+  'instagram-feed-1x1': {
+    width: 1080,
+    height: 1080,
+    name: 'Instagram Feed (1:1)',
+    description: 'Formato quadrado ideal para feed do Instagram',
+    layout: 'side-by-side' as const,
+  },
+  'instagram-feed-4x5': {
+    width: 1080,
+    height: 1350,
+    name: 'Instagram Feed (4:5)',
+    description: 'Formato retangular para feed do Instagram',
+    layout: 'side-by-side' as const,
+  },
+  'instagram-stories': {
+    width: 1080,
+    height: 1920,
+    name: 'Instagram Stories',
+    description: 'Duas imagens separadas (antes e depois)',
+    layout: 'separate' as const,
+  },
+  'instagram-stories-single': {
+    width: 1080,
+    height: 1920,
+    name: 'Instagram Stories (Única)',
+    description: 'Uma imagem com antes e depois empilhados',
+    layout: 'vertical' as const,
+  },
+};
+
+/**
+ * Exporta comparação formatada para redes sociais
+ */
+export async function exportForSocialMedia(
+  beforeImage: string,
+  afterImage: string,
+  projectName: string,
+  format: SocialMediaFormat,
+  options: {
+    includeLogo?: boolean;
+    includeInfo?: boolean;
+  } = {}
+): Promise<void> {
+  const { includeLogo = true, includeInfo = false } = options;
+  const formatSpec = SOCIAL_FORMATS[format];
+
+  try {
+    // Carregar imagens
+    const [beforeImg, afterImg, logoImg] = await Promise.all([
+      loadImageFromBase64(beforeImage),
+      loadImageFromBase64(afterImage),
+      includeLogo ? loadLogo() : Promise.resolve(new Image()),
+    ]);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = formatSpec.width;
+    canvas.height = formatSpec.height;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('Não foi possível criar contexto do canvas');
+    }
+
+    // Fundo preto
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const padding = 20;
+    const logoSize = 30;
+    const logoPadding = 10;
+
+    if (formatSpec.layout === 'separate') {
+      // Para Stories: gerar duas imagens separadas
+      // Primeiro, gerar imagem ANTES
+      const beforeCanvas = document.createElement('canvas');
+      beforeCanvas.width = formatSpec.width;
+      beforeCanvas.height = formatSpec.height;
+      const beforeCtx = beforeCanvas.getContext('2d');
+      
+      if (!beforeCtx) throw new Error('Erro ao criar canvas');
+
+      beforeCtx.fillStyle = '#000000';
+      beforeCtx.fillRect(0, 0, beforeCanvas.width, beforeCanvas.height);
+
+      // Calcular dimensões da imagem ANTES
+      const imgAspect = beforeImg.width / beforeImg.height;
+      const canvasAspect = formatSpec.width / formatSpec.height;
+      
+      let imgWidth: number, imgHeight: number, imgX: number, imgY: number;
+
+      if (imgAspect > canvasAspect) {
+        // Imagem mais larga - ajustar pela altura
+        imgHeight = formatSpec.height - (padding * 2);
+        imgWidth = imgHeight * imgAspect;
+        imgX = (formatSpec.width - imgWidth) / 2;
+        imgY = padding;
+      } else {
+        // Imagem mais alta - ajustar pela largura
+        imgWidth = formatSpec.width - (padding * 2);
+        imgHeight = imgWidth / imgAspect;
+        imgX = padding;
+        imgY = (formatSpec.height - imgHeight) / 2;
+      }
+
+      beforeCtx.drawImage(beforeImg, imgX, imgY, imgWidth, imgHeight);
+
+      // Logo na imagem ANTES
+      if (includeLogo && logoImg.width > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = formatSpec.width - logoDisplayWidth - logoPadding;
+        const logoY = formatSpec.height - logoDisplayHeight - logoPadding;
+        
+        beforeCtx.globalAlpha = 0.3;
+        beforeCtx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        beforeCtx.globalAlpha = 1.0;
+      }
+
+      // Download da imagem ANTES
+      beforeCanvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_ANTES_${formatSpec.name.replace(/[^a-z0-9]/gi, '_')}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.95);
+
+      // Agora gerar imagem DEPOIS
+      const afterCanvas = document.createElement('canvas');
+      afterCanvas.width = formatSpec.width;
+      afterCanvas.height = formatSpec.height;
+      const afterCtx = afterCanvas.getContext('2d');
+      
+      if (!afterCtx) throw new Error('Erro ao criar canvas');
+
+      afterCtx.fillStyle = '#000000';
+      afterCtx.fillRect(0, 0, afterCanvas.width, afterCanvas.height);
+
+      // Calcular dimensões da imagem DEPOIS
+      const afterImgAspect = afterImg.width / afterImg.height;
+      
+      let afterImgWidth: number, afterImgHeight: number, afterImgX: number, afterImgY: number;
+
+      if (afterImgAspect > canvasAspect) {
+        afterImgHeight = formatSpec.height - (padding * 2);
+        afterImgWidth = afterImgHeight * afterImgAspect;
+        afterImgX = (formatSpec.width - afterImgWidth) / 2;
+        afterImgY = padding;
+      } else {
+        afterImgWidth = formatSpec.width - (padding * 2);
+        afterImgHeight = afterImgWidth / afterImgAspect;
+        afterImgX = padding;
+        afterImgY = (formatSpec.height - afterImgHeight) / 2;
+      }
+
+      afterCtx.drawImage(afterImg, afterImgX, afterImgY, afterImgWidth, afterImgHeight);
+
+      // Logo na imagem DEPOIS
+      if (includeLogo && logoImg.width > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = formatSpec.width - logoDisplayWidth - logoPadding;
+        const logoY = formatSpec.height - logoDisplayHeight - logoPadding;
+        
+        afterCtx.globalAlpha = 0.3;
+        afterCtx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        afterCtx.globalAlpha = 1.0;
+      }
+
+      // Download da imagem DEPOIS (com pequeno delay para não conflitar)
+      setTimeout(() => {
+        afterCanvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_DEPOIS_${formatSpec.name.replace(/[^a-z0-9]/gi, '_')}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 'image/jpeg', 0.95);
+      }, 500);
+
+      return;
+    }
+
+    // Para layouts side-by-side ou vertical
+    let beforeWidth: number, beforeHeight: number, afterWidth: number, afterHeight: number;
+    let startX: number, startY: number, spacing: number;
+
+    if (formatSpec.layout === 'side-by-side') {
+      spacing = 15;
+      const availableWidth = formatSpec.width - (padding * 2) - spacing;
+      const availableHeight = formatSpec.height - (padding * 2);
+
+      const beforeAspect = beforeImg.width / beforeImg.height;
+      const afterAspect = afterImg.width / afterImg.height;
+
+      const singleWidth = availableWidth / 2;
+      beforeHeight = singleWidth / beforeAspect;
+      afterHeight = singleWidth / afterAspect;
+
+      const maxHeight = availableHeight;
+      if (beforeHeight > maxHeight || afterHeight > maxHeight) {
+        const scale = maxHeight / Math.max(beforeHeight, afterHeight);
+        beforeHeight *= scale;
+        afterHeight *= scale;
+      }
+
+      beforeWidth = beforeHeight * beforeAspect;
+      afterWidth = afterHeight * afterAspect;
+
+      startX = (formatSpec.width - beforeWidth - afterWidth - spacing) / 2;
+      startY = (formatSpec.height - Math.max(beforeHeight, afterHeight)) / 2;
+
+      // Desenhar imagens
+      ctx.drawImage(beforeImg, startX, startY, beforeWidth, beforeHeight);
+      ctx.drawImage(afterImg, startX + beforeWidth + spacing, startY, afterWidth, afterHeight);
+
+      // Logos
+      if (includeLogo && logoImg.width > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+
+        // Logo na imagem ANTES
+        const logoBeforeX = startX + beforeWidth - logoDisplayWidth - logoPadding;
+        const logoBeforeY = startY + beforeHeight - logoDisplayHeight - logoPadding;
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoBeforeX, logoBeforeY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+
+        // Logo na imagem DEPOIS
+        const logoAfterX = startX + beforeWidth + spacing + afterWidth - logoDisplayWidth - logoPadding;
+        const logoAfterY = startY + afterHeight - logoDisplayHeight - logoPadding;
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoAfterX, logoAfterY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
+    } else {
+      // Layout vertical (empilhado)
+      spacing = 15;
+      const availableWidth = formatSpec.width - (padding * 2);
+      const availableHeight = (formatSpec.height - (padding * 2) - spacing) / 2;
+
+      const beforeAspect = beforeImg.width / beforeImg.height;
+      const afterAspect = afterImg.width / afterImg.height;
+
+      beforeWidth = Math.min(availableWidth, availableHeight * beforeAspect);
+      beforeHeight = beforeWidth / beforeAspect;
+      if (beforeHeight > availableHeight) {
+        beforeHeight = availableHeight;
+        beforeWidth = beforeHeight * beforeAspect;
+      }
+
+      afterWidth = Math.min(availableWidth, availableHeight * afterAspect);
+      afterHeight = afterWidth / afterAspect;
+      if (afterHeight > availableHeight) {
+        afterHeight = availableHeight;
+        afterWidth = afterHeight * afterAspect;
+      }
+
+      startX = (formatSpec.width - Math.max(beforeWidth, afterWidth)) / 2;
+      const beforeY = padding;
+      const afterY = padding + beforeHeight + spacing;
+
+      ctx.drawImage(beforeImg, startX, beforeY, beforeWidth, beforeHeight);
+      ctx.drawImage(afterImg, startX, afterY, afterWidth, afterHeight);
+
+      // Logos
+      if (includeLogo && logoImg.width > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+
+        // Logo na imagem ANTES
+        const logoBeforeX = startX + beforeWidth - logoDisplayWidth - logoPadding;
+        const logoBeforeY = beforeY + beforeHeight - logoDisplayHeight - logoPadding;
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoBeforeX, logoBeforeY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+
+        // Logo na imagem DEPOIS
+        const logoAfterX = startX + afterWidth - logoDisplayWidth - logoPadding;
+        const logoAfterY = afterY + afterHeight - logoDisplayHeight - logoPadding;
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoAfterX, logoAfterY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    // Converter para blob e download
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          throw new Error('Erro ao gerar imagem');
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_${formatSpec.name.replace(/[^a-z0-9]/gi, '_')}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      },
+      'image/jpeg',
+      0.95
+    );
+  } catch (error) {
+    console.error('Erro ao exportar para rede social:', error);
+    throw new Error('Não foi possível exportar a imagem. Verifique se as imagens estão carregadas.');
+  }
+}
+
+/**
+ * Gera preview de formato para redes sociais (retorna data URL)
+ */
+export async function generateSocialMediaPreview(
+  beforeImage: string,
+  afterImage: string,
+  format: SocialMediaFormat
+): Promise<string> {
+  const formatSpec = SOCIAL_FORMATS[format];
+  
+  // Reutilizar lógica similar, mas retornar data URL ao invés de download
+  const [beforeImg, afterImg, logoImg] = await Promise.all([
+    loadImageFromBase64(beforeImage),
+    loadImageFromBase64(afterImage),
+    loadLogo(),
+  ]);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = formatSpec.width;
+  canvas.height = formatSpec.height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Não foi possível criar contexto do canvas');
+  }
+
+  // Fundo preto
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const padding = 20;
+  const logoSize = 30;
+  const logoPadding = 10;
+
+  // Lógica similar à exportForSocialMedia, mas simplificada para preview
+  if (formatSpec.layout === 'separate') {
+    // Para preview de stories, mostrar apenas a primeira imagem
+    const imgAspect = beforeImg.width / beforeImg.height;
+    const canvasAspect = formatSpec.width / formatSpec.height;
+    
+    let imgWidth: number, imgHeight: number, imgX: number, imgY: number;
+
+    if (imgAspect > canvasAspect) {
+      imgHeight = formatSpec.height - (padding * 2);
+      imgWidth = imgHeight * imgAspect;
+      imgX = (formatSpec.width - imgWidth) / 2;
+      imgY = padding;
+    } else {
+      imgWidth = formatSpec.width - (padding * 2);
+      imgHeight = imgWidth / imgAspect;
+      imgX = padding;
+      imgY = (formatSpec.height - imgHeight) / 2;
+    }
+
+    ctx.drawImage(beforeImg, imgX, imgY, imgWidth, imgHeight);
+  } else if (formatSpec.layout === 'side-by-side') {
+    const spacing = 15;
+    const availableWidth = formatSpec.width - (padding * 2) - spacing;
+    const availableHeight = formatSpec.height - (padding * 2);
+
+    const beforeAspect = beforeImg.width / beforeImg.height;
+    const afterAspect = afterImg.width / afterImg.height;
+
+    const singleWidth = availableWidth / 2;
+    let beforeHeight = singleWidth / beforeAspect;
+    let afterHeight = singleWidth / afterAspect;
+
+    const maxHeight = availableHeight;
+    if (beforeHeight > maxHeight || afterHeight > maxHeight) {
+      const scale = maxHeight / Math.max(beforeHeight, afterHeight);
+      beforeHeight *= scale;
+      afterHeight *= scale;
+    }
+
+    const beforeWidth = beforeHeight * beforeAspect;
+    const afterWidth = afterHeight * afterAspect;
+
+    const startX = (formatSpec.width - beforeWidth - afterWidth - spacing) / 2;
+    const startY = (formatSpec.height - Math.max(beforeHeight, afterHeight)) / 2;
+
+    ctx.drawImage(beforeImg, startX, startY, beforeWidth, beforeHeight);
+    ctx.drawImage(afterImg, startX + beforeWidth + spacing, startY, afterWidth, afterHeight);
+  } else {
+    // Vertical
+    const spacing = 15;
+    const availableWidth = formatSpec.width - (padding * 2);
+    const availableHeight = (formatSpec.height - (padding * 2) - spacing) / 2;
+
+    const beforeAspect = beforeImg.width / beforeImg.height;
+    const afterAspect = afterImg.width / afterImg.height;
+
+    let beforeWidth = Math.min(availableWidth, availableHeight * beforeAspect);
+    let beforeHeight = beforeWidth / beforeAspect;
+    if (beforeHeight > availableHeight) {
+      beforeHeight = availableHeight;
+      beforeWidth = beforeHeight * beforeAspect;
+    }
+
+    let afterWidth = Math.min(availableWidth, availableHeight * afterAspect);
+    let afterHeight = afterWidth / afterAspect;
+    if (afterHeight > availableHeight) {
+      afterHeight = availableHeight;
+      afterWidth = afterHeight * afterAspect;
+    }
+
+    const startX = (formatSpec.width - Math.max(beforeWidth, afterWidth)) / 2;
+    const beforeY = padding;
+    const afterY = padding + beforeHeight + spacing;
+
+    ctx.drawImage(beforeImg, startX, beforeY, beforeWidth, beforeHeight);
+    ctx.drawImage(afterImg, startX, afterY, afterWidth, afterHeight);
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+/**
+ * Retorna informações sobre os formatos disponíveis
+ */
+export function getSocialMediaFormats() {
+  return Object.entries(SOCIAL_FORMATS).map(([key, spec]) => ({
+    id: key as SocialMediaFormat,
+    ...spec,
+  }));
+}
+

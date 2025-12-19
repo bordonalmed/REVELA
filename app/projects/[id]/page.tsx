@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
@@ -14,6 +14,7 @@ import { ZoomableImage } from '@/components/zoomable-image';
 import { ComparisonSlider } from '@/components/comparison-slider';
 import { errorLogger } from '@/lib/error-logger';
 import { exportComparisonImage } from '@/lib/export-utils';
+import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function ViewProjectPage() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [tempNotes, setTempNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
@@ -947,6 +949,19 @@ export default function ViewProjectPage() {
                       >
                         <ImageIcon className="w-4 h-4" />
                         {exporting ? 'Exportando...' : 'Exportar'}
+                      </button>
+                      <button
+                        onClick={() => setShowSocialMediaModal(true)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{ 
+                          backgroundColor: '#00A88F', 
+                          color: '#FFFFFF', 
+                          borderColor: '#00A88F' 
+                        }}
+                        title="Publicar nas redes sociais"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Publicar
                       </button>
                       <button
                         onClick={handleEnterPresentationMode}
@@ -1889,6 +1904,19 @@ export default function ViewProjectPage() {
                   )}
                 </button>
                 <button
+                  onClick={() => setShowSocialMediaModal(true)}
+                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
+                  style={{ 
+                    backgroundColor: '#00A88F', 
+                    color: '#FFFFFF',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  title="Publicar"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+                <button
                   onClick={handleEnterPresentationMode}
                   className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
                   style={{ 
@@ -2044,6 +2072,17 @@ export default function ViewProjectPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Modal de Publicação em Redes Sociais */}
+        {showSocialMediaModal && project && displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+          <SocialMediaExportModal
+            isOpen={showSocialMediaModal}
+            onClose={() => setShowSocialMediaModal(false)}
+            beforeImage={displayBeforeImages[beforeCurrentIndex]}
+            afterImage={displayAfterImages[afterCurrentIndex]}
+            projectName={project.name}
+          />
         )}
       </main>
       {!shouldHideChrome && <Footer className="hidden sm:block" />}
