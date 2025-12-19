@@ -45,6 +45,16 @@ function HomeContent() {
             </div>
           </div>
           
+          {/* H1 Principal - Pergunta Conversacional */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-4 sm:mb-6 px-2" style={{ color: '#E8DCC0' }}>
+            Como Comparar Fotos Antes e Depois de Forma Profissional?
+          </h1>
+          
+          {/* Resposta Direta */}
+          <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed mb-6 sm:mb-8 px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.95 }}>
+            <strong>Resposta direta:</strong> O Revela é uma plataforma profissional que permite comparar fotos antes e depois com privacidade total e armazenamento local seguro.
+          </p>
+          
           {/* Slogan */}
           <div className="mb-6 sm:mb-8 md:mb-10">
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl italic px-2" style={{ color: '#E8DCC0', opacity: 0.9 }}>
@@ -97,9 +107,40 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* Seção: Por que Revela? */}
+      {/* Seção: Como Funciona o Revela? */}
       <section className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8">
         <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8 sm:mb-10 md:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-3 sm:mb-4 px-2" style={{ color: '#E8DCC0' }}>
+              Como Funciona o Revela?
+            </h2>
+            <p className="text-sm sm:text-base md:text-lg font-light px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.8 }}>
+              O Revela funciona de forma simples e intuitiva para profissionais que precisam comparar transformações
+            </p>
+          </div>
+          
+          <article className="mb-12">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-medium mb-4 px-2" style={{ color: '#E8DCC0' }}>
+              Como o Revela Funciona?
+            </h3>
+            <ol className="list-decimal list-inside space-y-3 text-base sm:text-lg font-light leading-relaxed px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.9 }}>
+              <li><strong>Faça upload das fotos:</strong> Adicione as imagens antes e depois diretamente do seu dispositivo</li>
+              <li><strong>Compare visualmente:</strong> Veja as fotos lado a lado ou navegue em um carrossel interativo</li>
+              <li><strong>Apresente resultados:</strong> Mostre transformações de forma clara e profissional para seus pacientes</li>
+            </ol>
+          </article>
+          
+          <article className="mb-12">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-medium mb-4 px-2" style={{ color: '#E8DCC0' }}>
+              Por que Escolher o Revela?
+            </h3>
+            <ul className="list-disc list-inside space-y-3 text-base sm:text-lg font-light leading-relaxed px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.9 }}>
+              <li><strong>Privacidade total:</strong> Suas fotos são armazenadas apenas no seu dispositivo, sem nuvem</li>
+              <li><strong>Diferencial competitivo:</strong> Apresente resultados profissionais que destacam seu trabalho</li>
+              <li><strong>Fácil de usar:</strong> Interface intuitiva, sem complicações técnicas</li>
+            </ul>
+          </article>
+          
           <div className="text-center mb-8 sm:mb-10 md:mb-12">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-3 sm:mb-4 px-2" style={{ color: '#E8DCC0' }}>
               {t.home.whyRevela}
@@ -168,7 +209,7 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* Seção: Como Funciona */}
+      {/* Seção: Passo a Passo */}
       <section className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-8 sm:mb-10 md:mb-12 px-2" style={{ color: '#E8DCC0' }}>
@@ -211,6 +252,72 @@ function HomeContent() {
                 {t.home.step3Desc}
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Seção FAQ */}
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-8 sm:mb-10 md:mb-12 text-center px-2" style={{ color: '#E8DCC0' }}>
+            Perguntas Frequentes
+          </h2>
+          
+          <div className="space-y-6 sm:space-y-8" itemScope itemType="https://schema.org/FAQPage">
+            <article className="p-4 sm:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }} itemScope itemType="https://schema.org/Question">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }} itemProp="name">
+                O que é o Revela?
+              </h3>
+              <div itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
+                <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.9 }} itemProp="text">
+                  O Revela é uma plataforma profissional para comparar fotos antes e depois. Ideal para médicos, dentistas, esteticistas e outros profissionais que precisam documentar e apresentar resultados de transformações.
+                </p>
+              </div>
+            </article>
+
+            <article className="p-4 sm:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }} itemScope itemType="https://schema.org/Question">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }} itemProp="name">
+                Como funciona a privacidade no Revela?
+              </h3>
+              <div itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
+                <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.9 }} itemProp="text">
+                  Todas as fotos são armazenadas apenas no seu dispositivo, sem uso de nuvem. Isso garante privacidade total e acesso exclusivo para você.
+                </p>
+              </div>
+            </article>
+
+            <article className="p-4 sm:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }} itemScope itemType="https://schema.org/Question">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }} itemProp="name">
+                Quanto custa usar o Revela?
+              </h3>
+              <div itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
+                <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.9 }} itemProp="text">
+                  O Revela é gratuito. Você pode criar sua conta e começar a usar imediatamente sem custos.
+                </p>
+              </div>
+            </article>
+
+            <article className="p-4 sm:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }} itemScope itemType="https://schema.org/Question">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }} itemProp="name">
+                O Revela funciona em quais dispositivos?
+              </h3>
+              <div itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
+                <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.9 }} itemProp="text">
+                  O Revela funciona em smartphones, tablets e notebooks. É uma aplicação web responsiva que se adapta a qualquer tamanho de tela.
+                </p>
+              </div>
+            </article>
+
+            <article className="p-4 sm:p-6 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', border: '1px solid rgba(232, 220, 192, 0.1)' }} itemScope itemType="https://schema.org/Question">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }} itemProp="name">
+                Para quais profissionais o Revela é indicado?
+              </h3>
+              <div itemScope itemType="https://schema.org/Answer" itemProp="acceptedAnswer">
+                <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed" style={{ color: '#E8DCC0', opacity: 0.9 }} itemProp="text">
+                  O Revela é ideal para médicos, dentistas, esteticistas, fisioterapeutas, designers, maquiadores, restauradores e qualquer profissional que precise comparar transformações visuais.
+                </p>
+              </div>
+            </article>
           </div>
         </div>
       </section>

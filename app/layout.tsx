@@ -6,9 +6,9 @@ import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { LanguageProvider } from "@/contexts/language-context";
 
 export const metadata: Metadata = {
-  title: "Revela - App de Fotos Antes e Depois para Profissionais | Comparação Profissional",
-  description: "Plataforma profissional para comparar fotos antes e depois. Ideal para médicos, dentistas, esteticistas e profissionais de saúde. Privacidade total, armazenamento local.",
-  keywords: ["fotos antes depois", "comparador fotos", "app antes depois", "ferramenta comparação fotos", "visualizador antes depois", "app fotos médicos", "software antes depois profissional"],
+  title: "Como Comparar Fotos Antes e Depois de Forma Profissional? | Revela",
+  description: "Descubra como o Revela ajuda médicos, dentistas e esteticistas a comparar fotos antes e depois com privacidade total. Veja resultados práticos e transformações reais. Armazenamento local seguro.",
+  keywords: "como comparar fotos antes depois, melhor app antes depois, ferramenta comparação fotos profissionais, app fotos médicos, software antes depois, comparador fotos privacidade",
   applicationName: "Revela",
   manifest: "/manifest.json",
   themeColor: "#1A2B32",
@@ -26,13 +26,19 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  other: {
+    "robots": "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+    "googlebot": "index, follow",
+    "bingbot": "index, follow",
+    "ai-content-type": "informational",
+  },
   openGraph: {
     type: "website",
     locale: "pt_BR",
     url: "https://revela.app",
     siteName: "Revela",
-    title: "Revela - App de Fotos Antes e Depois para Profissionais",
-    description: "Compare fotos antes e depois com privacidade total. Ferramenta profissional para médicos, dentistas e esteticistas.",
+    title: "Como Comparar Fotos Antes e Depois de Forma Profissional? | Revela",
+    description: "Descubra como o Revela ajuda profissionais de saúde a comparar fotos antes e depois com privacidade total. Veja resultados práticos e transformações reais.",
     images: [
       {
         url: "https://revela.app/revela3.png",
@@ -46,8 +52,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Revela - App de Fotos Antes e Depois",
-    description: "Compare fotos antes e depois com privacidade total. Ferramenta profissional para profissionais de saúde e estética.",
+    title: "Como Comparar Fotos Antes e Depois de Forma Profissional? | Revela",
+    description: "Descubra como o Revela ajuda profissionais a comparar fotos antes e depois com privacidade total. Veja resultados práticos e transformações reais.",
     images: ["/revela3.png"],
   },
   alternates: {
