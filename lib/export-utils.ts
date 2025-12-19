@@ -167,20 +167,20 @@ export async function exportComparisonImage(
       throw new Error('Não foi possível criar contexto do canvas');
     }
 
-    // Fundo branco
-    ctx.fillStyle = '#FFFFFF';
+    // Fundo preto para maior nitidez
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     let currentY = padding;
 
     // Informações do projeto (topo)
     if (includeInfo) {
-      ctx.fillStyle = '#1A2B32';
+      ctx.fillStyle = '#E8DCC0'; // Cor clara para contraste com fundo preto
       ctx.font = 'bold 32px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(projectName, canvasWidth / 2, currentY + 30);
       
-      ctx.fillStyle = '#666666';
+      ctx.fillStyle = '#CCCCCC'; // Cor clara para contraste com fundo preto
       ctx.font = '20px Arial';
       const dateStr = new Date(projectDate).toLocaleDateString('pt-BR');
       ctx.fillText(`Data: ${dateStr}`, canvasWidth / 2, currentY + 60);
@@ -195,12 +195,7 @@ export async function exportComparisonImage(
 
       // Imagem Antes
       ctx.drawImage(beforeImg, startX, imageY, beforeWidth, beforeHeight);
-      if (includeLabels) {
-        ctx.fillStyle = '#1A2B32';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('ANTES', startX + beforeWidth / 2, imageY - 10);
-      }
+      // Labels "ANTES" e "DEPOIS" removidos conforme solicitado
 
       // Logo no canto inferior direito da imagem ANTES
       if (logoImg.width > 0 && logoImg.height > 0) {
@@ -218,9 +213,7 @@ export async function exportComparisonImage(
 
       // Imagem Depois
       ctx.drawImage(afterImg, startX + beforeWidth + spacing, imageY, afterWidth, afterHeight);
-      if (includeLabels) {
-        ctx.fillText('DEPOIS', startX + beforeWidth + spacing + afterWidth / 2, imageY - 10);
-      }
+      // Labels "ANTES" e "DEPOIS" removidos conforme solicitado
 
       // Logo no canto inferior direito da imagem DEPOIS
       if (logoImg.width > 0 && logoImg.height > 0) {
@@ -242,12 +235,7 @@ export async function exportComparisonImage(
 
       // Imagem Antes
       ctx.drawImage(beforeImg, imageX, beforeImageY, beforeWidth, beforeHeight);
-      if (includeLabels) {
-        ctx.fillStyle = '#1A2B32';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('ANTES', canvasWidth / 2, currentY + 30);
-      }
+      // Labels "ANTES" e "DEPOIS" removidos conforme solicitado
 
       // Logo no canto inferior direito da imagem ANTES
       if (logoImg.width > 0 && logoImg.height > 0) {
@@ -268,9 +256,7 @@ export async function exportComparisonImage(
 
       // Imagem Depois
       ctx.drawImage(afterImg, imageX, afterImageY, afterWidth, afterHeight);
-      if (includeLabels) {
-        ctx.fillText('DEPOIS', canvasWidth / 2, currentY + 30);
-      }
+      // Labels "ANTES" e "DEPOIS" removidos conforme solicitado
 
       // Logo no canto inferior direito da imagem DEPOIS
       if (logoImg.width > 0 && logoImg.height > 0) {
