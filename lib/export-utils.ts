@@ -93,10 +93,8 @@ export async function exportComparisonImage(
     const padding = 40;
     const labelHeight = includeLabels ? 60 : 0;
     const infoHeight = includeInfo ? 80 : 0;
-    const logoSize = 60; // Tamanho do logo (reduzido para ser mais sutil)
-    const logoBottomPadding = 15; // Espaçamento do logo do fundo
-    const copyrightHeight = 20; // Altura para copyright (reduzido)
-    const bottomSectionHeight = logoSize + logoBottomPadding + copyrightHeight; // Altura total da seção inferior (logo + copyright)
+    const logoSize = 40; // Tamanho do logo (pequeno para cantos)
+    const logoCornerPadding = 10; // Espaçamento do logo dos cantos
     const spacing = 20;
 
     let canvasWidth: number;
@@ -109,7 +107,7 @@ export async function exportComparisonImage(
     if (layout === 'side-by-side') {
       // Lado a lado
       const availableWidth = maxWidth - (padding * 2) - spacing;
-      const availableHeight = maxHeight - (padding * 2) - labelHeight - infoHeight - bottomSectionHeight;
+      const availableHeight = maxHeight - (padding * 2) - labelHeight - infoHeight;
 
       // Calcular tamanho mantendo proporção
       const beforeAspect = beforeImg.width / beforeImg.height;
@@ -132,11 +130,11 @@ export async function exportComparisonImage(
       afterWidth = afterHeight * afterAspect;
 
       canvasWidth = maxWidth;
-      canvasHeight = Math.max(beforeHeight, afterHeight) + labelHeight + infoHeight + bottomSectionHeight + (padding * 2);
+      canvasHeight = Math.max(beforeHeight, afterHeight) + labelHeight + infoHeight + (padding * 2);
     } else {
       // Vertical (empilhado)
       const availableWidth = maxWidth - (padding * 2);
-      const availableHeight = (maxHeight - (padding * 2) - labelHeight - infoHeight - bottomSectionHeight - spacing) / 2;
+      const availableHeight = (maxHeight - (padding * 2) - labelHeight - infoHeight - spacing) / 2;
 
       const beforeAspect = beforeImg.width / beforeImg.height;
       const afterAspect = afterImg.width / afterImg.height;
@@ -156,7 +154,7 @@ export async function exportComparisonImage(
       }
 
       canvasWidth = maxWidth;
-      canvasHeight = beforeHeight + afterHeight + labelHeight + infoHeight + bottomSectionHeight + spacing + (padding * 2);
+      canvasHeight = beforeHeight + afterHeight + labelHeight + infoHeight + spacing + (padding * 2);
     }
 
     // Criar canvas
@@ -204,17 +202,46 @@ export async function exportComparisonImage(
         ctx.fillText('ANTES', startX + beforeWidth / 2, imageY - 10);
       }
 
+      // Logo no canto inferior direito da imagem ANTES
+      if (logoImg.width > 0 && logoImg.height > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = startX + beforeWidth - logoDisplayWidth - logoCornerPadding;
+        const logoY = imageY + beforeHeight - logoDisplayHeight - logoCornerPadding;
+        
+        // Logo com opacidade reduzida para ser sutil (marca d'água)
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
+
       // Imagem Depois
       ctx.drawImage(afterImg, startX + beforeWidth + spacing, imageY, afterWidth, afterHeight);
       if (includeLabels) {
         ctx.fillText('DEPOIS', startX + beforeWidth + spacing + afterWidth / 2, imageY - 10);
       }
+
+      // Logo no canto inferior direito da imagem DEPOIS
+      if (logoImg.width > 0 && logoImg.height > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = startX + beforeWidth + spacing + afterWidth - logoDisplayWidth - logoCornerPadding;
+        const logoY = imageY + afterHeight - logoDisplayHeight - logoCornerPadding;
+        
+        // Logo com opacidade reduzida para ser sutil (marca d'água)
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
     } else {
       // Desenhar imagens verticalmente
       const imageX = (canvasWidth - Math.max(beforeWidth, afterWidth)) / 2;
+      const beforeImageY = currentY + labelHeight;
 
       // Imagem Antes
-      ctx.drawImage(beforeImg, imageX, currentY + labelHeight, beforeWidth, beforeHeight);
+      ctx.drawImage(beforeImg, imageX, beforeImageY, beforeWidth, beforeHeight);
       if (includeLabels) {
         ctx.fillStyle = '#1A2B32';
         ctx.font = 'bold 24px Arial';
@@ -222,38 +249,43 @@ export async function exportComparisonImage(
         ctx.fillText('ANTES', canvasWidth / 2, currentY + 30);
       }
 
+      // Logo no canto inferior direito da imagem ANTES
+      if (logoImg.width > 0 && logoImg.height > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = imageX + beforeWidth - logoDisplayWidth - logoCornerPadding;
+        const logoY = beforeImageY + beforeHeight - logoDisplayHeight - logoCornerPadding;
+        
+        // Logo com opacidade reduzida para ser sutil (marca d'água)
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
+
       currentY += beforeHeight + labelHeight + spacing;
+      const afterImageY = currentY + labelHeight;
 
       // Imagem Depois
-      ctx.drawImage(afterImg, imageX, currentY + labelHeight, afterWidth, afterHeight);
+      ctx.drawImage(afterImg, imageX, afterImageY, afterWidth, afterHeight);
       if (includeLabels) {
         ctx.fillText('DEPOIS', canvasWidth / 2, currentY + 30);
       }
-    }
 
-    // Logo e Copyright na parte inferior centralizada (marca d'água sutil)
-    const logoY = canvasHeight - padding - logoBottomPadding - logoSize;
-    
-    if (logoImg.width > 0 && logoImg.height > 0) {
-      const logoAspect = logoImg.width / logoImg.height;
-      const logoDisplayHeight = logoSize;
-      const logoDisplayWidth = logoDisplayHeight * logoAspect;
-      const logoX = (canvasWidth - logoDisplayWidth) / 2; // Centralizado
-      
-      // Logo com opacidade reduzida para ser sutil (marca d'água)
-      ctx.globalAlpha = 0.3; // Opacidade baixa para ser discreto
-      ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
-      ctx.globalAlpha = 1.0; // Restaurar opacidade
+      // Logo no canto inferior direito da imagem DEPOIS
+      if (logoImg.width > 0 && logoImg.height > 0) {
+        const logoAspect = logoImg.width / logoImg.height;
+        const logoDisplayHeight = logoSize;
+        const logoDisplayWidth = logoDisplayHeight * logoAspect;
+        const logoX = imageX + afterWidth - logoDisplayWidth - logoCornerPadding;
+        const logoY = afterImageY + afterHeight - logoDisplayHeight - logoCornerPadding;
+        
+        // Logo com opacidade reduzida para ser sutil (marca d'água)
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+        ctx.globalAlpha = 1.0;
+      }
     }
-    
-    // Copyright abaixo do logo (opcional, pode ser removido se preferir apenas o logo)
-    const copyrightY = canvasHeight - padding - 5;
-    ctx.fillStyle = '#999999';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.globalAlpha = 0.6; // Texto também sutil
-    ctx.fillText('© 2025 Revela', canvasWidth / 2, copyrightY);
-    ctx.globalAlpha = 1.0;
 
     // Converter para blob e download
     const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
