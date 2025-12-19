@@ -93,8 +93,10 @@ export async function exportComparisonImage(
     const padding = 40;
     const labelHeight = includeLabels ? 60 : 0;
     const infoHeight = includeInfo ? 80 : 0;
-    const copyrightHeight = 50; // Altura para copyright
-    const logoSize = 120; // Tamanho do logo
+    const logoSize = 60; // Tamanho do logo (reduzido para ser mais sutil)
+    const logoBottomPadding = 15; // Espaçamento do logo do fundo
+    const copyrightHeight = 20; // Altura para copyright (reduzido)
+    const bottomSectionHeight = logoSize + logoBottomPadding + copyrightHeight; // Altura total da seção inferior (logo + copyright)
     const spacing = 20;
 
     let canvasWidth: number;
@@ -107,7 +109,7 @@ export async function exportComparisonImage(
     if (layout === 'side-by-side') {
       // Lado a lado
       const availableWidth = maxWidth - (padding * 2) - spacing;
-      const availableHeight = maxHeight - (padding * 2) - labelHeight - infoHeight - copyrightHeight;
+      const availableHeight = maxHeight - (padding * 2) - labelHeight - infoHeight - bottomSectionHeight;
 
       // Calcular tamanho mantendo proporção
       const beforeAspect = beforeImg.width / beforeImg.height;
@@ -130,11 +132,11 @@ export async function exportComparisonImage(
       afterWidth = afterHeight * afterAspect;
 
       canvasWidth = maxWidth;
-      canvasHeight = Math.max(beforeHeight, afterHeight) + labelHeight + infoHeight + copyrightHeight + (padding * 2);
+      canvasHeight = Math.max(beforeHeight, afterHeight) + labelHeight + infoHeight + bottomSectionHeight + (padding * 2);
     } else {
       // Vertical (empilhado)
       const availableWidth = maxWidth - (padding * 2);
-      const availableHeight = (maxHeight - (padding * 2) - labelHeight - infoHeight - copyrightHeight - spacing) / 2;
+      const availableHeight = (maxHeight - (padding * 2) - labelHeight - infoHeight - bottomSectionHeight - spacing) / 2;
 
       const beforeAspect = beforeImg.width / beforeImg.height;
       const afterAspect = afterImg.width / afterImg.height;
@@ -154,7 +156,7 @@ export async function exportComparisonImage(
       }
 
       canvasWidth = maxWidth;
-      canvasHeight = beforeHeight + afterHeight + labelHeight + infoHeight + copyrightHeight + spacing + (padding * 2);
+      canvasHeight = beforeHeight + afterHeight + labelHeight + infoHeight + bottomSectionHeight + spacing + (padding * 2);
     }
 
     // Criar canvas
@@ -172,20 +174,6 @@ export async function exportComparisonImage(
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     let currentY = padding;
-
-    // Logo no canto superior direito
-    if (logoImg.width > 0 && logoImg.height > 0) {
-      const logoAspect = logoImg.width / logoImg.height;
-      const logoDisplayHeight = logoSize;
-      const logoDisplayWidth = logoDisplayHeight * logoAspect;
-      const logoX = canvasWidth - padding - logoDisplayWidth;
-      const logoY = padding;
-      
-      // Fundo semi-transparente para o logo (opcional)
-      ctx.globalAlpha = 0.9;
-      ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
-      ctx.globalAlpha = 1.0;
-    }
 
     // Informações do projeto (topo)
     if (includeInfo) {
@@ -243,12 +231,29 @@ export async function exportComparisonImage(
       }
     }
 
-    // Copyright na parte inferior
-    const copyrightY = canvasHeight - padding - 20;
-    ctx.fillStyle = '#666666';
-    ctx.font = '14px Arial';
+    // Logo e Copyright na parte inferior centralizada (marca d'água sutil)
+    const logoY = canvasHeight - padding - logoBottomPadding - logoSize;
+    
+    if (logoImg.width > 0 && logoImg.height > 0) {
+      const logoAspect = logoImg.width / logoImg.height;
+      const logoDisplayHeight = logoSize;
+      const logoDisplayWidth = logoDisplayHeight * logoAspect;
+      const logoX = (canvasWidth - logoDisplayWidth) / 2; // Centralizado
+      
+      // Logo com opacidade reduzida para ser sutil (marca d'água)
+      ctx.globalAlpha = 0.3; // Opacidade baixa para ser discreto
+      ctx.drawImage(logoImg, logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+      ctx.globalAlpha = 1.0; // Restaurar opacidade
+    }
+    
+    // Copyright abaixo do logo (opcional, pode ser removido se preferir apenas o logo)
+    const copyrightY = canvasHeight - padding - 5;
+    ctx.fillStyle = '#999999';
+    ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('© 2025 Revela - Powered by Equipe Revela', canvasWidth / 2, copyrightY);
+    ctx.globalAlpha = 0.6; // Texto também sutil
+    ctx.fillText('© 2025 Revela', canvasWidth / 2, copyrightY);
+    ctx.globalAlpha = 1.0;
 
     // Converter para blob e download
     const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
