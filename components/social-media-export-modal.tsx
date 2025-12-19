@@ -77,20 +77,22 @@ export function SocialMediaExportModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl rounded-lg shadow-2xl"
+        className="relative w-full max-w-4xl my-4 rounded-lg shadow-2xl flex flex-col"
         style={{
           backgroundColor: '#1A2B32',
           border: '1px solid rgba(232, 220, 192, 0.2)',
+          maxHeight: 'calc(100vh - 2rem)',
+          minHeight: 'min-content',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+        {/* Header - Fixo */}
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
           <div className="flex items-center gap-3">
             <Instagram className="w-6 h-6" style={{ color: '#E8DCC0' }} />
             <h2 className="text-xl sm:text-2xl font-medium" style={{ color: '#E8DCC0' }}>
@@ -107,16 +109,16 @@ export function SocialMediaExportModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Content - Com Scroll */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
             {/* Seleção de Formato */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium mb-4" style={{ color: '#E8DCC0' }}>
                 Escolha o formato:
               </h3>
               
-              <div className="space-y-2">
+              <div className="space-y-2 pr-2">
                 {formats.map((format) => (
                   <button
                     key={format.id}
@@ -214,8 +216,8 @@ export function SocialMediaExportModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+        {/* Footer - Fixo */}
+        <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t flex-shrink-0" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg transition-colors"
