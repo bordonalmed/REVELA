@@ -790,10 +790,11 @@ export default function ViewProjectPage() {
           <div className="w-full h-full flex items-center justify-center gap-4 p-4">
             {/* Imagem Antes */}
             <div className="flex-1 h-full flex items-center justify-center relative">
-              <SafeBase64Image
+              <ZoomableImage
                 src={displayBeforeImages[beforeCurrentIndex]}
                 alt={`Antes ${beforeCurrentIndex + 1}`}
-                className="max-w-full max-h-full object-contain"
+                className="w-full h-full"
+                style={{ maxWidth: '100%', maxHeight: '100%' }}
               />
               <div 
                 className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
