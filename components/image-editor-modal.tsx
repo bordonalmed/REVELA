@@ -115,18 +115,33 @@ export function ImageEditorModal({
     try {
       setProcessing(true);
 
-      // Converter PixelCrop para formato esperado pela função de transformação
-      // O react-image-crop retorna coordenadas em pixels da imagem original
+      if (!imgRef.current) {
+        throw new Error('Imagem não carregada');
+      }
+
+      const img = imgRef.current;
+      const { naturalWidth, naturalHeight } = img;
+      
+      // Obter dimensões da imagem exibida (com zoom)
+      const displayedWidth = img.clientWidth;
+      const displayedHeight = img.clientHeight;
+      
+      // Calcular escala entre imagem exibida e imagem original
+      const scaleX = naturalWidth / displayedWidth;
+      const scaleY = naturalHeight / displayedHeight;
+
+      // Converter PixelCrop (coordenadas da imagem exibida) para coordenadas da imagem original
       const pixelCrop = completedCrop ? {
-        x: Math.round(completedCrop.x),
-        y: Math.round(completedCrop.y),
-        width: Math.round(completedCrop.width),
-        height: Math.round(completedCrop.height),
+        x: Math.round(completedCrop.x * scaleX),
+        y: Math.round(completedCrop.y * scaleY),
+        width: Math.round(completedCrop.width * scaleX),
+        height: Math.round(completedCrop.height * scaleY),
       } : null;
 
       // Debug
       if (pixelCrop) {
-        console.log('Crop aplicado:', pixelCrop);
+        console.log('Crop aplicado (original):', pixelCrop);
+        console.log('Escala:', { scaleX, scaleY, displayedWidth, displayedHeight, naturalWidth, naturalHeight });
       }
 
       const editedImage = await applyImageTransformations(
@@ -204,6 +219,8 @@ export function ImageEditorModal({
                     onComplete={(c) => setCompletedCrop(c)}
                     aspect={aspectRatio}
                     className="max-w-full"
+                    locked={false}
+                    disabled={false}
                   >
                     <img
                       ref={imgRef}
