@@ -121,32 +121,43 @@ export function ImageEditorModal({
           <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4">
             {/* Área de Crop */}
             <div className="lg:col-span-2 order-1">
-              <div
-                className="relative rounded-lg overflow-hidden"
-                style={{
-                  backgroundColor: '#000000',
-                  width: '100%',
-                  height: '300px',
-                  minHeight: '250px',
-                }}
-              >
-                <Cropper
-                  image={imageSrc}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  aspect={aspectRatio}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onRotationChange={setRotation}
-                  onCropComplete={onCropComplete}
+              <div className="space-y-2">
+                <div
+                  className="relative rounded-lg overflow-hidden"
                   style={{
-                    containerStyle: {
-                      width: '100%',
-                      height: '100%',
-                    },
+                    backgroundColor: '#000000',
+                    width: '100%',
+                    height: '400px',
+                    minHeight: '350px',
                   }}
-                />
+                >
+                  <Cropper
+                    image={imageSrc}
+                    crop={crop}
+                    zoom={zoom}
+                    rotation={rotation}
+                    aspect={aspectRatio}
+                    onCropChange={setCrop}
+                    onZoomChange={setZoom}
+                    onRotationChange={setRotation}
+                    onCropComplete={onCropComplete}
+                    cropShape="rect"
+                    showGrid={true}
+                    restrictPosition={false}
+                    style={{
+                      containerStyle: {
+                        width: '100%',
+                        height: '100%',
+                      },
+                      cropAreaStyle: {
+                        border: '2px solid #00A88F',
+                      },
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-center" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+                  💡 Arraste para mover • Arraste os cantos para redimensionar
+                </p>
               </div>
             </div>
 
