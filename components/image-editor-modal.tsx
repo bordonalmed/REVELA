@@ -26,6 +26,7 @@ export function ImageEditorModal({
   const [crop, setCrop] = useState<ReactCropType>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [rotation, setRotation] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [aspectRatio, setAspectRatio] = useState<CropAspectRatio>(undefined);
   const [processing, setProcessing] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -101,6 +102,7 @@ export function ImageEditorModal({
       setCrop(resetCrop);
     }
     setRotation(0);
+    setZoom(1);
     setCompletedCrop(undefined);
   };
 
@@ -205,8 +207,9 @@ export function ImageEditorModal({
                       style={{
                         maxWidth: '100%',
                         maxHeight: '70vh',
-                        transform: `rotate(${rotation}deg)`,
+                        transform: `rotate(${rotation}deg) scale(${zoom})`,
                         objectFit: 'contain',
+                        transformOrigin: 'center center',
                       }}
                     />
                   </ReactCrop>
@@ -271,6 +274,28 @@ export function ImageEditorModal({
                     max="360"
                     value={rotation}
                     onChange={(e) => setRotation(Number(e.target.value))}
+                    className="w-full"
+                    style={{ accentColor: '#00A88F' }}
+                  />
+                </div>
+              </div>
+
+              {/* Zoom */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
+                  Zoom:
+                </h3>
+                <div className="space-y-1">
+                  <label className="text-xs" style={{ color: '#E8DCC0', opacity: 0.8 }}>
+                    {Math.round(zoom * 100)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3"
+                    step="0.1"
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
                     className="w-full"
                     style={{ accentColor: '#00A88F' }}
                   />
