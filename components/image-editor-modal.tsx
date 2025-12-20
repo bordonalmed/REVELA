@@ -50,6 +50,7 @@ export function ImageEditorModal({
   };
 
   const handleApply = async () => {
+    // Se não há alterações, apenas fechar
     if (!croppedAreaPixels && rotation === 0) {
       onClose();
       return;
@@ -57,6 +58,11 @@ export function ImageEditorModal({
 
     try {
       setProcessing(true);
+
+      // Debug: verificar se croppedAreaPixels está sendo capturado
+      if (croppedAreaPixels) {
+        console.log('Crop aplicado:', croppedAreaPixels);
+      }
 
       const editedImage = await applyImageTransformations(
         imageSrc,

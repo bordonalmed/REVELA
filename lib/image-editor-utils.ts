@@ -135,7 +135,8 @@ export async function cropImage(
 
 /**
  * Função helper para obter imagem cortada do react-easy-crop
- * Baseada na função padrão da biblioteca
+ * Implementação baseada na função oficial do react-easy-crop
+ * Suporta rotação e crop corretamente
  */
 export async function getCroppedImg(
   imageSrc: string,
@@ -158,61 +159,45 @@ export async function getCroppedImg(
   const maxSize = Math.max(image.width, image.height);
   const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
 
-  // Definir tamanho do canvas para suportar rotação
-  canvas.width = safeArea;
-  canvas.height = safeArea;
+  // Canvas para rotação
+  const rotatedCanvas = document.createElement('canvas');
+  const rotatedCtx = rotatedCanvas.getContext('2d');
 
-  // Traduzir para o centro do canvas
-  ctx.translate(safeArea / 2, safeArea / 2);
-  
-  // Aplicar rotação
-  if (rotation !== 0) {
-    ctx.rotate((rotation * Math.PI) / 180);
+  if (!rotatedCtx) {
+    throw new Error('Não foi possível criar contexto do canvas');
   }
-  
-  // Traduzir de volta e desenhar imagem
-  ctx.translate(-safeArea / 2, -safeArea / 2);
-  ctx.drawImage(
+
+  rotatedCanvas.width = safeArea;
+  rotatedCanvas.height = safeArea;
+
+  // Aplicar rotação
+  rotatedCtx.translate(safeArea / 2, safeArea / 2);
+  rotatedCtx.rotate((rotation * Math.PI) / 180);
+  rotatedCtx.translate(-safeArea / 2, -safeArea / 2);
+  rotatedCtx.drawImage(
     image,
     safeArea / 2 - image.width * 0.5,
     safeArea / 2 - image.height * 0.5
   );
 
-  const data = ctx.getImageData(0, 0, safeArea, safeArea);
+  // Canvas final para crop
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
 
-  // Criar novo canvas para o crop
-  const outputCanvas = document.createElement('canvas');
-  const outputCtx = outputCanvas.getContext('2d');
-
-  if (!outputCtx) {
-    throw new Error('Não foi possível criar contexto do canvas');
-  }
-
-  outputCanvas.width = pixelCrop.width;
-  outputCanvas.height = pixelCrop.height;
-
-  // Ajustar coordenadas de crop considerando a rotação
-  const cropX = pixelCrop.x;
-  const cropY = pixelCrop.y;
-
-  outputCtx.putImageData(
-    data,
-    Math.round(0 - safeArea / 2 + image.width * 0.5 - cropX),
-    Math.round(0 - safeArea / 2 + image.height * 0.5 - cropY)
+  // Extrair a área cortada da imagem rotacionada
+  ctx.drawImage(
+    rotatedCanvas,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
   );
 
-  return new Promise((resolve) => {
-    outputCanvas.toBlob((blob) => {
-      if (!blob) {
-        throw new Error('Erro ao criar blob');
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.readAsDataURL(blob);
-    }, 'image/jpeg', 0.95);
-  });
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
 /**
