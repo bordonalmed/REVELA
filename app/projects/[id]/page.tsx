@@ -15,6 +15,7 @@ import { ComparisonSlider } from '@/components/comparison-slider';
 import { errorLogger } from '@/lib/error-logger';
 import { exportComparisonImage } from '@/lib/export-utils';
 import { SocialMediaExportModal } from '@/components/social-media-export-modal';
+import { ImageEditorModal } from '@/components/image-editor-modal';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -38,12 +39,16 @@ export default function ViewProjectPage() {
   const [exporting, setExporting] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
+  const [editingImageType, setEditingImageType] = useState<'before' | 'after' | null>(null);
   const [tempNotes, setTempNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [isSliderMode, setIsSliderMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDesktopMenu, setShowDesktopMenu] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
@@ -587,6 +592,34 @@ export default function ViewProjectPage() {
 
   const handleAfterDragEnd = () => {
     setDraggedAfterIndex(null);
+  };
+
+  const handleEditImage = (type: 'before' | 'after', index: number) => {
+    setEditingImageType(type);
+    setEditingImageIndex(index);
+    setShowImageEditor(true);
+  };
+
+  const handleSaveEditedImage = (editedImage: string) => {
+    if (editingImageType === 'before' && editingImageIndex !== null) {
+      const newImages = [...editingBeforeImages];
+      newImages[editingImageIndex] = editedImage;
+      setEditingBeforeImages(newImages);
+    } else if (editingImageType === 'after' && editingImageIndex !== null) {
+      const newImages = [...editingAfterImages];
+      newImages[editingImageIndex] = editedImage;
+      setEditingAfterImages(newImages);
+    }
+    
+    setShowImageEditor(false);
+    setEditingImageIndex(null);
+    setEditingImageType(null);
+  };
+
+  const handleCloseImageEditor = () => {
+    setShowImageEditor(false);
+    setEditingImageIndex(null);
+    setEditingImageType(null);
   };
 
   const handleExportImage = async () => {
@@ -1140,13 +1173,24 @@ export default function ViewProjectPage() {
                               <span className="text-xs text-white font-medium">Arrastar</span>
                             </div>
                           )}
-                          <button
-                            onClick={() => handleRemoveBeforeImage(index)}
-                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                            style={{ backgroundColor: '#ef4444' }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+                            <button
+                              onClick={() => handleEditImage('before', index)}
+                              className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ backgroundColor: '#00A88F' }}
+                              title="Editar imagem"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveBeforeImage(index)}
+                              className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ backgroundColor: '#ef4444' }}
+                              title="Remover imagem"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                           <div 
                             className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
                             style={{ 
@@ -1220,13 +1264,24 @@ export default function ViewProjectPage() {
                               <span className="text-xs text-white font-medium">Arrastar</span>
                             </div>
                           )}
-                          <button
-                            onClick={() => handleRemoveAfterImage(index)}
-                            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                            style={{ backgroundColor: '#ef4444' }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="absolute -top-2 -right-2 flex gap-1 z-10">
+                            <button
+                              onClick={() => handleEditImage('after', index)}
+                              className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ backgroundColor: '#00A88F' }}
+                              title="Editar imagem"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveAfterImage(index)}
+                              className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ backgroundColor: '#ef4444' }}
+                              title="Remover imagem"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                           <div 
                             className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
                             style={{ 
@@ -1883,12 +1938,12 @@ export default function ViewProjectPage() {
           </div>
         )}
 
-        {/* Botões Flutuantes - Landscape: Mantém estilo original mas menor */}
+        {/* Botões Flutuantes - Desktop/Landscape: Menu Hambúrguer */}
         {!isEditing && isLandscape && (
-          <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-            {/* Botão Voltar */}
+          <div className="fixed bottom-4 right-4 z-50">
+            {/* Menu Principal (botão hambúrguer) */}
             <button
-              onClick={() => router.back()}
+              onClick={() => setShowDesktopMenu(!showDesktopMenu)}
               className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
               style={{ 
                 backgroundColor: 'rgba(232, 220, 192, 0.15)', 
@@ -1896,104 +1951,163 @@ export default function ViewProjectPage() {
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                 backdropFilter: 'blur(10px)'
               }}
-              title="Voltar"
-              aria-label="Voltar"
+              title="Menu"
+              aria-label="Menu"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
+
+            {/* Menu Expandido */}
+            {showDesktopMenu && (
+              <>
+                {/* Overlay para fechar ao clicar fora */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowDesktopMenu(false)}
+                />
+                <div className="absolute bottom-14 right-0 flex flex-col gap-2 mb-2 z-50">
+                  {/* Botão Voltar */}
+                  <button
+                    onClick={() => {
+                      router.back();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Voltar"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Voltar</span>
+                  </button>
             {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
               <>
-                <button
-                  onClick={handleExportImage}
-                  disabled={exporting}
-                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95 disabled:opacity-50"
-                  style={{ 
-                    backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                    color: '#E8DCC0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  title="Exportar"
-                >
-                  {exporting ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <ImageIcon className="w-4 h-4" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowSocialMediaModal(true)}
-                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
-                  style={{ 
-                    backgroundColor: '#00A88F', 
-                    color: '#FFFFFF',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  title="Publicar"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleEnterPresentationMode}
-                  className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
-                  style={{ 
-                    backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                    color: '#E8DCC0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  title="Apresentação"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleToggleSliderMode}
-                  className={`p-2.5 rounded-full shadow-lg transition-all active:scale-95 ${
-                    isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
-                  }`}
-                  style={{ 
-                    backgroundColor: isSliderMode 
-                      ? 'rgba(0, 168, 143, 0.25)' 
-                      : 'rgba(232, 220, 192, 0.15)', 
-                    color: '#E8DCC0',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  title="Slider"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                </button>
+                  <button
+                    onClick={() => {
+                      handleExportImage();
+                      setShowDesktopMenu(false);
+                    }}
+                    disabled={exporting}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg disabled:opacity-50"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Exportar"
+                  >
+                    {exporting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                    <span>Exportar</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSocialMediaModal(true);
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: '#00A88F', 
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Publicar nas redes sociais"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Publicar</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleEnterPresentationMode();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Apresentação"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                    <span>Apresentação</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleToggleSliderMode();
+                      setShowDesktopMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
+                      isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
+                    }`}
+                    style={{ 
+                      backgroundColor: isSliderMode 
+                        ? 'rgba(0, 168, 143, 0.25)' 
+                        : 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Slider"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Slider</span>
+                  </button>
               </>
             )}
-            <button
-              onClick={handleOpenNotes}
-              className={`p-2.5 rounded-full shadow-lg transition-all active:scale-95 ${
-                project.notes ? 'ring-2 ring-[#00A88F]' : ''
-              }`}
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(10px)'
-              }}
-              title="Notas"
-            >
-              <FileText className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleEdit}
-              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(10px)'
-              }}
-              title="Editar"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
+                  <button
+                    onClick={() => {
+                      handleOpenNotes();
+                      setShowDesktopMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
+                      project?.notes ? 'ring-2 ring-[#00A88F]' : ''
+                    }`}
+                    style={{ 
+                      backgroundColor: project?.notes 
+                        ? 'rgba(0, 168, 143, 0.25)' 
+                        : 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Notas"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Notas</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleEdit();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Editar"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Editar</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -2100,6 +2214,21 @@ export default function ViewProjectPage() {
             beforeImage={displayBeforeImages[beforeCurrentIndex]}
             afterImage={displayAfterImages[afterCurrentIndex]}
             projectName={project.name}
+          />
+        )}
+
+        {/* Modal de Edição de Imagem */}
+        {showImageEditor && editingImageIndex !== null && editingImageType && (
+          <ImageEditorModal
+            isOpen={showImageEditor}
+            onClose={handleCloseImageEditor}
+            onSave={handleSaveEditedImage}
+            imageSrc={
+              editingImageType === 'before'
+                ? editingBeforeImages[editingImageIndex]
+                : editingAfterImages[editingImageIndex]
+            }
+            imageLabel={`${editingImageType === 'before' ? 'ANTES' : 'DEPOIS'} #${editingImageIndex + 1}`}
           />
         )}
       </main>
