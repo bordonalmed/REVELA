@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { X, RotateCw, RotateCcw, Crop, Check, Loader2 } from 'lucide-react';
-import Cropper, { Area } from 'react-easy-crop';
+import ReactCrop, { Crop as ReactCropType, PixelCrop, makeAspectCrop, centerCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { applyImageTransformations } from '@/lib/image-editor-utils';
-import 'react-easy-crop/react-easy-crop.css';
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -23,35 +23,89 @@ export function ImageEditorModal({
   imageSrc,
   imageLabel = 'Imagem',
 }: ImageEditorModalProps) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
+  const [crop, setCrop] = useState<ReactCropType>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [aspectRatio, setAspectRatio] = useState<CropAspectRatio>(undefined);
   const [processing, setProcessing] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
-  const onCropComplete = useCallback(
-    (croppedArea: Area, croppedAreaPixels: Area) => {
-      setCroppedAreaPixels(croppedAreaPixels);
-    },
-    []
-  );
+  // Inicializar crop quando a imagem carregar
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    setImageLoaded(true);
+    
+    // Criar crop inicial centralizado (80% da imagem)
+    const initialCrop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 80,
+          height: 80,
+        },
+        aspectRatio || naturalWidth / naturalHeight,
+        naturalWidth,
+        naturalHeight
+      ),
+      naturalWidth,
+      naturalHeight
+    );
+    
+    setCrop(initialCrop);
+  }, [aspectRatio]);
+
+  // Atualizar crop quando aspect ratio mudar
+  React.useEffect(() => {
+    if (imageLoaded && imgRef.current) {
+      const { naturalWidth, naturalHeight } = imgRef.current;
+      const newCrop = centerCrop(
+        makeAspectCrop(
+          {
+            unit: '%',
+            width: 80,
+            height: 80,
+          },
+          aspectRatio || naturalWidth / naturalHeight,
+          naturalWidth,
+          naturalHeight
+        ),
+        naturalWidth,
+        naturalHeight
+      );
+      setCrop(newCrop);
+    }
+  }, [aspectRatio, imageLoaded]);
 
   const handleRotate = (degrees: number) => {
     setRotation((prev) => (prev + degrees) % 360);
   };
 
   const handleReset = () => {
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
+    if (imgRef.current) {
+      const { naturalWidth, naturalHeight } = imgRef.current;
+      const resetCrop = centerCrop(
+        makeAspectCrop(
+          {
+            unit: '%',
+            width: 80,
+            height: 80,
+          },
+          aspectRatio || naturalWidth / naturalHeight,
+          naturalWidth,
+          naturalHeight
+        ),
+        naturalWidth,
+        naturalHeight
+      );
+      setCrop(resetCrop);
+    }
     setRotation(0);
-    setAspectRatio(undefined);
-    setCroppedAreaPixels(null);
+    setCompletedCrop(undefined);
   };
 
   const handleApply = async () => {
-    // Se não há alterações, apenas fechar
-    if (!croppedAreaPixels && rotation === 0) {
+    if (!completedCrop && rotation === 0) {
       onClose();
       return;
     }
@@ -59,15 +113,18 @@ export function ImageEditorModal({
     try {
       setProcessing(true);
 
-      // Debug: verificar se croppedAreaPixels está sendo capturado
-      if (croppedAreaPixels) {
-        console.log('Crop aplicado:', croppedAreaPixels);
-      }
+      // Converter PixelCrop para formato esperado pela função de transformação
+      const pixelCrop = completedCrop ? {
+        x: completedCrop.x,
+        y: completedCrop.y,
+        width: completedCrop.width,
+        height: completedCrop.height,
+      } : null;
 
       const editedImage = await applyImageTransformations(
         imageSrc,
         rotation,
-        croppedAreaPixels || null
+        pixelCrop
       );
 
       onSave(editedImage);
@@ -127,33 +184,32 @@ export function ImageEditorModal({
                   style={{
                     backgroundColor: '#000000',
                     width: '100%',
-                    height: '400px',
-                    minHeight: '350px',
+                    minHeight: '400px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  <Cropper
-                    image={imageSrc}
+                  <ReactCrop
                     crop={crop}
-                    zoom={zoom}
-                    rotation={rotation}
+                    onChange={(_, percentCrop) => setCrop(percentCrop)}
+                    onComplete={(c) => setCompletedCrop(c)}
                     aspect={aspectRatio}
-                    onCropChange={setCrop}
-                    onZoomChange={setZoom}
-                    onRotationChange={setRotation}
-                    onCropComplete={onCropComplete}
-                    cropShape="rect"
-                    showGrid={true}
-                    restrictPosition={false}
-                    style={{
-                      containerStyle: {
-                        width: '100%',
-                        height: '100%',
-                      },
-                      cropAreaStyle: {
-                        border: '2px solid #00A88F',
-                      },
-                    }}
-                  />
+                    className="max-w-full"
+                  >
+                    <img
+                      ref={imgRef}
+                      src={imageSrc}
+                      alt="Crop"
+                      onLoad={onImageLoad}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '70vh',
+                        transform: `rotate(${rotation}deg)`,
+                        objectFit: 'contain',
+                      }}
+                    />
+                  </ReactCrop>
                 </div>
                 <p className="text-xs text-center" style={{ color: '#E8DCC0', opacity: 0.7 }}>
                   💡 Arraste para mover • Arraste os cantos para redimensionar
@@ -215,28 +271,6 @@ export function ImageEditorModal({
                     max="360"
                     value={rotation}
                     onChange={(e) => setRotation(Number(e.target.value))}
-                    className="w-full"
-                    style={{ accentColor: '#00A88F' }}
-                  />
-                </div>
-              </div>
-
-              {/* Zoom */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                  Zoom:
-                </h3>
-                <div className="space-y-1">
-                  <label className="text-xs" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                    {Math.round(zoom * 100)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={zoom}
-                    onChange={(e) => setZoom(Number(e.target.value))}
                     className="w-full"
                     style={{ accentColor: '#00A88F' }}
                   />
@@ -377,7 +411,7 @@ export function ImageEditorModal({
           </button>
           <button
             onClick={handleApply}
-            disabled={processing}
+            disabled={processing || !imageLoaded}
             className="px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
             style={{
               backgroundColor: '#00A88F',
@@ -401,4 +435,3 @@ export function ImageEditorModal({
     </div>
   );
 }
-

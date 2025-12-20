@@ -76,3 +76,78 @@
 .duration-800 {
   animation-duration: 0.8s;
 }
+
+/* Estilos customizados para react-easy-crop - Handles maiores e mais fáceis de arrastar */
+.reactEasyCrop_CropArea {
+  border: 2px solid #00A88F !important;
+  cursor: move !important;
+}
+
+/* Aumentar área clicável dos handles - react-easy-crop usa elementos específicos */
+.reactEasyCrop_CropAreaGrid {
+  position: relative !important;
+}
+
+/* Handles nos cantos - aumentar tamanho e visibilidade */
+.reactEasyCrop_CropAreaGrid::before,
+.reactEasyCrop_CropAreaGrid::after {
+  width: 20px !important;
+  height: 20px !important;
+  background-color: #00A88F !important;
+  border: 3px solid #FFFFFF !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(0, 168, 143, 0.2) !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+}
+
+.reactEasyCrop_CropAreaGrid::before {
+  cursor: nwse-resize !important;
+  top: -10px !important;
+  left: -10px !important;
+}
+
+.reactEasyCrop_CropAreaGrid::after {
+  cursor: nesw-resize !important;
+  top: -10px !important;
+  right: -10px !important;
+}
+
+/* Garantir que a área de crop seja interativa */
+.reactEasyCrop_Container {
+  user-select: none !important;
+  touch-action: none !important;
+}
+
+/* Estilos customizados para react-image-crop */
+.ReactCrop {
+  border: 2px solid #00A88F !important;
+}
+
+.ReactCrop__crop-selection {
+  border: 2px solid #00A88F !important;
+  box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.5) !important;
+}
+
+.ReactCrop__drag-handle {
+  background-color: #00A88F !important;
+  border: 2px solid #FFFFFF !important;
+  width: 16px !important;
+  height: 16px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+.ReactCrop__drag-handle::after {
+  background-color: #00A88F !important;
+}
+
+.ReactCrop__drag-bar {
+  background-color: rgba(0, 168, 143, 0.5) !important;
+}
+
+.ReactCrop__rule-of-thirds-vt::before,
+.ReactCrop__rule-of-thirds-vt::after,
+.ReactCrop__rule-of-thirds-hz::before,
+.ReactCrop__rule-of-thirds-hz::after {
+  border-color: rgba(0, 168, 143, 0.6) !important;
+}
