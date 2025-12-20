@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Tornar página inicial dinâmica para suportar i18n
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
