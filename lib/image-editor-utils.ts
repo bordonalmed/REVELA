@@ -134,9 +134,9 @@ export async function cropImage(
 }
 
 /**
- * Função helper para obter imagem cortada do react-easy-crop
- * Implementação baseada na função oficial do react-easy-crop
+ * Função helper para obter imagem cortada do react-image-crop
  * Suporta rotação e crop corretamente
+ * Estratégia: primeiro cortar, depois rotacionar (mais simples e confiável)
  */
 export async function getCroppedImg(
   imageSrc: string,
@@ -149,55 +149,79 @@ export async function getCroppedImg(
   rotation: number = 0
 ): Promise<string> {
   const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  
+  // Primeiro: fazer o crop na imagem original
+  const croppedCanvas = document.createElement('canvas');
+  const croppedCtx = croppedCanvas.getContext('2d');
 
-  if (!ctx) {
+  if (!croppedCtx) {
     throw new Error('Não foi possível criar contexto do canvas');
   }
 
-  const maxSize = Math.max(image.width, image.height);
-  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
+  // Validar e ajustar coordenadas do crop
+  let cropX = Math.max(0, Math.floor(pixelCrop.x));
+  let cropY = Math.max(0, Math.floor(pixelCrop.y));
+  let cropWidth = Math.min(Math.floor(pixelCrop.width), image.width - cropX);
+  let cropHeight = Math.min(Math.floor(pixelCrop.height), image.height - cropY);
 
-  // Canvas para rotação
-  const rotatedCanvas = document.createElement('canvas');
-  const rotatedCtx = rotatedCanvas.getContext('2d');
+  // Garantir que não ultrapasse os limites
+  if (cropX + cropWidth > image.width) {
+    cropWidth = image.width - cropX;
+  }
+  if (cropY + cropHeight > image.height) {
+    cropHeight = image.height - cropY;
+  }
 
-  if (!rotatedCtx) {
+  if (cropWidth <= 0 || cropHeight <= 0 || cropX < 0 || cropY < 0) {
+    console.error('Área de crop inválida:', { cropX, cropY, cropWidth, cropHeight, imageWidth: image.width, imageHeight: image.height });
+    throw new Error('Área de crop inválida');
+  }
+
+  croppedCanvas.width = cropWidth;
+  croppedCanvas.height = cropHeight;
+
+  // Fazer o crop
+  croppedCtx.drawImage(
+    image,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    cropWidth,
+    cropHeight
+  );
+
+  // Se não há rotação, retornar o crop direto
+  if (rotation === 0) {
+    return croppedCanvas.toDataURL('image/jpeg', 0.95);
+  }
+
+  // Segundo: rotacionar a imagem cortada
+  const rad = (rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  
+  const rotatedWidth = cropWidth * cos + cropHeight * sin;
+  const rotatedHeight = cropWidth * sin + cropHeight * cos;
+
+  const finalCanvas = document.createElement('canvas');
+  const finalCtx = finalCanvas.getContext('2d');
+
+  if (!finalCtx) {
     throw new Error('Não foi possível criar contexto do canvas');
   }
 
-  rotatedCanvas.width = safeArea;
-  rotatedCanvas.height = safeArea;
+  finalCanvas.width = rotatedWidth;
+  finalCanvas.height = rotatedHeight;
 
   // Aplicar rotação
-  rotatedCtx.translate(safeArea / 2, safeArea / 2);
-  rotatedCtx.rotate((rotation * Math.PI) / 180);
-  rotatedCtx.translate(-safeArea / 2, -safeArea / 2);
-  rotatedCtx.drawImage(
-    image,
-    safeArea / 2 - image.width * 0.5,
-    safeArea / 2 - image.height * 0.5
-  );
+  finalCtx.translate(rotatedWidth / 2, rotatedHeight / 2);
+  finalCtx.rotate(rad);
+  finalCtx.drawImage(croppedCanvas, -cropWidth / 2, -cropHeight / 2);
 
-  // Canvas final para crop
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  // Extrair a área cortada da imagem rotacionada
-  ctx.drawImage(
-    rotatedCanvas,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return canvas.toDataURL('image/jpeg', 0.95);
+  return finalCanvas.toDataURL('image/jpeg', 0.95);
 }
 
 /**

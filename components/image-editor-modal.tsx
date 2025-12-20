@@ -116,12 +116,18 @@ export function ImageEditorModal({
       setProcessing(true);
 
       // Converter PixelCrop para formato esperado pela função de transformação
+      // O react-image-crop retorna coordenadas em pixels da imagem original
       const pixelCrop = completedCrop ? {
-        x: completedCrop.x,
-        y: completedCrop.y,
-        width: completedCrop.width,
-        height: completedCrop.height,
+        x: Math.round(completedCrop.x),
+        y: Math.round(completedCrop.y),
+        width: Math.round(completedCrop.width),
+        height: Math.round(completedCrop.height),
       } : null;
+
+      // Debug
+      if (pixelCrop) {
+        console.log('Crop aplicado:', pixelCrop);
+      }
 
       const editedImage = await applyImageTransformations(
         imageSrc,
