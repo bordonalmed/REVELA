@@ -77,31 +77,31 @@ export function SocialMediaExportModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl my-4 rounded-lg shadow-2xl flex flex-col"
+        className="relative w-full max-w-4xl rounded-none sm:rounded-lg shadow-2xl flex flex-col"
         style={{
           backgroundColor: '#1A2B32',
           border: '1px solid rgba(232, 220, 192, 0.2)',
-          maxHeight: 'calc(100vh - 2rem)',
-          minHeight: 'min-content',
+          minHeight: '100vh',
+          maxHeight: '100vh',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Fixo */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b flex-shrink-0" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
-          <div className="flex items-center gap-3">
-            <Instagram className="w-6 h-6" style={{ color: '#E8DCC0' }} />
-            <h2 className="text-xl sm:text-2xl font-medium" style={{ color: '#E8DCC0' }}>
+        <div className="flex items-center justify-between p-4 border-b flex-shrink-0 sticky top-0 z-10" style={{ backgroundColor: '#1A2B32', borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <Instagram className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: '#E8DCC0' }} />
+            <h2 className="text-base sm:text-xl md:text-2xl font-medium truncate" style={{ color: '#E8DCC0' }}>
               Publicar nas Redes Sociais
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg transition-colors hover:bg-white/10"
+            className="p-2 rounded-lg transition-colors hover:bg-white/10 flex-shrink-0"
             style={{ color: '#E8DCC0' }}
             aria-label="Fechar"
           >
@@ -110,20 +110,20 @@ export function SocialMediaExportModal({
         </div>
 
         {/* Content - Com Scroll */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+        <div className="p-4 overflow-y-auto flex-1 min-h-0" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Seleção de Formato */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium mb-4" style={{ color: '#E8DCC0' }}>
+            <div className="space-y-3 sm:space-y-4 order-2 lg:order-1">
+              <h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }}>
                 Escolha o formato:
               </h3>
               
-              <div className="space-y-2 pr-2">
+              <div className="space-y-2">
                 {formats.map((format) => (
                   <button
                     key={format.id}
                     onClick={() => setSelectedFormat(format.id)}
-                    className={`w-full p-4 rounded-lg text-left transition-all ${
+                    className={`w-full p-3 sm:p-4 rounded-lg text-left transition-all ${
                       selectedFormat === format.id
                         ? 'ring-2'
                         : 'hover:bg-white/5'
@@ -134,16 +134,16 @@ export function SocialMediaExportModal({
                       color: '#E8DCC0',
                     }}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="font-medium mb-1">{format.name}</div>
-                        <div className="text-sm opacity-80">{format.description}</div>
+                    <div className="flex items-start justify-between gap-2 sm:gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium mb-1 text-sm sm:text-base">{format.name}</div>
+                        <div className="text-xs sm:text-sm opacity-80">{format.description}</div>
                         <div className="text-xs opacity-60 mt-1">
                           {format.width} × {format.height}px
                         </div>
                       </div>
                       {selectedFormat === format.id && (
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00A88F' }}>
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#00A88F' }}>
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FFFFFF' }} />
                         </div>
                       )}
@@ -153,22 +153,22 @@ export function SocialMediaExportModal({
               </div>
 
               {/* Opções */}
-              <div className="pt-4 border-t" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
-                <label className="flex items-center gap-3 cursor-pointer">
+              <div className="pt-3 sm:pt-4 border-t" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+                <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={includeLogo}
                     onChange={(e) => setIncludeLogo(e.target.checked)}
-                    className="w-5 h-5 rounded"
+                    className="w-4 h-4 sm:w-5 sm:h-5 rounded flex-shrink-0"
                     style={{ accentColor: '#00A88F' }}
                   />
-                  <span style={{ color: '#E8DCC0' }}>Incluir marca d&apos;água Revela</span>
+                  <span className="text-sm sm:text-base" style={{ color: '#E8DCC0' }}>Incluir marca d&apos;água Revela</span>
                 </label>
               </div>
 
               {selectedFormatInfo?.layout === 'separate' && (
-                <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.9 }}>
+                <div className="mt-3 p-2 sm:p-3 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
+                  <p className="text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.9 }}>
                     <strong>Nota:</strong> Este formato gerará duas imagens separadas (uma para ANTES e outra para DEPOIS), ideais para Stories consecutivos.
                   </p>
                 </div>
@@ -176,20 +176,20 @@ export function SocialMediaExportModal({
             </div>
 
             {/* Preview */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium" style={{ color: '#E8DCC0' }}>
+            <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
+              <h3 className="text-base sm:text-lg font-medium" style={{ color: '#E8DCC0' }}>
                 Preview:
               </h3>
               
               <div
-                className="relative rounded-lg overflow-hidden border-2"
+                className="relative rounded-lg overflow-hidden border-2 max-h-[300px] sm:max-h-[400px]"
                 style={{
                   backgroundColor: '#000000',
                   borderColor: 'rgba(232, 220, 192, 0.2)',
                   aspectRatio: selectedFormatInfo
                     ? `${selectedFormatInfo.width} / ${selectedFormatInfo.height}`
                     : '1 / 1',
-                  maxHeight: '500px',
+                  width: '100%',
                 }}
               >
                 {generatingPreview ? (
@@ -216,11 +216,11 @@ export function SocialMediaExportModal({
           </div>
         </div>
 
-        {/* Footer - Fixo */}
-        <div className="flex items-center justify-end gap-3 p-4 sm:p-6 border-t flex-shrink-0" style={{ borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+        {/* Footer - Fixo e Sticky */}
+        <div className="flex items-center justify-end gap-2 sm:gap-3 p-3 sm:p-4 md:p-6 border-t flex-shrink-0 sticky bottom-0" style={{ backgroundColor: '#1A2B32', borderColor: 'rgba(232, 220, 192, 0.1)' }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg transition-colors"
+            className="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
             style={{
               backgroundColor: 'rgba(232, 220, 192, 0.1)',
               color: '#E8DCC0',
@@ -231,7 +231,7 @@ export function SocialMediaExportModal({
           <button
             onClick={handleExport}
             disabled={exporting || generatingPreview}
-            className="px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 sm:px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
             style={{
               backgroundColor: '#00A88F',
               color: '#FFFFFF',
