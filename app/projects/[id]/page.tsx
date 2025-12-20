@@ -1785,6 +1785,23 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={() => {
+                      setShowSocialMediaModal(true);
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{ 
+                      backgroundColor: '#00A88F', 
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Publicar nas redes sociais"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Publicar</span>
+                  </button>
+                  <button
+                    onClick={() => {
                       handleEnterPresentationMode();
                       setShowMobileMenu(false);
                     }}
