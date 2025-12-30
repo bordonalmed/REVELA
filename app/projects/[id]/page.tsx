@@ -600,15 +600,47 @@ export default function ViewProjectPage() {
     setShowImageEditor(true);
   };
 
-  const handleSaveEditedImage = (editedImage: string) => {
+  const handleSaveEditedImage = async (editedImage: string) => {
+    if (!project) return;
+
     if (editingImageType === 'before' && editingImageIndex !== null) {
-      const newImages = [...editingBeforeImages];
-      newImages[editingImageIndex] = editedImage;
-      setEditingBeforeImages(newImages);
+      if (isEditing) {
+        // Se estiver no modo de edição, atualizar apenas o array de edição
+        const newImages = [...editingBeforeImages];
+        newImages[editingImageIndex] = editedImage;
+        setEditingBeforeImages(newImages);
+      } else {
+        // Se não estiver no modo de edição, atualizar o projeto original imediatamente
+        const newImages = [...project.beforeImages];
+        newImages[editingImageIndex] = editedImage;
+        
+        const updatedProject: Project = {
+          ...project,
+          beforeImages: newImages,
+        };
+        
+        await updateProject(updatedProject);
+        setProject(updatedProject);
+      }
     } else if (editingImageType === 'after' && editingImageIndex !== null) {
-      const newImages = [...editingAfterImages];
-      newImages[editingImageIndex] = editedImage;
-      setEditingAfterImages(newImages);
+      if (isEditing) {
+        // Se estiver no modo de edição, atualizar apenas o array de edição
+        const newImages = [...editingAfterImages];
+        newImages[editingImageIndex] = editedImage;
+        setEditingAfterImages(newImages);
+      } else {
+        // Se não estiver no modo de edição, atualizar o projeto original imediatamente
+        const newImages = [...project.afterImages];
+        newImages[editingImageIndex] = editedImage;
+        
+        const updatedProject: Project = {
+          ...project,
+          afterImages: newImages,
+        };
+        
+        await updateProject(updatedProject);
+        setProject(updatedProject);
+      }
     }
     
     setShowImageEditor(false);
@@ -884,9 +916,9 @@ export default function ViewProjectPage() {
         className={mainClassName}
         style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
-        {/* Botão Voltar/X - Escondido no mobile portrait (já está no menu) */}
+        {/* Botão Voltar/X - Mobile portrait */}
         {!isLandscape && (
-          <div className="mb-2 sm:mb-6 hidden sm:block">
+          <div className="mb-2 sm:mb-6">
             {(isEditing || isSliderMode || isPresentationMode) ? (
               <button
                 onClick={() => {
@@ -1801,7 +1833,7 @@ export default function ViewProjectPage() {
 
         {/* Botões Flutuantes - Mobile Portrait: Menu Compacto */}
         {!isEditing && !isLandscape && (
-          <div className="fixed top-4 right-4 z-50">
+          <div className="fixed top-16 right-4 z-50">
             {/* Menu Principal (botão hambúrguer) */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -1972,7 +2004,7 @@ export default function ViewProjectPage() {
 
         {/* Botões Flutuantes - Desktop/Landscape: Menu Hambúrguer */}
         {!isEditing && isLandscape && (
-          <div className="fixed top-4 right-4 z-50">
+          <div className="fixed top-16 right-4 z-50">
             {/* Menu Principal (botão hambúrguer) */}
             <button
               onClick={() => setShowDesktopMenu(!showDesktopMenu)}

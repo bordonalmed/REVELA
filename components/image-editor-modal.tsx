@@ -474,7 +474,7 @@ export function ImageEditorModal({
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>Aplicar Alterações</span>
+                <span>Salvar Alterações</span>
               </>
             )}
           </button>
