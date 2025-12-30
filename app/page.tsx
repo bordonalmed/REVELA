@@ -45,16 +45,6 @@ function HomeContent() {
             </div>
           </div>
           
-          {/* H1 Principal - Pergunta Conversacional */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light mb-4 sm:mb-6 px-2" style={{ color: '#E8DCC0' }}>
-            Como Comparar Fotos Antes e Depois de Forma Profissional?
-          </h1>
-          
-          {/* Resposta Direta */}
-          <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed mb-6 sm:mb-8 px-4 sm:px-6" style={{ color: '#E8DCC0', opacity: 0.95 }}>
-            <strong>Resposta direta:</strong> O Revela é uma plataforma profissional que permite comparar fotos antes e depois com privacidade total e armazenamento local seguro.
-          </p>
-          
           {/* Slogan */}
           <div className="mb-6 sm:mb-8 md:mb-10">
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl italic px-2" style={{ color: '#E8DCC0', opacity: 0.9 }}>
