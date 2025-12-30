@@ -1769,7 +1769,7 @@ export default function ViewProjectPage() {
 
         {/* Botões Flutuantes - Mobile Portrait: Menu Compacto */}
         {!isEditing && !isLandscape && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed top-4 right-4 z-50">
             {/* Menu Principal (botão hambúrguer) */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -1796,7 +1796,7 @@ export default function ViewProjectPage() {
                   className="fixed inset-0 z-40" 
                   onClick={() => setShowMobileMenu(false)}
                 />
-                <div className="absolute bottom-14 right-0 flex flex-col gap-2 mb-2 z-50">
+                <div className="absolute top-14 right-0 flex flex-col gap-2 mt-2 z-50">
                   {/* Botão Voltar */}
                   <button
                     onClick={() => {
@@ -1940,7 +1940,7 @@ export default function ViewProjectPage() {
 
         {/* Botões Flutuantes - Desktop/Landscape: Menu Hambúrguer */}
         {!isEditing && isLandscape && (
-          <div className="fixed bottom-4 right-4 z-50">
+          <div className="fixed top-4 right-4 z-50">
             {/* Menu Principal (botão hambúrguer) */}
             <button
               onClick={() => setShowDesktopMenu(!showDesktopMenu)}
@@ -1967,7 +1967,7 @@ export default function ViewProjectPage() {
                   className="fixed inset-0 z-40" 
                   onClick={() => setShowDesktopMenu(false)}
                 />
-                <div className="absolute bottom-14 right-0 flex flex-col gap-2 mb-2 z-50">
+                <div className="absolute top-14 right-0 flex flex-col gap-2 mt-2 z-50">
                   {/* Botão Voltar */}
                   <button
                     onClick={() => {
