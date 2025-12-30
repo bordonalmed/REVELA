@@ -884,39 +884,71 @@ export default function ViewProjectPage() {
         className={mainClassName}
         style={{ marginTop: shouldHideChrome ? '0px' : '36px' }}
       >
-        {/* Botão Voltar - Escondido no mobile portrait (já está no menu) */}
+        {/* Botão Voltar/X - Escondido no mobile portrait (já está no menu) */}
         {!isLandscape && (
           <div className="mb-2 sm:mb-6 hidden sm:block">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-                color: '#E8DCC0', 
-                borderColor: 'rgba(232, 220, 192, 0.1)' 
-              }}
-              title="Voltar para página anterior"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Voltar</span>
-            </button>
+            {(isEditing || isSliderMode || isPresentationMode) ? (
+              <button
+                onClick={() => {
+                  if (isEditing) handleCancelEdit();
+                  if (isSliderMode) setIsSliderMode(false);
+                  if (isPresentationMode) handleExitPresentationMode();
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                style={{ color: '#E8DCC0' }}
+                title="Fechar"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
+                style={{ 
+                  backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                  color: '#E8DCC0', 
+                  borderColor: 'rgba(232, 220, 192, 0.1)' 
+                }}
+                title="Voltar para página anterior"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar</span>
+              </button>
+            )}
           </div>
         )}
         {isLandscape && (
           <div className="mb-2 sm:mb-6">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90 border"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-                color: '#E8DCC0', 
-                borderColor: 'rgba(232, 220, 192, 0.1)' 
-              }}
-              title="Voltar"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Voltar</span>
-            </button>
+            {(isEditing || isSliderMode || isPresentationMode) ? (
+              <button
+                onClick={() => {
+                  if (isEditing) handleCancelEdit();
+                  if (isSliderMode) setIsSliderMode(false);
+                  if (isPresentationMode) handleExitPresentationMode();
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                style={{ color: '#E8DCC0' }}
+                title="Fechar"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90 border"
+                style={{ 
+                  backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                  color: '#E8DCC0', 
+                  borderColor: 'rgba(232, 220, 192, 0.1)' 
+                }}
+                title="Voltar para página anterior"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Voltar</span>
+              </button>
+            )}
           </div>
         )}
 
