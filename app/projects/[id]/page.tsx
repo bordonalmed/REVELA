@@ -603,14 +603,9 @@ export default function ViewProjectPage() {
   const handleSaveEditedImage = async (editedImage: string) => {
     if (!project) return;
 
-    if (editingImageType === 'before' && editingImageIndex !== null) {
-      if (isEditing) {
-        // Se estiver no modo de edição, atualizar apenas o array de edição
-        const newImages = [...editingBeforeImages];
-        newImages[editingImageIndex] = editedImage;
-        setEditingBeforeImages(newImages);
-      } else {
-        // Se não estiver no modo de edição, atualizar o projeto original imediatamente
+    try {
+      if (editingImageType === 'before' && editingImageIndex !== null) {
+        // Sempre salvar permanentemente no projeto
         const newImages = [...project.beforeImages];
         newImages[editingImageIndex] = editedImage;
         
@@ -619,17 +614,18 @@ export default function ViewProjectPage() {
           beforeImages: newImages,
         };
         
+        // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
-      }
-    } else if (editingImageType === 'after' && editingImageIndex !== null) {
-      if (isEditing) {
-        // Se estiver no modo de edição, atualizar apenas o array de edição
-        const newImages = [...editingAfterImages];
-        newImages[editingImageIndex] = editedImage;
-        setEditingAfterImages(newImages);
-      } else {
-        // Se não estiver no modo de edição, atualizar o projeto original imediatamente
+        
+        // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
+        if (isEditing) {
+          const newEditingImages = [...editingBeforeImages];
+          newEditingImages[editingImageIndex] = editedImage;
+          setEditingBeforeImages(newEditingImages);
+        }
+      } else if (editingImageType === 'after' && editingImageIndex !== null) {
+        // Sempre salvar permanentemente no projeto
         const newImages = [...project.afterImages];
         newImages[editingImageIndex] = editedImage;
         
@@ -638,14 +634,25 @@ export default function ViewProjectPage() {
           afterImages: newImages,
         };
         
+        // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
+        
+        // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
+        if (isEditing) {
+          const newEditingImages = [...editingAfterImages];
+          newEditingImages[editingImageIndex] = editedImage;
+          setEditingAfterImages(newEditingImages);
+        }
       }
+      
+      setShowImageEditor(false);
+      setEditingImageIndex(null);
+      setEditingImageType(null);
+    } catch (error) {
+      console.error('Erro ao salvar foto editada:', error);
+      alert('Erro ao salvar foto editada. Tente novamente.');
     }
-    
-    setShowImageEditor(false);
-    setEditingImageIndex(null);
-    setEditingImageType(null);
   };
 
   const handleCloseImageEditor = () => {
