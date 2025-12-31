@@ -1,6 +1,8 @@
 // Sistema de Tracking do Google Analytics
 // Configuração e funções para rastreamento de eventos
 
+export {};
+
 import { 
   trackConversionSync, 
   mapRevelaEventToConversion,
@@ -10,8 +12,9 @@ import {
 
 declare global {
   interface Window {
-    gtag: (...args: any[]) => void;
-    dataLayer: any[];
+    // Tornar opcionais para evitar conflitos com outras declarações
+    gtag?: (...args: any[]) => void;
+    dataLayer?: any[];
   }
 }
 
@@ -20,7 +23,7 @@ const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || '';
 
 // Verificar se o Google Analytics está disponível
 export const isGAEnabled = (): boolean => {
-  return typeof window !== 'undefined' && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '';
+  return typeof window !== 'undefined' && window.gtag && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '';
 };
 
 // Inicializar Google Analytics
@@ -39,18 +42,22 @@ export const initGA = (): void => {
   // Inicializar dataLayer e gtag
   window.dataLayer = window.dataLayer || [];
   window.gtag = function(...args: any[]) {
-    window.dataLayer.push(args);
+    if (window.dataLayer) {
+      window.dataLayer.push(args);
+    }
   };
 
-  window.gtag('js', new Date());
-  window.gtag('config', GA_MEASUREMENT_ID, {
-    page_path: window.location.pathname,
-  });
+  if (window.gtag) {
+    window.gtag('js', new Date());
+    window.gtag('config', GA_MEASUREMENT_ID, {
+      page_path: window.location.pathname,
+    });
+  }
 };
 
 // Trackear visualização de página
 export const trackPageView = (path: string, title?: string): void => {
-  if (!isGAEnabled()) return;
+  if (!isGAEnabled() || !window.gtag) return;
 
   window.gtag('config', GA_MEASUREMENT_ID, {
     page_path: path,
@@ -68,7 +75,7 @@ export const trackEvent = (
     [key: string]: any;
   }
 ): void => {
-  if (!isGAEnabled()) return;
+  if (!isGAEnabled() || !window.gtag) return;
 
   window.gtag('event', eventName, {
     ...eventParams,
