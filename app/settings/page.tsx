@@ -9,6 +9,7 @@ import { Footer } from '@/components/footer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/contexts/language-context';
+import { trackChangePassword } from '@/lib/analytics';
 
 export default function SettingsPage() {
   const { t } = useLanguage();
@@ -68,6 +69,9 @@ export default function SettingsPage() {
       });
 
       if (error) throw error;
+
+      // Trackear alteração de senha
+      trackChangePassword();
 
       setSuccess(t.settings.success);
       setCurrentPassword('');

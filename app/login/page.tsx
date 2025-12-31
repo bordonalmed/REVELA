@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
+import { trackLogin } from '@/lib/analytics';
 
 export default function LoginPage() {
   const { t } = useLanguage();
@@ -31,6 +32,9 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
+
+      // Trackear login
+      trackLogin('email');
 
       router.push('/dashboard');
     } catch (error: any) {

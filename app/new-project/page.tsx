@@ -9,6 +9,7 @@ import { saveProject } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import Image from 'next/image';
+import { trackCreateProject } from '@/lib/analytics';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -183,6 +184,10 @@ export default function NewProjectPage() {
       // Salvar projeto (tenta IndexedDB primeiro, depois localStorage)
       try {
         await saveProject(project);
+        
+        // Trackear criação de projeto
+        trackCreateProject(project.name, beforeBase64.length, afterBase64.length);
+        
         document.body.removeChild(processingMessage);
         alert('Projeto salvo com sucesso no seu dispositivo!');
         // NÃO limpar o formulário - o usuário decide quando iniciar novo projeto

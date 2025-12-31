@@ -16,6 +16,15 @@ import { errorLogger } from '@/lib/error-logger';
 import { exportComparisonImage } from '@/lib/export-utils';
 import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
+import { 
+  trackViewProject, 
+  trackUpdateProject, 
+  trackEditImage, 
+  trackExportImage, 
+  trackEnterPresentationMode, 
+  trackEnterSliderMode, 
+  trackSaveNotes 
+} from '@/lib/analytics';
 
 export default function ViewProjectPage() {
   const router = useRouter();
@@ -252,6 +261,11 @@ export default function ViewProjectPage() {
           beforeCount: loadedProject.beforeImages.length,
           afterCount: loadedProject.afterImages.length
         });
+
+        // Trackear visualização de projeto
+        if (user) {
+          trackViewProject(loadedProject.id, loadedProject.name);
+        }
       } else {
         errorLogger.warn('Projeto não encontrado ou timeout', { projectId });
         router.push('/projects');
@@ -384,6 +398,12 @@ export default function ViewProjectPage() {
       await updateProject(updatedProject);
       setProject(updatedProject);
       setShowNotesModal(false);
+      
+      // Trackear salvamento de notas
+      if (user) {
+        trackSaveNotes(updatedProject.id, updatedProject.name, tempNotes.trim().length);
+      }
+      
       alert('Notas salvas com sucesso!');
     } catch (error: any) {
       console.error('Erro ao salvar notas:', error);
@@ -402,11 +422,22 @@ export default function ViewProjectPage() {
         // Ignora erro se não conseguir entrar em fullscreen
       });
     }
+    
+    // Trackear modo apresentação
+    if (user && project) {
+      trackEnterPresentationMode(project.id, project.name);
+    }
   };
 
   const handleToggleSliderMode = () => {
-    setIsSliderMode(!isSliderMode);
+    const newSliderMode = !isSliderMode;
+    setIsSliderMode(newSliderMode);
     setIsPresentationMode(false); // Desativar apresentação ao ativar slider
+    
+    // Trackear modo slider (apenas quando ativar)
+    if (user && project && newSliderMode) {
+      trackEnterSliderMode(project.id, project.name);
+    }
   };
 
   const handleExitPresentationMode = () => {
@@ -618,6 +649,11 @@ export default function ViewProjectPage() {
         await updateProject(updatedProject);
         setProject(updatedProject);
         
+        // Trackear edição de imagem
+        if (user) {
+          trackEditImage(project.id, project.name, 'before', editingImageIndex, 'all');
+        }
+        
         // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
         if (isEditing) {
           const newEditingImages = [...editingBeforeImages];
@@ -637,6 +673,11 @@ export default function ViewProjectPage() {
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
+        
+        // Trackear edição de imagem
+        if (user) {
+          trackEditImage(project.id, project.name, 'after', editingImageIndex, 'all');
+        }
         
         // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
         if (isEditing) {
@@ -686,6 +727,11 @@ export default function ViewProjectPage() {
           includeInfo: true,
         }
       );
+
+      // Trackear exportação de imagem
+      if (user) {
+        trackExportImage(project.id, project.name, 'png', 'side-by-side');
+      }
 
       // Pequeno delay para mostrar feedback
       setTimeout(() => {
@@ -744,6 +790,15 @@ export default function ViewProjectPage() {
       setNewAfterFiles([]);
       setBeforeCurrentIndex(0);
       setAfterCurrentIndex(0);
+      
+      // Trackear atualização de projeto
+      if (user) {
+        trackUpdateProject(updatedProject.id, updatedProject.name, {
+          beforeImagesCount: updatedProject.beforeImages.length,
+          afterImagesCount: updatedProject.afterImages.length,
+        });
+      }
+      
       alert('Projeto atualizado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao salvar edição:', error);
@@ -2285,6 +2340,7 @@ export default function ViewProjectPage() {
             beforeImage={displayBeforeImages[beforeCurrentIndex]}
             afterImage={displayAfterImages[afterCurrentIndex]}
             projectName={project.name}
+            projectId={project.id}
           />
         )}
 

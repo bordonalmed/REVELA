@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Instagram, Download, Loader2 } from 'lucide-react';
 import { exportForSocialMedia, generateSocialMediaPreview, getSocialMediaFormats, type SocialMediaFormat } from '@/lib/export-utils';
+import { trackShare } from '@/lib/analytics';
 
 interface SocialMediaExportModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface SocialMediaExportModalProps {
   beforeImage: string;
   afterImage: string;
   projectName: string;
+  projectId?: string;
 }
 
 export function SocialMediaExportModal({
@@ -18,6 +20,7 @@ export function SocialMediaExportModal({
   beforeImage,
   afterImage,
   projectName,
+  projectId,
 }: SocialMediaExportModalProps) {
   const [selectedFormat, setSelectedFormat] = useState<SocialMediaFormat>('instagram-feed-1x1');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -59,6 +62,15 @@ export function SocialMediaExportModal({
           includeInfo: false,
         }
       );
+      
+      // Trackear compartilhamento
+      if (projectId) {
+        const platform = selectedFormat.includes('instagram') ? 'instagram' : 
+                        selectedFormat.includes('facebook') ? 'facebook' : 
+                        selectedFormat.includes('twitter') ? 'twitter' : 'social_media';
+        trackShare(projectId, projectName, platform);
+      }
+      
       // Pequeno delay para feedback visual
       setTimeout(() => {
         setExporting(false);

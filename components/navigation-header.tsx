@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { SafeImage } from '@/components/safe-image';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
+import { trackLogout } from '@/lib/analytics';
 
 export function NavigationHeader() {
   const { t } = useLanguage();
@@ -16,6 +17,9 @@ export function NavigationHeader() {
 
   const handleLogout = async () => {
     try {
+      // Trackear logout antes de sair
+      trackLogout();
+      
       await supabase.auth.signOut();
       router.push('/');
     } catch (error) {

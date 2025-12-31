@@ -4,6 +4,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { LanguageProvider } from "@/contexts/language-context";
+import { GoogleAnalytics } from "@/components/google-analytics";
+import { ConversionPixels } from "@/components/conversion-pixels";
 
 export const metadata: Metadata = {
   title: "Como Comparar Fotos Antes e Depois de Forma Profissional? | Revela",
@@ -100,6 +102,8 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="antialiased">
+        <GoogleAnalytics />
+        <ConversionPixels />
         <LanguageProvider>
           <ErrorBoundary>
             {children}

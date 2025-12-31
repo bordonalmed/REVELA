@@ -10,6 +10,7 @@ import { getAllProjects, deleteProjectFromIndexedDB, type Project, exportBackup,
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
+import { trackDeleteProject, trackExportBackup, trackImportBackup, trackCreateFolder, trackUpdateFolder, trackDeleteFolder } from '@/lib/analytics';
 
 type SortOption = 'recent' | 'oldest' | 'name-asc' | 'name-desc';
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
@@ -186,8 +187,17 @@ export default function ProjectsPage() {
     }
 
     try {
+      // Encontrar projeto antes de deletar para tracking
+      const projectToDelete = projects.find(p => p.id === id);
+      
       await deleteProjectFromIndexedDB(id);
       await loadProjects();
+      
+      // Trackear deleção de projeto
+      if (user && projectToDelete) {
+        trackDeleteProject(id, projectToDelete.name);
+      }
+      
       alert('Projeto excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
@@ -218,6 +228,11 @@ export default function ProjectsPage() {
       if (autoBackup) {
         enableAutoBackup();
         setLastBackupDate(backup.exportDate);
+      }
+      
+      // Trackear exportação de backup
+      if (user) {
+        trackExportBackup(backup.metadata?.totalProjects || 0);
       }
       
       alert(`Backup exportado com sucesso! ${backup.metadata?.totalProjects || 0} projeto(s) exportado(s).`);
@@ -253,6 +268,11 @@ export default function ProjectsPage() {
       
       // Recarregar projetos
       await loadProjects();
+      
+      // Trackear importação de backup
+      if (user) {
+        trackImportBackup(backupData.projects.length);
+      }
       
       // Mostrar resultados
       let message = `Importação concluída!\n\n`;
@@ -306,10 +326,17 @@ export default function ProjectsPage() {
     }
 
     try {
-      await createFolder(newFolderName.trim());
+      const folderName = newFolderName.trim();
+      await createFolder(folderName);
       await loadFolders();
       setNewFolderName('');
       setShowFolderModal(false);
+      
+      // Trackear criação de pasta
+      if (user) {
+        trackCreateFolder(folderName);
+      }
+      
       alert('Pasta criada com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -324,11 +351,18 @@ export default function ProjectsPage() {
     }
 
     try {
-      await updateFolder(folder.id, { name: newFolderName.trim() });
+      const folderName = newFolderName.trim();
+      await updateFolder(folder.id, { name: folderName });
       await loadFolders();
       setNewFolderName('');
       setEditingFolder(null);
       setShowFolderModal(false);
+      
+      // Trackear atualização de pasta
+      if (user) {
+        trackUpdateFolder(folder.id, folderName);
+      }
+      
       alert('Pasta atualizada com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';

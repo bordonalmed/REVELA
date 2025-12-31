@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
+import { trackSignup } from '@/lib/analytics';
 
 export default function SignupPage() {
   const { t } = useLanguage();
@@ -44,6 +45,9 @@ export default function SignupPage() {
       });
 
       if (error) throw error;
+
+      // Trackear signup
+      trackSignup('email');
 
       // Redirecionar direto para o dashboard após criar conta
       router.push('/dashboard');
