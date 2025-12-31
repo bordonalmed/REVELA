@@ -23,7 +23,7 @@ const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || '';
 
 // Verificar se o Google Analytics está disponível
 export const isGAEnabled = (): boolean => {
-  return typeof window !== 'undefined' && window.gtag && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '';
+  return !!(typeof window !== 'undefined' && window.gtag && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '');
 };
 
 // Inicializar Google Analytics
