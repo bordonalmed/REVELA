@@ -59,7 +59,7 @@ export const initMetaPixel = (pixelId: string): void => {
   if (typeof window === 'undefined' || !pixelId) return;
 
   // Carregar script do Meta Pixel
-  !function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+  (function(f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
     if (f.fbq) return;
     n = f.fbq = function() {
       n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
@@ -74,7 +74,7 @@ export const initMetaPixel = (pixelId: string): void => {
     t.src = v;
     s = b.getElementsByTagName(e)[0];
     s.parentNode?.insertBefore(t, s);
-  }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+  })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
   window.fbq('init', pixelId);
   window.fbq('track', 'PageView');
@@ -99,11 +99,11 @@ export const trackMetaConversion = (event: ConversionEvent, data?: ConversionDat
 export const initTwitterPixel = (pixelId: string): void => {
   if (typeof window === 'undefined' || !pixelId) return;
 
-  !function(e: any, t: any, n: any, s: any, u: any, a: any) {
+  (function(e: any, t: any, n: any, s: any, u: any, a: any) {
     e.twq || (s = e.twq = function() {
       s.exe ? s.exe.apply(s, arguments) : s.queue.push(arguments);
     }, s.version = '1.1', s.queue = [], u = t.createElement(n), u.async = !0, u.src = 'https://static.ads-twitter.com/uwt.js', a = t.getElementsByTagName(n)[0], a.parentNode.insertBefore(u, a));
-  }(window, document, 'script');
+  })(window, document, 'script');
 
   window.twq('config', pixelId);
 };
@@ -152,7 +152,7 @@ export const trackGoogleAdsConversion = (
 export const initTikTokPixel = (pixelId: string): void => {
   if (typeof window === 'undefined' || !pixelId) return;
 
-  !function(w: any, d: any, t: any) {
+  (function(w: any, d: any, t: any) {
     w.TiktokAnalyticsObject = t;
     var ttq = w[t] = w[t] || [];
     ttq.methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'],
@@ -185,7 +185,7 @@ export const initTikTokPixel = (pixelId: string): void => {
 
     ttq.load(pixelId);
     ttq.page();
-  }(window, document, 'ttq');
+  })(window, document, 'ttq');
 
   window.ttq = window.ttq || {};
 };
