@@ -76,8 +76,8 @@ export const initMetaPixel = (pixelId: string): void => {
     s.parentNode?.insertBefore(t, s);
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
-  window.fbq('init', pixelId);
-  window.fbq('track', 'PageView');
+  window.fbq?.('init', pixelId);
+  window.fbq?.('track', 'PageView');
 };
 
 export const trackMetaConversion = (event: ConversionEvent, data?: ConversionData): void => {
@@ -92,7 +92,7 @@ export const trackMetaConversion = (event: ConversionEvent, data?: ConversionDat
   if (data?.content_ids) params.content_ids = data.content_ids;
   if (data?.contents) params.contents = data.contents;
 
-  window.fbq('track', event, params);
+  window.fbq?.('track', event, params);
 };
 
 // X/Twitter Pixel
@@ -105,7 +105,7 @@ export const initTwitterPixel = (pixelId: string): void => {
     }, s.version = '1.1', s.queue = [], u = t.createElement(n), u.async = !0, u.src = 'https://static.ads-twitter.com/uwt.js', a = t.getElementsByTagName(n)[0], a.parentNode.insertBefore(u, a));
   })(window, document, 'script');
 
-  window.twq('config', pixelId);
+  window.twq?.('config', pixelId);
 };
 
 export const trackTwitterConversion = (event: ConversionEvent, data?: ConversionData): void => {
@@ -117,7 +117,7 @@ export const trackTwitterConversion = (event: ConversionEvent, data?: Conversion
   if (data?.currency) params.currency = data.currency;
   if (data?.content_name) params.content_name = data.content_name;
 
-  window.twq('event', event, params);
+  window.twq?.('event', event, params);
 };
 
 // Google Ads (via Google Analytics ou Google Ads Conversion Tracking)
@@ -126,11 +126,9 @@ export const initGoogleAds = (conversionId: string, conversionLabel?: string): v
 
   // Google Ads usa o gtag do Google Analytics
   // Se já tiver gtag inicializado, apenas adiciona a configuração
-  if (window.gtag) {
-    window.gtag('config', conversionId, {
-      send_page_view: true,
-    });
-  }
+  window.gtag?.('config', conversionId, {
+    send_page_view: true,
+  });
 };
 
 export const trackGoogleAdsConversion = (
@@ -141,7 +139,7 @@ export const trackGoogleAdsConversion = (
 ): void => {
   if (typeof window === 'undefined' || !window.gtag) return;
 
-  window.gtag('event', 'conversion', {
+  window.gtag?.('event', 'conversion', {
     'send_to': `${conversionId}/${conversionLabel}`,
     'value': value,
     'currency': currency,
@@ -200,7 +198,7 @@ export const trackTikTokConversion = (event: ConversionEvent, data?: ConversionD
   if (data?.content_name) params.content_name = data.content_name;
   if (data?.content_ids) params.content_ids = data.content_ids;
 
-  window.ttq.track(event, params);
+  window.ttq?.track(event, params);
 };
 
 // Função helper para trackear conversão em todas as plataformas
