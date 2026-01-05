@@ -99,7 +99,8 @@ export const trackMetaConversion = (event: ConversionEvent, data?: ConversionDat
 export const initTwitterPixel = (pixelId: string): void => {
   if (typeof window === 'undefined' || !pixelId) return;
 
-  (function(e: any, t: any, n: any, s: any, u: any, a: any) {
+  (function(e?: any, t?: any, n?: any, s?: any, u?: any, a?: any) {
+    if (!e || !t || !n) return;
     e.twq || (s = e.twq = function() {
       s.exe ? s.exe.apply(s, arguments) : s.queue.push(arguments);
     }, s.version = '1.1', s.queue = [], u = t.createElement(n), u.async = !0, u.src = 'https://static.ads-twitter.com/uwt.js', a = t.getElementsByTagName(n)[0], a.parentNode.insertBefore(u, a));
