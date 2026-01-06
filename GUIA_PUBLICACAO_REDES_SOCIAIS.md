@@ -253,3 +253,5 @@ type SocialMediaFormat =
 **Status**: ✅ Completo e Funcional (Fase 1)
 
 
+
+

@@ -214,3 +214,5 @@ H1: Como Comparar Fotos Antes e Depois de Forma Profissional?
 **Status**: ✅ Completo e Funcional
 
 
+
+

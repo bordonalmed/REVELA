@@ -186,7 +186,7 @@ export const initTikTokPixel = (pixelId: string): void => {
     ttq.page();
   })(window, document, 'ttq');
 
-  window.ttq = window.ttq || {};
+  // window.ttq já foi inicializado pelo IIFE acima
 };
 
 export const trackTikTokConversion = (event: ConversionEvent, data?: ConversionData): void => {

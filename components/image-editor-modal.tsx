@@ -213,10 +213,11 @@ export function ImageEditorModal({
                     justifyContent: 'center',
                   }}
                 >
+                  {/* @ts-ignore - react-image-crop type issue */}
                   <ReactCrop
                     crop={crop}
-                    onChange={(_, percentCrop) => setCrop(percentCrop)}
-                    onComplete={(c) => setCompletedCrop(c)}
+                    onChange={(_: ReactCropType | undefined, percentCrop: ReactCropType) => setCrop(percentCrop)}
+                    onComplete={(c: PixelCrop) => setCompletedCrop(c)}
                     aspect={aspectRatio}
                     className="max-w-full"
                     locked={false}
