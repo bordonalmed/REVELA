@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Instagram, Download, Loader2 } from 'lucide-react';
 import { exportForSocialMedia, generateSocialMediaPreview, getSocialMediaFormats, type SocialMediaFormat } from '@/lib/export-utils';
 import { trackShare } from '@/lib/analytics';
@@ -12,6 +13,10 @@ interface SocialMediaExportModalProps {
   afterImage: string;
   projectName: string;
   projectId?: string;
+  /** Regra de acesso do recurso: Pro ou Premium. */
+  hasExportAccess?: boolean;
+  /** Compat legado: tratado como acesso Pro/Premium quando hasExportAccess não for informado. */
+  isProUser?: boolean;
 }
 
 export function SocialMediaExportModal({
@@ -21,12 +26,16 @@ export function SocialMediaExportModal({
   afterImage,
   projectName,
   projectId,
+  hasExportAccess,
+  isProUser = false,
 }: SocialMediaExportModalProps) {
+  const router = useRouter();
   const [selectedFormat, setSelectedFormat] = useState<SocialMediaFormat>('instagram-feed-1x1');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generatingPreview, setGeneratingPreview] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [includeLogo, setIncludeLogo] = useState(true);
+  const canExport = hasExportAccess ?? isProUser;
 
   const formats = getSocialMediaFormats();
 
@@ -50,6 +59,10 @@ export function SocialMediaExportModal({
   };
 
   const handleExport = async () => {
+    if (!canExport) {
+      router.push('/planos');
+      return;
+    }
     try {
       setExporting(true);
       await exportForSocialMedia(
@@ -173,8 +186,12 @@ export function SocialMediaExportModal({
                     onChange={(e) => setIncludeLogo(e.target.checked)}
                     className="w-4 h-4 sm:w-5 sm:h-5 rounded flex-shrink-0"
                     style={{ accentColor: '#00A88F' }}
+                    disabled={!canExport}
                   />
-                  <span className="text-sm sm:text-base" style={{ color: '#E8DCC0' }}>Incluir marca d&apos;água Revela</span>
+                  <span className="text-sm sm:text-base" style={{ color: '#E8DCC0' }}>
+                    Incluir marca d&apos;água
+                    {!canExport && ' (obrigatório no plano Free)'}
+                  </span>
                 </label>
               </div>
 
@@ -229,38 +246,58 @@ export function SocialMediaExportModal({
         </div>
 
         {/* Footer - Fixo e Sticky */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3 p-3 sm:p-4 md:p-6 border-t flex-shrink-0 sticky bottom-0" style={{ backgroundColor: '#1A2B32', borderColor: 'rgba(232, 220, 192, 0.1)' }}>
-          <button
-            onClick={onClose}
-            className="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
-            style={{
-              backgroundColor: 'rgba(232, 220, 192, 0.1)',
-              color: '#E8DCC0',
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || generatingPreview}
-            className="px-4 sm:px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
-            style={{
-              backgroundColor: '#00A88F',
-              color: '#FFFFFF',
-            }}
-          >
-            {exporting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Gerando...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                <span>Gerar e Baixar</span>
-              </>
-            )}
-          </button>
+        <div className="flex items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 md:p-6 border-t flex-shrink-0 sticky bottom-0" style={{ backgroundColor: '#1A2B32', borderColor: 'rgba(232, 220, 192, 0.1)' }}>
+          {!canExport && (
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] sm:text-xs" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+                Para gerar a arte final e baixar a imagem, faça upgrade para os planos Revela Pro ou Revela Premium.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/planos')}
+                className="px-2 py-1 rounded-md text-[11px] sm:text-xs font-medium transition-colors"
+                style={{
+                  backgroundColor: 'rgba(0, 168, 143, 0.15)',
+                  color: '#E8DCC0',
+                }}
+              >
+                Ver planos
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-2 sm:gap-3">
+            <button
+              onClick={onClose}
+              className="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
+              style={{
+                backgroundColor: 'rgba(232, 220, 192, 0.1)',
+                color: '#E8DCC0',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || generatingPreview}
+              className="px-4 sm:px-6 py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+              style={{
+                backgroundColor: '#00A88F',
+                color: '#FFFFFF',
+              }}
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Gerando...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>{canExport ? 'Gerar e Baixar' : 'Ver planos Pro'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

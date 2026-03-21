@@ -29,7 +29,6 @@ export const isGAEnabled = (): boolean => {
 // Inicializar Google Analytics
 export const initGA = (): void => {
   if (typeof window === 'undefined' || !GA_MEASUREMENT_ID) {
-    console.warn('Google Analytics não configurado. Defina NEXT_PUBLIC_GA_MEASUREMENT_ID');
     return;
   }
 

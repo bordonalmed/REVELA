@@ -8,12 +8,14 @@ import { SafeImage } from '@/components/safe-image';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
 import { trackLogout } from '@/lib/analytics';
+import { usePlan } from '@/hooks/usePlan';
 
 export function NavigationHeader() {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const isDashboard = pathname === '/dashboard';
+  const { userPlan: plan } = usePlan();
 
   const handleLogout = async () => {
     try {
@@ -37,16 +39,16 @@ export function NavigationHeader() {
         borderColor: 'rgba(232, 220, 192, 0.1)' 
       }}
     >
-      <div className="container mx-auto px-3 py-1.5 sm:py-3">
+      <div className="container mx-auto px-3 py-1.5 sm:py-2">
         <div className="flex items-center justify-between">
           {/* Logotipo à esquerda */}
           <Link href="/dashboard">
-            <div className="relative w-[40px] sm:w-[70px] h-auto">
+            <div className="relative w-[36px] sm:w-[56px] h-auto">
               <SafeImage 
-                src="/revela3.png" 
+                src="/revela3-transparent-processed.png" 
                 alt="Revela Logo" 
-                width={70} 
-                height={40} 
+                width={56} 
+                height={32} 
                 className="w-full h-auto object-contain" 
                 priority
                 unoptimized
@@ -54,23 +56,56 @@ export function NavigationHeader() {
             </div>
           </Link>
 
-          {/* Ícones à direita */}
+          {/* Plano + Ícones à direita */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Badge do plano - clicável para /planos */}
+            <Link
+              href="/planos"
+              className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor:
+                  plan === 'premium'
+                    ? 'rgba(234, 179, 8, 0.18)'
+                    : plan === 'pro'
+                    ? 'rgba(34, 197, 94, 0.18)'
+                    : 'rgba(148, 163, 184, 0.18)',
+                color:
+                  plan === 'premium'
+                    ? '#facc15'
+                    : plan === 'pro'
+                    ? '#4ade80'
+                    : '#cbd5f5',
+                borderColor:
+                  plan === 'premium'
+                    ? 'rgba(250, 204, 21, 0.4)'
+                    : plan === 'pro'
+                    ? 'rgba(34, 197, 94, 0.4)'
+                    : 'rgba(148, 163, 184, 0.4)',
+                borderWidth: 1,
+              }}
+            >
+              {plan === 'premium'
+                ? 'Revela Premium'
+                : plan === 'pro'
+                ? 'Revela Pro'
+                : 'Revela Free'}
+            </Link>
+
             {/* Seletor de Idioma */}
             <LanguageSelector />
             
-            {/* Na dashboard: botão Configurações e botão Sair */}
-            {/* Nas demais páginas: botão Dashboard e botão Sair */}
-            {isDashboard ? (
-              <button
-                onClick={() => router.push('/settings')}
-                className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label={t.common.settings}
-                style={{ color: '#E8DCC0' }}
-              >
-                <Settings className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
-              </button>
-            ) : (
+            {/* Configurações (engrenagem) sempre visível */}
+            <button
+              onClick={() => router.push('/settings')}
+              className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label={t.common.settings}
+              style={{ color: '#E8DCC0' }}
+            >
+              <Settings className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+            </button>
+
+            {/* Home/Dashboard quando não estiver na dashboard */}
+            {!isDashboard && (
               <button
                 onClick={() => router.push('/dashboard')}
                 className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"

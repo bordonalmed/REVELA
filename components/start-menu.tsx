@@ -19,7 +19,7 @@ export function StartMenu({ onNew, onStored }: StartMenuProps) {
         <div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 animate-in slide-in-from-bottom-4 duration-800">
           <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
             <SafeImage
-              src="/revela3.png"
+              src="/revela3-transparent-processed.png"
               alt="Revela Logo"
               width={280}
               height={160}

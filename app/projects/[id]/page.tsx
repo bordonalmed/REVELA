@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -12,10 +12,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { SafeBase64Image } from '@/components/safe-image';
 import { ZoomableImage } from '@/components/zoomable-image';
 import { ComparisonSlider } from '@/components/comparison-slider';
+import { TreatmentTimeline } from '@/components/treatment-timeline';
 import { errorLogger } from '@/lib/error-logger';
 import { exportComparisonImage } from '@/lib/export-utils';
 import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
+import { WatermarkedContainer } from '@/components/watermarked-container';
+import { PdfReportModal } from '@/components/pdf-report-modal';
+import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { 
   trackViewProject, 
   trackUpdateProject, 
@@ -25,11 +29,14 @@ import {
   trackEnterSliderMode, 
   trackSaveNotes 
 } from '@/lib/analytics';
+import { usePlan } from '@/hooks/usePlan';
 
 export default function ViewProjectPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
+  const searchParams = useSearchParams();
+  const startInEditMode = searchParams?.get('mode') === 'edit';
   
   const [user, setUser] = useState<User | null>(null);
   const [projectLoading, setProjectLoading] = useState(false);
@@ -48,9 +55,13 @@ export default function ViewProjectPage() {
   const [exporting, setExporting] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
+  const [showPdfReportModal, setShowPdfReportModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
+  const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
+  const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
-  const [editingImageType, setEditingImageType] = useState<'before' | 'after' | null>(null);
+  const [editingEvolutionId, setEditingEvolutionId] = useState<string | null>(null);
+  const [editingImageType, setEditingImageType] = useState<'before' | 'after' | 'evolution' | null>(null);
   const [tempNotes, setTempNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
@@ -63,6 +74,54 @@ export default function ViewProjectPage() {
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
   const afterInputRef = React.useRef<HTMLInputElement>(null);
   const loadProjectRef = React.useRef(false);
+  const initializedEditFromQueryRef = React.useRef(false);
+
+  const { hasProAccess, hasPremiumAccess, canUsePremiumFeature } = usePlan();
+
+  // Sync automática da nuvem Premium (background)
+  const cloudAutoSyncInFlightRef = React.useRef(false);
+  const cloudAutoSyncPendingRef = React.useRef(false);
+
+  const triggerAutoCloudSync = useCallback(async () => {
+    if (!hasPremiumAccess) return;
+    if (!user?.id) return;
+    if (typeof window === 'undefined') return;
+
+    const enabled = window.localStorage.getItem('revela_cloud_backup_enabled') === 'true';
+    if (!enabled) return;
+
+    if (cloudAutoSyncInFlightRef.current) {
+      cloudAutoSyncPendingRef.current = true;
+      return;
+    }
+
+    cloudAutoSyncInFlightRef.current = true;
+    try {
+      const projects = await listLocalProjectsForCloud();
+      if (!projects.length) return;
+
+      const res = await syncSelectedProjectsToCloud(user.id, projects);
+      window.localStorage.setItem(
+        'revela_cloud_last_auto_sync',
+        JSON.stringify({
+          at: new Date().toISOString(),
+          uploaded: res.uploaded,
+          updated: res.updated,
+          skipped: res.skipped,
+          failures: res.failures.length,
+        })
+      );
+    } catch (e) {
+      console.error('Auto cloud sync error:', e);
+    } finally {
+      cloudAutoSyncInFlightRef.current = false;
+      if (cloudAutoSyncPendingRef.current) {
+        cloudAutoSyncPendingRef.current = false;
+        // Rodar mais uma vez para pegar mudanças pendentes.
+        void triggerAutoCloudSync();
+      }
+    }
+  }, [hasPremiumAccess, user?.id]);
 
   // Detectar orientação e calcular dimensões responsivas
   useEffect(() => {
@@ -139,6 +198,12 @@ export default function ViewProjectPage() {
   // Usar imagens de edição quando estiver editando
   const displayBeforeImages = isEditing ? editingBeforeImages : (project?.beforeImages || []);
   const displayAfterImages = isEditing ? editingAfterImages : (project?.afterImages || []);
+
+  // "Revela Evolução" (Premium): nesse modo a visualização principal não deve usar
+  // o fluxo clássico "ANTES/DEPOIS" (mesmo existindo fallback no storage).
+  const isEvolutionProject = (project?.evolutionImages?.length ?? 0) > 0;
+  const isEvolutionPremiumProject =
+    isEvolutionProject && hasPremiumAccess && canUsePremiumFeature('timeline');
 
   const loadProject = useCallback(async () => {
     if (!projectId) return;
@@ -256,6 +321,12 @@ export default function ViewProjectPage() {
         setEditingBeforeImages([...loadedProject.beforeImages]);
         setEditingAfterImages([...loadedProject.afterImages]);
         setEditingNotes(loadedProject.notes || '');
+
+        // Se a URL pedir modo edição, entrar automaticamente em edição na primeira carga
+        if (startInEditMode && !initializedEditFromQueryRef.current) {
+          initializedEditFromQueryRef.current = true;
+          setIsEditing(true);
+        }
         errorLogger.info('Projeto carregado com sucesso', { 
           projectId, 
           beforeCount: loadedProject.beforeImages.length,
@@ -296,6 +367,12 @@ export default function ViewProjectPage() {
       loadProject();
     }
   }, [projectId, authLoading, loadProject]);
+
+  // Sempre começar com seleções A/B vazias ao trocar de projeto.
+  useEffect(() => {
+    setEvolutionSelectedLeftId(null);
+    setEvolutionSelectedRightId(null);
+  }, [projectId]);
 
   // Loading geral combina autenticação e projeto
   const isLoading = authLoading || projectLoading;
@@ -397,6 +474,8 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
+      // Sync automática (Premium) após salvar notas/foto
+      void triggerAutoCloudSync();
       setShowNotesModal(false);
       
       // Trackear salvamento de notas
@@ -414,6 +493,16 @@ export default function ViewProjectPage() {
   };
 
   const handleEnterPresentationMode = () => {
+    // Em Revela Evolução Premium não exibimos a tela fullscreen ANTES/DEPOIS.
+    if (project?.evolutionImages?.length) {
+      if (!isEvolutionPremiumProject) {
+        alert('O modo Revela Evolução é exclusivo do plano Premium.');
+        return;
+      }
+      alert('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      return;
+    }
+
     setIsPresentationMode(true);
     setIsSliderMode(false); // Desativar slider ao entrar em apresentação
     // Tentar entrar em fullscreen se suportado
@@ -430,6 +519,16 @@ export default function ViewProjectPage() {
   };
 
   const handleToggleSliderMode = () => {
+    // Em Revela Evolução Premium não exibimos o slider clássico ANTES/DEPOIS.
+    if (project?.evolutionImages?.length) {
+      if (!isEvolutionPremiumProject) {
+        alert('O modo Revela Evolução é exclusivo do plano Premium.');
+        return;
+      }
+      alert('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      return;
+    }
+
     const newSliderMode = !isSliderMode;
     setIsSliderMode(newSliderMode);
     setIsPresentationMode(false); // Desativar apresentação ao ativar slider
@@ -625,9 +724,21 @@ export default function ViewProjectPage() {
     setDraggedAfterIndex(null);
   };
 
+  const allowClinicalAnnotations =
+    hasPremiumAccess && canUsePremiumFeature('clinical_markings');
+
   const handleEditImage = (type: 'before' | 'after', index: number) => {
     setEditingImageType(type);
     setEditingImageIndex(index);
+    setEditingEvolutionId(null);
+    setShowImageEditor(true);
+  };
+
+  const handleEditEvolutionImage = (evolutionId: string) => {
+    if (!allowClinicalAnnotations) return;
+    setEditingImageType('evolution');
+    setEditingEvolutionId(evolutionId);
+    setEditingImageIndex(null);
     setShowImageEditor(true);
   };
 
@@ -648,6 +759,8 @@ export default function ViewProjectPage() {
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
+        // Sync automática (Premium) após editar foto
+        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -673,6 +786,8 @@ export default function ViewProjectPage() {
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
+        // Sync automática (Premium) após editar foto
+        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -685,10 +800,23 @@ export default function ViewProjectPage() {
           newEditingImages[editingImageIndex] = editedImage;
           setEditingAfterImages(newEditingImages);
         }
+      } else if (editingImageType === 'evolution' && editingEvolutionId) {
+        const newEvo = (project.evolutionImages || []).map((e) =>
+          e.id === editingEvolutionId ? { ...e, image: editedImage } : e
+        );
+        const updatedProject: Project = {
+          ...project,
+          evolutionImages: newEvo,
+        };
+        await updateProject(updatedProject);
+        setProject(updatedProject);
+        // Sync automática (Premium) após editar foto (evolução)
+        void triggerAutoCloudSync();
       }
       
       setShowImageEditor(false);
       setEditingImageIndex(null);
+      setEditingEvolutionId(null);
       setEditingImageType(null);
     } catch (error) {
       console.error('Erro ao salvar foto editada:', error);
@@ -699,6 +827,7 @@ export default function ViewProjectPage() {
   const handleCloseImageEditor = () => {
     setShowImageEditor(false);
     setEditingImageIndex(null);
+    setEditingEvolutionId(null);
     setEditingImageType(null);
   };
 
@@ -785,6 +914,8 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
+      // Sync automática (Premium) após atualizar projeto
+      void triggerAutoCloudSync();
       setIsEditing(false);
       setNewBeforeFiles([]);
       setNewAfterFiles([]);
@@ -847,7 +978,12 @@ export default function ViewProjectPage() {
   }
 
   // Modo Apresentação - Tela Cheia
-  if (isPresentationMode && displayBeforeImages.length > 0 && displayAfterImages.length > 0) {
+  if (
+    isPresentationMode &&
+    displayBeforeImages.length > 0 &&
+    displayAfterImages.length > 0 &&
+    !isEvolutionPremiumProject
+  ) {
     return (
       <div 
         className="fixed inset-0 flex flex-col overflow-hidden z-50" 
@@ -970,7 +1106,7 @@ export default function ViewProjectPage() {
     : 'flex-1 container mx-auto px-2 sm:px-3 py-0 sm:py-8 max-w-6xl flex flex-col overflow-y-auto';
 
   return (
-    <div className={`fixed inset-0 flex flex-col ${isLandscape ? 'overflow-y-auto' : 'overflow-hidden'}`} style={{ backgroundColor: '#1A2B32' }}>
+    <div className="fixed inset-0 flex flex-col overflow-y-auto" style={{ backgroundColor: '#1A2B32' }}>
       {!shouldHideChrome && <NavigationHeader />}
 
       {/* Main Content */}
@@ -1111,12 +1247,25 @@ export default function ViewProjectPage() {
                         {exporting ? 'Exportando...' : 'Exportar'}
                       </button>
                       <button
+                        onClick={() => setShowPdfReportModal(true)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
+                          color: '#E8DCC0',
+                          borderColor: 'rgba(232, 220, 192, 0.1)'
+                        }}
+                        title="Gerar relatório PDF"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span className="hidden sm:inline">PDF</span>
+                      </button>
+                      <button
                         onClick={() => setShowSocialMediaModal(true)}
                         className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
                         style={{ 
-                          backgroundColor: '#00A88F', 
-                          color: '#FFFFFF', 
-                          borderColor: '#00A88F' 
+                          backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                          color: '#E8DCC0',
+                          borderColor: 'rgba(232, 220, 192, 0.1)',
                         }}
                         title="Publicar nas redes sociais"
                       >
@@ -1212,12 +1361,12 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={handleSaveEdit}
-                    disabled={saving || displayBeforeImages.length === 0 || displayAfterImages.length === 0}
+                    disabled={saving}
                     className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
                   >
                     <Save className="w-4 h-4" />
-                    {saving ? 'Salvando...' : 'Salvar'}
+                    {saving ? 'Salvando...' : 'Salvar alterações'}
                   </button>
                 </div>
               )}
@@ -1258,14 +1407,14 @@ export default function ViewProjectPage() {
                 />
                 <label
                   htmlFor="before-upload"
-                  className="block w-full p-4 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white/5 transition-colors text-center"
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white/5 transition-colors text-xs"
                   style={{ 
-                    borderColor: 'rgba(232, 220, 192, 0.1)',
+                    borderColor: 'rgba(232, 220, 192, 0.2)',
                     color: 'rgba(255, 255, 255, 0.7)'
                   }}
                 >
-                  <Plus className="w-6 h-6 mx-auto mb-2" />
-                  <span className="text-sm">Clique para adicionar fotos</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar fotos</span>
                 </label>
                 {displayBeforeImages.length > 0 && (
                   <div className="mt-3">
@@ -1349,14 +1498,14 @@ export default function ViewProjectPage() {
                 />
                 <label
                   htmlFor="after-upload"
-                  className="block w-full p-4 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white/5 transition-colors text-center"
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white/5 transition-colors text-xs"
                   style={{ 
-                    borderColor: 'rgba(232, 220, 192, 0.1)',
+                    borderColor: 'rgba(232, 220, 192, 0.2)',
                     color: 'rgba(255, 255, 255, 0.7)'
                   }}
                 >
-                  <Plus className="w-6 h-6 mx-auto mb-2" />
-                  <span className="text-sm">Clique para adicionar fotos</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar fotos</span>
                 </label>
                 {displayAfterImages.length > 0 && (
                   <div className="mt-3">
@@ -1449,14 +1598,27 @@ export default function ViewProjectPage() {
               <p className="text-xs mt-1" style={{ color: '#E8DCC0', opacity: 0.7 }}>
                 {editingNotes.length} caracteres
               </p>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Visualização Antes e Depois */}
-        {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+        {/* Visualização Antes e Depois (somente em projetos clássicos) */}
+        {displayBeforeImages.length > 0 &&
+          displayAfterImages.length > 0 &&
+          !isEvolutionPremiumProject && (
           <div 
-            className={`flex-1 flex flex-col ${isLandscape ? 'overflow-y-auto' : 'overflow-hidden'} ${isLandscape ? '' : 'rounded-lg border'}`} 
+            className={`flex-1 flex flex-col ${isLandscape ? '' : 'rounded-lg border'}`} 
             style={{ 
               backgroundColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.05)', 
               borderColor: isLandscape ? 'transparent' : 'rgba(232, 220, 192, 0.1)',
@@ -1572,12 +1734,14 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <ZoomableImage
-                    src={displayBeforeImages[beforeCurrentIndex]}
-                    alt={`Antes ${beforeCurrentIndex + 1}`}
-                    className="w-full h-full max-w-full max-h-full"
-                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
-                  />
+                  <WatermarkedContainer className="w-full h-full">
+                    <ZoomableImage
+                      src={displayBeforeImages[beforeCurrentIndex]}
+                      alt={`Antes ${beforeCurrentIndex + 1}`}
+                      className="w-full h-full max-w-full max-h-full"
+                      style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
+                    />
+                  </WatermarkedContainer>
                   {displayBeforeImages.length > 1 && (
                     <>
                       <button
@@ -1620,12 +1784,14 @@ export default function ViewProjectPage() {
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
-                  <ZoomableImage
-                    src={displayAfterImages[afterCurrentIndex]}
-                    alt={`Depois ${afterCurrentIndex + 1}`}
-                    className="w-full h-full max-w-full max-h-full"
-                    style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
-                  />
+                  <WatermarkedContainer className="w-full h-full">
+                    <ZoomableImage
+                      src={displayAfterImages[afterCurrentIndex]}
+                      alt={`Depois ${afterCurrentIndex + 1}`}
+                      className="w-full h-full max-w-full max-h-full"
+                      style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
+                    />
+                  </WatermarkedContainer>
                   {displayAfterImages.length > 1 && (
                     <>
                       <button
@@ -1660,24 +1826,14 @@ export default function ViewProjectPage() {
 
             {/* Dispositivos móveis e tablets */}
             <div
-              className="lg:hidden relative flex-1 flex flex-col min-h-0"
-              style={viewerHeight ? { height: `${viewerHeight}px` } : undefined}
+              className="lg:hidden relative flex-1 flex flex-col"
             >
               {isLandscape ? (
                 <div
-                  className="flex flex-1 gap-2 min-h-0 w-full"
-                  style={{
-                    minHeight: viewerHeight ?? 'auto',
-                    height: viewerHeight ? `${viewerHeight}px` : 'auto',
-                    maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
-                  }}
+                  className="flex flex-1 gap-2 w-full"
                 >
                   <div
-                    className="flex-1 basis-1/2 flex flex-col min-h-0 min-w-0"
-                    style={{ 
-                      minHeight: viewerHeight ? `${viewerHeight}px` : 'auto',
-                      maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
-                    }}
+                    className="flex-1 basis-1/2 flex flex-col min-w-0"
                   >
                     <div className="text-center py-1 flex-shrink-0">
                       <span 
@@ -1688,19 +1844,19 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div 
-                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden min-h-0"
+                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ 
-                        backgroundColor: 'rgba(0,0,0,0.2)',
-                        minHeight: 0,
-                        maxHeight: viewerHeight ? `${(viewerHeight ?? 0) - 60}px` : 'none'
+                        backgroundColor: 'rgba(0,0,0,0.2)'
                       }}
                     >
-                      <ZoomableImage
-                        src={displayBeforeImages[beforeCurrentIndex]}
-                        alt={`Antes ${beforeCurrentIndex + 1}`}
-                        className="w-full h-full"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-                      />
+              <WatermarkedContainer>
+                <ZoomableImage
+                  src={displayBeforeImages[beforeCurrentIndex]}
+                  alt={`Antes ${beforeCurrentIndex + 1}`}
+                  className="w-full h-full"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
+                />
+              </WatermarkedContainer>
                     </div>
                     {displayBeforeImages.length > 1 && (
                       <div className="flex items-center justify-center gap-3 py-2">
@@ -1729,11 +1885,7 @@ export default function ViewProjectPage() {
                   </div>
 
                   <div
-                    className="flex-1 basis-1/2 flex flex-col min-h-0 min-w-0"
-                    style={{ 
-                      minHeight: viewerHeight ? `${viewerHeight}px` : 'auto',
-                      maxHeight: viewerHeight ? `${viewerHeight}px` : 'none'
-                    }}
+                    className="flex-1 basis-1/2 flex flex-col min-w-0"
                   >
                     <div className="text-center py-1 flex-shrink-0">
                       <span 
@@ -1744,19 +1896,19 @@ export default function ViewProjectPage() {
                       </span>
                     </div>
                     <div 
-                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden min-h-0"
+                      className="flex-1 flex items-center justify-center rounded-lg overflow-hidden"
                       style={{ 
-                        backgroundColor: 'rgba(0,0,0,0.2)',
-                        minHeight: 0,
-                        maxHeight: viewerHeight ? `${(viewerHeight ?? 0) - 60}px` : 'none'
+                        backgroundColor: 'rgba(0,0,0,0.2)'
                       }}
                     >
-                      <ZoomableImage
-                        src={displayAfterImages[afterCurrentIndex]}
-                        alt={`Depois ${afterCurrentIndex + 1}`}
-                        className="w-full h-full"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-                      />
+              <WatermarkedContainer>
+                <ZoomableImage
+                  src={displayAfterImages[afterCurrentIndex]}
+                  alt={`Depois ${afterCurrentIndex + 1}`}
+                  className="w-full h-full"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
+                />
+              </WatermarkedContainer>
                     </div>
                     {displayAfterImages.length > 1 && (
                       <div className="flex items-center justify-center gap-3 py-2">
@@ -1967,13 +2119,30 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={() => {
+                      setShowPdfReportModal(true);
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Gerar relatório PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>PDF</span>
+                  </button>
+                  <button
+                    onClick={() => {
                       setShowSocialMediaModal(true);
                       setShowMobileMenu(false);
                     }}
                     className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
                     style={{ 
-                      backgroundColor: '#00A88F', 
-                      color: '#FFFFFF',
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
@@ -2138,13 +2307,30 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={() => {
+                      setShowPdfReportModal(true);
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Gerar relatório PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>PDF</span>
+                  </button>
+                  <button
+                    onClick={() => {
                       setShowSocialMediaModal(true);
                       setShowDesktopMenu(false);
                     }}
                     className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
                     style={{ 
-                      backgroundColor: '#00A88F', 
-                      color: '#FFFFFF',
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
@@ -2341,23 +2527,199 @@ export default function ViewProjectPage() {
             afterImage={displayAfterImages[afterCurrentIndex]}
             projectName={project.name}
             projectId={project.id}
+            hasExportAccess={hasProAccess || hasPremiumAccess}
+          />
+        )}
+
+        {/* Modal de Relatório PDF */}
+        {showPdfReportModal && project && (
+          <PdfReportModal
+            isOpen={showPdfReportModal}
+            onClose={() => setShowPdfReportModal(false)}
+            project={project}
+            isPremiumUser={hasPremiumAccess}
+            evolutionMode={isEvolutionPremiumProject}
+            evolutionSelection={{
+              leftId: evolutionSelectedLeftId,
+              rightId: evolutionSelectedRightId,
+            }}
           />
         )}
 
         {/* Modal de Edição de Imagem */}
-        {showImageEditor && editingImageIndex !== null && editingImageType && (
+        {showImageEditor &&
+          editingImageType &&
+          project &&
+          (editingImageType === 'evolution'
+            ? !!editingEvolutionId &&
+              !!(project.evolutionImages || []).find((e) => e.id === editingEvolutionId)?.image
+            : editingImageIndex !== null) && (
           <ImageEditorModal
             isOpen={showImageEditor}
             onClose={handleCloseImageEditor}
             onSave={handleSaveEditedImage}
+            allowClinicalAnnotations={allowClinicalAnnotations}
             imageSrc={
-              editingImageType === 'before'
-                ? editingBeforeImages[editingImageIndex]
-                : editingAfterImages[editingImageIndex]
+              editingImageType === 'evolution' && editingEvolutionId
+                ? (project.evolutionImages || []).find((e) => e.id === editingEvolutionId)!.image
+                : editingImageType === 'before'
+                  ? editingBeforeImages[editingImageIndex!]
+                  : editingAfterImages[editingImageIndex!]
             }
-            imageLabel={`${editingImageType === 'before' ? 'ANTES' : 'DEPOIS'} #${editingImageIndex + 1}`}
+            imageLabel={
+              editingImageType === 'evolution' && editingEvolutionId
+                ? (() => {
+                    const ev = (project.evolutionImages || []).find((e) => e.id === editingEvolutionId);
+                    const rl = (ev?.label || ev?.momentType || '').trim().toLowerCase();
+                    if (rl === 'antes') return 'Revela — Início (0)';
+                    if (rl === 'final') return 'Revela — Resultado final';
+                    const m = /^marco\s*(\d+)$/i.exec((ev?.label || '').trim());
+                    if (m) return `Revela ${m[1]}`;
+                    return ev?.label?.trim() ? `Revela — ${ev.label}` : 'Revela';
+                  })()
+                : `${editingImageType === 'before' ? 'ANTES' : 'DEPOIS'} #${(editingImageIndex ?? 0) + 1}`
+            }
           />
         )}
+
+        {/* Marcos da evolução - grade de imagens (Premium) */}
+        {project && project.evolutionImages && project.evolutionImages.length > 0 && (
+          <section className="mt-8">
+            <h2
+              className="text-lg sm:text-xl font-light mb-2"
+              style={{ color: '#E8DCC0' }}
+            >
+              Revela Evolução
+            </h2>
+            <p
+              className="text-xs sm:text-sm mb-4"
+              style={{ color: '#E8DCC0', opacity: 0.8 }}
+            >
+              Veja rapidamente todos os momentos salvos deste tratamento. Estes registros alimentam
+              o Revela Evolução e a comparação entre registros.
+            </p>
+
+            <div
+              className="rounded-xl border p-3 sm:p-4"
+              style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                borderColor: 'rgba(51, 65, 85, 0.9)',
+              }}
+            >
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[...(project.evolutionImages || [])]
+                  .slice()
+                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+                  .map((evo, index) => {
+                  const rawLabel = (evo.label || evo.momentType || '').trim();
+
+                  let label: string;
+                  const lower = rawLabel.toLowerCase();
+
+                  if (lower === 'antes') {
+                    label = 'Início (0)';
+                  } else if (lower === 'final') {
+                    label = 'Resultado final';
+                  } else {
+                    // Converter labels antigos do tipo "MARCO 1", "Marco 2" em "Revela 1", "Revela 2"
+                    const marcoMatch = /^marco\s*(\d+)$/i.exec(rawLabel);
+                    if (marcoMatch) {
+                      label = `Revela ${marcoMatch[1]}`;
+                    } else {
+                      label = evo.label || `Revela ${index || 1}`;
+                    }
+                  }
+
+                  const dateText = evo.date
+                    ? new Date(evo.date).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })
+                    : undefined;
+
+                  return (
+                    <div
+                      key={evo.id}
+                      className="rounded-lg border overflow-hidden flex flex-col"
+                      style={{
+                        backgroundColor: 'rgba(15, 23, 42, 1)',
+                        borderColor: 'rgba(51, 65, 85, 0.9)',
+                      }}
+                    >
+                      <div className="px-3 py-2 border-b border-slate-700">
+                        <p
+                          className="text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: '#E8DCC0' }}
+                        >
+                          {label}
+                        </p>
+                        {dateText && (
+                          <p
+                            className="text-[11px]"
+                            style={{ color: '#E8DCC0', opacity: 0.7 }}
+                          >
+                            {dateText}
+                          </p>
+                        )}
+                      </div>
+                      <div className="p-2 flex-1 flex items-center justify-center bg-slate-900">
+                        <SafeBase64Image
+                          src={evo.image}
+                          alt={label}
+                          className="max-h-[220px] w-auto max-w-full object-contain"
+                        />
+                      </div>
+                      {isEditing && allowClinicalAnnotations && (
+                        <div className="px-2 py-2 border-t border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => handleEditEvolutionImage(evo.id)}
+                            className="w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            style={{
+                              backgroundColor: 'rgba(232, 220, 192, 0.12)',
+                              color: '#E8DCC0',
+                              border: '1px solid rgba(232, 220, 192, 0.15)',
+                            }}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            Editar foto (Premium)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Revela Evolução — Comparação: só aparece para Premium e quando há registros (sem faixa vazia) */}
+        {project &&
+          hasPremiumAccess &&
+          canUsePremiumFeature('timeline') &&
+          (project.evolutionImages?.length ?? 0) > 0 && (
+            <section className="mt-8 mb-10">
+              <p
+                className="text-xs sm:text-sm font-medium mb-2"
+                style={{ color: '#E8DCC0', opacity: 0.85 }}
+              >
+                Revela Evolução — Comparação
+              </p>
+              <TreatmentTimeline
+                evolutionImages={project.evolutionImages || []}
+                isPremiumUser
+                selectedLeftId={evolutionSelectedLeftId}
+                selectedRightId={evolutionSelectedRightId}
+                onSelectionChange={({ leftId, rightId }) => {
+                  setEvolutionSelectedLeftId(leftId);
+                  setEvolutionSelectedRightId(rightId);
+                }}
+                onUpgradeClick={() => router.push('/planos')}
+              />
+            </section>
+          )}
       </main>
       {!shouldHideChrome && <Footer className="hidden sm:block" />}
     </div>

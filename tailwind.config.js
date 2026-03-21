@@ -9,6 +9,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Identidade Revela - uso em landing e componentes públicos
+        revela: {
+          dark: "#1A2B32",
+          cream: "#E8DCC0",
+          teal: "#00A88F",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

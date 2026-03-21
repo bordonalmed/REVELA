@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, ArrowLeft, Download, Upload, Database, Settings, ChevronDown, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon, Move } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getAllProjects, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
+import { getAllProjects, getAllProjectsForUser, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
@@ -54,10 +54,10 @@ export default function ProjectsPage() {
     setLoading(false);
   }, [router]);
 
-  const loadProjects = useCallback(async () => {
+  const loadProjects = useCallback(async (ownerEmail: string | null) => {
     try {
       setLoadingProjects(true);
-      const allProjects = await getAllProjects();
+      const allProjects = await getAllProjectsForUser(ownerEmail);
       setProjects(allProjects);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
@@ -146,7 +146,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (user) {
-      loadProjects();
+      loadProjects(user.email || null);
       loadFolders();
       // Verificar backup automático
       setAutoBackup(isAutoBackupEnabled());
@@ -191,7 +191,7 @@ export default function ProjectsPage() {
       const projectToDelete = projects.find(p => p.id === id);
       
       await deleteProjectFromIndexedDB(id);
-      await loadProjects();
+      await loadProjects(user?.email || null);
       
       // Trackear deleção de projeto
       if (user && projectToDelete) {
@@ -452,8 +452,21 @@ export default function ProjectsPage() {
             >
               Projetos Armazenados
             </h1>
-            <div className="text-sm" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-              {filteredAndSortedProjects.length} de {projects.length} projeto{projects.length !== 1 ? 's' : ''}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="text-sm text-right sm:text-left" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+                {filteredAndSortedProjects.length} de {projects.length} projeto{projects.length !== 1 ? 's' : ''}
+              </div>
+              <button
+                onClick={() => router.push('/new-project')}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2 border"
+                style={{ 
+                  backgroundColor: '#00A88F', 
+                  color: '#FFFFFF', 
+                  borderColor: '#00A88F' 
+                }}
+              >
+                + Novo Projeto
+              </button>
             </div>
           </div>
           
@@ -858,21 +871,36 @@ export default function ProjectsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {filteredAndSortedProjects.map((project) => (
+            {filteredAndSortedProjects.map((project) => {
+              const hasEvolution = (project.evolutionImages?.length ?? 0) > 0;
+              return (
               <div
                 key={project.id}
                 className="rounded-lg p-4 sm:p-5 border transition-all hover:bg-white/5"
                 style={{ 
-                  backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-                  borderColor: 'rgba(232, 220, 192, 0.1)' 
+                  backgroundColor: hasEvolution ? 'rgba(15, 23, 42, 0.95)' : 'rgba(232, 220, 192, 0.05)', 
+                  borderColor: hasEvolution ? '#38bdf8' : 'rgba(232, 220, 192, 0.1)' 
                 }}
               >
                 <h3 
-                  className="text-base sm:text-lg font-light mb-2 truncate" 
+                  className="text-base sm:text-lg font-light mb-1 truncate" 
                   style={{ color: '#E8DCC0' }}
                 >
                   {project.name}
                 </h3>
+                {hasEvolution && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+                      style={{ 
+                        backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                        color: '#7dd3fc'
+                      }}
+                    >
+                      Revela Evolução
+                    </span>
+                  </div>
+                )}
                 <div 
                   className="flex items-center gap-2 text-xs sm:text-sm mb-3" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
@@ -888,7 +916,7 @@ export default function ProjectsPage() {
                       <SafeBase64Image
                         src={project.beforeImages[0]}
                         alt="Antes"
-                        className="w-full h-24 sm:h-32 object-cover"
+                        className="w-full h-24 sm:h-32 object-cover pointer-events-none"
                         style={{ minHeight: '96px' }}
                       />
                       <div 
@@ -908,7 +936,7 @@ export default function ProjectsPage() {
                       <SafeBase64Image
                         src={project.afterImages[0]}
                         alt="Depois"
-                        className="w-full h-24 sm:h-32 object-cover"
+                        className="w-full h-24 sm:h-32 object-cover pointer-events-none"
                         style={{ minHeight: '96px' }}
                       />
                       <div 
@@ -936,6 +964,20 @@ export default function ProjectsPage() {
                     Visualizar
                   </button>
                   <button
+                    onClick={() => router.push(`/projects/${project.id}?mode=edit`)}
+                    className="flex-1 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all hover:opacity-80 flex items-center justify-center gap-2 border"
+                    style={{ 
+                      backgroundColor: 'rgba(232, 220, 192, 0.05)', 
+                      color: '#E8DCC0', 
+                      borderColor: 'rgba(232, 220, 192, 0.1)' 
+                    }}
+                    title="Editar projeto"
+                    aria-label="Editar projeto"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Editar
+                  </button>
+                  <button
                     onClick={() => {
                       setProjectToMove(project.id);
                       setShowMoveModal(true);
@@ -961,7 +1003,7 @@ export default function ProjectsPage() {
                   </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </main>

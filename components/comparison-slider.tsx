@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GripVertical } from 'lucide-react';
+import { useBranding } from '@/hooks/useBranding';
 
 interface ComparisonSliderProps {
   beforeImage: string;
@@ -20,6 +21,7 @@ export function ComparisonSlider({
   className = '',
   style = {},
 }: ComparisonSliderProps) {
+  const branding = useBranding();
   const [sliderPosition, setSliderPosition] = useState(50); // 0-100%
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,9 +33,8 @@ export function ComparisonSlider({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      updateSliderPosition(e.clientX);
-    }
+    // Desktop dragging is handled by the global mousemove listener in the effect below.
+    // We keep this handler only to prevent default behaviour if needed in future.
   };
 
   const handleMouseUp = () => {
@@ -94,8 +95,6 @@ export function ComparisonSlider({
       className={`relative w-full h-full overflow-hidden ${className}`}
       style={style}
       onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
@@ -107,6 +106,24 @@ export function ComparisonSlider({
           className="w-full h-full object-contain"
           draggable={false}
         />
+        {/* Marca d'água - DEPOIS */}
+        {branding.watermarkEnabled && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={branding.watermarkLogoDataUrl}
+            alt="Marca d'água"
+            className="pointer-events-none select-none absolute bottom-2 right-2"
+            style={{
+              width: '18%',
+              height: 'auto',
+              opacity: 0.75,
+              maxWidth: 180,
+              minWidth: 70,
+              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+            }}
+            draggable={false}
+          />
+        )}
         {/* Label DEPOIS */}
         <div 
           className="absolute top-2 right-2 px-3 py-1 rounded-lg bg-black/50 text-sm font-medium"
@@ -129,6 +146,24 @@ export function ComparisonSlider({
           className="w-full h-full object-contain"
           draggable={false}
         />
+        {/* Marca d'água - ANTES (fica recortada junto com o slider) */}
+        {branding.watermarkEnabled && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={branding.watermarkLogoDataUrl}
+            alt="Marca d'água"
+            className="pointer-events-none select-none absolute bottom-2 right-2"
+            style={{
+              width: '18%',
+              height: 'auto',
+              opacity: 0.75,
+              maxWidth: 180,
+              minWidth: 70,
+              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.35))',
+            }}
+            draggable={false}
+          />
+        )}
         {/* Label ANTES */}
         <div 
           className="absolute top-2 left-2 px-3 py-1 rounded-lg bg-black/50 text-sm font-medium"
@@ -141,7 +176,7 @@ export function ComparisonSlider({
       {/* Slider Handle */}
       <div
         ref={sliderRef}
-        className="absolute top-0 bottom-0 w-1 cursor-ew-resize z-10"
+        className="absolute top-0 bottom-0 w-1 z-10 cursor-ew-resize"
         style={{
           left: `${sliderPosition}%`,
           transform: 'translateX(-50%)',
@@ -170,13 +205,7 @@ export function ComparisonSlider({
         </div>
       </div>
 
-      {/* Instrução (aparece ao passar o mouse) */}
-      <div 
-        className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 hover:opacity-100 transition-opacity text-xs pointer-events-none"
-        style={{ color: '#FFFFFF' }}
-      >
-        Arraste a barra para comparar
-      </div>
+      {/* Botão para travar/liberar o movimento */}
     </div>
   );
 }

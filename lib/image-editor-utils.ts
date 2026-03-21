@@ -6,13 +6,24 @@
 /**
  * Cria uma imagem a partir de base64
  */
-function createImage(src: string): Promise<HTMLImageElement> {
+export function createImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
   });
+}
+
+export type PrivacyMaskShape = 'rect' | 'circle';
+
+export interface PrivacyMask {
+  // Coordenadas em fração relativa à largura/altura da imagem final (0–1)
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  shape: PrivacyMaskShape;
 }
 
 /**
@@ -235,17 +246,190 @@ export async function applyImageTransformations(
     y: number;
     width: number;
     height: number;
-  } | null
+  } | null,
+  masks: PrivacyMask[] = []
 ): Promise<string> {
-  // Se não há crop, apenas rotacionar
+  // 1) Aplicar crop/rotação como antes
+  let baseImage: string;
+
   if (!pixelCrop) {
     if (rotation === 0) {
-      return imageSrc;
+      baseImage = imageSrc;
+    } else {
+      baseImage = await rotateImage(imageSrc, rotation);
     }
-    return await rotateImage(imageSrc, rotation);
+  } else {
+    baseImage = await getCroppedImg(imageSrc, pixelCrop, rotation);
   }
 
-  // Se há crop, usar função combinada
-  return await getCroppedImg(imageSrc, pixelCrop, rotation);
+  // 2) Aplicar tarjas de privacidade, se houver
+  if (!masks.length) {
+    return baseImage;
+  }
+
+  const img = await createImage(baseImage);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Não foi possível criar contexto do canvas');
+  }
+
+  canvas.width = img.width;
+  canvas.height = img.height;
+
+  ctx.drawImage(img, 0, 0);
+
+  ctx.fillStyle = '#000000';
+
+  masks.forEach((mask) => {
+    const x = mask.x * img.width;
+    const y = mask.y * img.height;
+    const w = mask.width * img.width;
+    const h = mask.height * img.height;
+
+    if (w <= 0 || h <= 0) return;
+
+    if (mask.shape === 'circle') {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const rx = w / 2;
+      const ry = h / 2;
+
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(x, y, w, h);
+    }
+  });
+
+  return canvas.toDataURL('image/jpeg', 0.95);
 }
 
+/** Cor do traço (lápis) nas anotações clínicas Premium */
+export type AnnotationStrokeColor = 'black' | 'white';
+
+/** Traço livre em coordenadas normalizadas 0–1 sobre a imagem fonte (antes do crop/rotação) */
+export interface AnnotationStroke {
+  points: { x: number; y: number }[];
+  color: AnnotationStrokeColor;
+  /** Espessura relativa a min(largura, altura) da imagem em pixels (ex.: 0.003) */
+  widthRel: number;
+}
+
+/** Caixa de texto em coordenadas normalizadas 0–1 sobre a imagem fonte */
+export interface AnnotationTextBox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+}
+
+function wrapTextForCanvas(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string[] {
+  const paragraphs = text.split(/\n/);
+  const lines: string[] = [];
+  for (const paragraph of paragraphs) {
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    let line = '';
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width <= maxWidth) {
+        line = test;
+      } else {
+        if (line) lines.push(line);
+        if (ctx.measureText(word).width > maxWidth) {
+          let chunk = '';
+          for (const ch of word) {
+            const t = chunk + ch;
+            if (ctx.measureText(t).width <= maxWidth) chunk = t;
+            else {
+              if (chunk) lines.push(chunk);
+              chunk = ch;
+            }
+          }
+          line = chunk;
+        } else {
+          line = word;
+        }
+      }
+    }
+    if (line) lines.push(line);
+  }
+  return lines.length ? lines : [' '];
+}
+
+/**
+ * Desenha anotações (lápis + textos) sobre a imagem fonte inteira.
+ * Deve ser chamado **antes** de `applyImageTransformations` para que crop/rotação/tarjas se apliquem depois.
+ */
+export async function rasterizeClinicalAnnotationsOnSource(
+  imageSrc: string,
+  strokes: AnnotationStroke[],
+  textBoxes: AnnotationTextBox[]
+): Promise<string> {
+  if (!strokes.length && !textBoxes.length) {
+    return imageSrc;
+  }
+
+  const img = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Não foi possível criar contexto do canvas');
+  }
+
+  canvas.width = img.width;
+  canvas.height = img.height;
+  ctx.drawImage(img, 0, 0);
+
+  const minDim = Math.min(img.width, img.height);
+
+  for (const stroke of strokes) {
+    if (stroke.points.length < 2) continue;
+    ctx.strokeStyle = stroke.color === 'white' ? '#ffffff' : '#000000';
+    ctx.lineWidth = Math.max(1, stroke.widthRel * minDim);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const p0 = stroke.points[0];
+    ctx.moveTo(p0.x * img.width, p0.y * img.height);
+    for (let i = 1; i < stroke.points.length; i++) {
+      const p = stroke.points[i];
+      ctx.lineTo(p.x * img.width, p.y * img.height);
+    }
+    ctx.stroke();
+  }
+
+  const fontBase = Math.max(14, minDim * 0.028);
+  ctx.textBaseline = 'top';
+
+  for (const box of textBoxes) {
+    const bx = box.x * img.width;
+    const by = box.y * img.height;
+    const bw = Math.max(48, box.width * img.width);
+    const bh = Math.max(32, box.height * img.height);
+    const pad = 6;
+    ctx.font = `${fontBase}px sans-serif`;
+    const lines = wrapTextForCanvas(ctx, (box.text || ' ').trim() || ' ', bw - pad * 2);
+    let ty = by + pad;
+    for (const line of lines) {
+      if (ty + fontBase > by + bh) break;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = Math.max(2, fontBase * 0.12);
+      ctx.lineJoin = 'round';
+      ctx.strokeText(line, bx + pad, ty);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(line, bx + pad, ty);
+      ty += fontBase * 1.28;
+    }
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.95);
+}

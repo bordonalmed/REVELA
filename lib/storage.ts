@@ -55,6 +55,16 @@ export interface Measurement {
   scale?: number; // Escala de conversão (pixels por unidade)
 }
 
+// Marco de evolução do tratamento (Revela Premium)
+export interface EvolutionImage {
+  id: string;
+  image: string; // Imagem em base64 ou URL
+  date: string; // ISO string (YYYY-MM-DD ou completa)
+  label?: string; // Título opcional (ex: "30 dias", "Sessão 2")
+  notes?: string; // Observação opcional
+  momentType?: string; // Tipo de momento (ex: 'antes', '30d', '60d', '90d', 'final')
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -64,7 +74,10 @@ export interface Project {
   notes?: string; // Campo opcional para notas/observações
   folderId?: string; // ID da pasta/categoria (null = sem pasta)
   measurements?: Measurement[]; // Medidas anotadas nas imagens
+  // Imagens de evolução ao longo do tempo (Premium)
+  evolutionImages?: EvolutionImage[];
   createdAt: string;
+  ownerEmail?: string; // Email do usuário que criou o projeto (escopo por conta)
 }
 
 // Salvar projeto no IndexedDB
@@ -616,6 +629,13 @@ export const getAllProjects = async (): Promise<Project[]> => {
   return allProjects.sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+};
+
+// Obter todos os projetos de um usuário específico (ou todos, se ownerEmail for null)
+export const getAllProjectsForUser = async (ownerEmail: string | null): Promise<Project[]> => {
+  const all = await getAllProjects();
+  if (!ownerEmail) return all;
+  return all.filter((p) => p.ownerEmail === ownerEmail);
 };
 
 // Interface para backup

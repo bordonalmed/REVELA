@@ -86,6 +86,16 @@ function isSupabaseConfigured(): boolean {
   return !!(supabaseUrl && supabaseAnonKey);
 }
 
+// Modo demo: sessão fake para páginas protegidas não redirecionarem para /login
+const isDemoMode = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+const demoSession = {
+  user: { id: 'demo-user', email: 'demo@revela.app', aud: 'authenticated', role: 'authenticated' },
+  access_token: 'demo',
+  refresh_token: 'demo',
+  expires_in: 3600,
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+};
+
 // Exportar cliente diretamente (para compatibilidade com código existente)
 // Mas com verificação de segurança
 export const supabase = (() => {
@@ -97,6 +107,10 @@ export const supabase = (() => {
     return {
       auth: {
         getSession: async () => {
+          // Modo demo: retorna sessão fake para permitir navegar no app sem Supabase
+          if (isDemoMode) {
+            return { data: { session: demoSession }, error: null };
+          }
           // Se as variáveis estão configuradas, tentar criar cliente novamente
           if (isSupabaseConfigured()) {
             try {
@@ -112,6 +126,10 @@ export const supabase = (() => {
           return { data: { session: null }, error: null };
         },
         onAuthStateChange: (callback: any) => {
+          // Modo demo: não redirecionar; subscription no-op
+          if (isDemoMode) {
+            return { data: { subscription: { unsubscribe: () => {} } } };
+          }
           // Tentar criar subscription real se disponível
           if (isSupabaseConfigured()) {
             try {
@@ -124,6 +142,7 @@ export const supabase = (() => {
           }
           return { data: { subscription: { unsubscribe: () => {} } } };
         },
+        signUp: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
         signInWithPassword: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
         signOut: async () => ({ error: null }),
       },
@@ -169,6 +188,32 @@ export type Database = {
           title?: string;
           description?: string | null;
           created_at?: string;
+          updated_at?: string;
+        };
+      };
+      revela_entitlements: {
+        Row: {
+          email: string;
+          plan: string;
+          active: boolean;
+          hotmart_transaction_id: string | null;
+          last_event: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          email: string;
+          plan: string;
+          active?: boolean;
+          hotmart_transaction_id?: string | null;
+          last_event?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          email?: string;
+          plan?: string;
+          active?: boolean;
+          hotmart_transaction_id?: string | null;
+          last_event?: string | null;
           updated_at?: string;
         };
       };

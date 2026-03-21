@@ -4,7 +4,7 @@ export function StructuredData() {
     "@type": "Organization",
     "name": "Revela",
     "url": "https://revela.app",
-    "logo": "https://revela.app/revela3.png",
+    "logo": "https://revela.app/revela3-transparent-processed.png",
     "description": "Plataforma profissional para comparar fotos antes e depois com privacidade total",
     "sameAs": [] // Adicionar redes sociais quando disponíveis
   };

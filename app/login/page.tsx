@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +27,13 @@ export default function LoginPage() {
     setError('');
 
     try {
+      if (isDemoMode) {
+        // Modo demo: não chama Supabase, só simula login
+        trackLogin('demo');
+        router.push('/dashboard');
+        return;
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -46,41 +54,41 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8"
+      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-5 md:p-6"
       style={{ backgroundColor: '#1A2B32' }}
     >
       {/* Language Selector - Top Right */}
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-3 right-3 z-50">
         <LanguageSelector />
       </div>
 
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex justify-center mb-6 sm:mb-8">
-                <div className="relative w-[200px] sm:w-[240px] md:w-[280px] h-auto">
+        <div className="flex justify-center mb-4 sm:mb-5">
+                <div className="relative w-[160px] sm:w-[180px] md:w-[200px] h-auto">
                   <SafeImage
-                    src="/revela3.png"
+                    src="/revela3-transparent-processed.png"
                     alt="Revela Logo"
-                    width={280}
-                    height={160}
+                    width={200}
+                    height={110}
                     className="w-full h-auto object-contain"
                     priority
                     unoptimized
-                    sizes="(max-width: 640px) 200px, (max-width: 768px) 240px, 280px"
+                    sizes="(max-width: 640px) 160px, (max-width: 768px) 180px, 200px"
                   />
                 </div>
         </div>
 
         {/* Card do Formulário */}
         <div 
-          className="w-full rounded-lg p-6 sm:p-8"
+          className="w-full rounded-lg p-4 sm:p-5 md:p-6"
           style={{ 
             backgroundColor: 'rgba(232, 220, 192, 0.05)', 
             border: '1px solid rgba(232, 220, 192, 0.1)' 
           }}
         >
-          <div className="text-center mb-6">
-            <h1 className="text-2xl sm:text-3xl font-light mb-2" style={{ color: '#E8DCC0' }}>
+          <div className="text-center mb-4">
+            <h1 className="text-xl sm:text-2xl font-light mb-1.5" style={{ color: '#E8DCC0' }}>
               {t.login.title}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: '#E8DCC0', opacity: 0.8 }}>

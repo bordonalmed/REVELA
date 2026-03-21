@@ -54,8 +54,8 @@ export function OpenGraphHead() {
     addMetaTag('og:site_name', 'Revela');
     
     // Open Graph Image (com URL absoluta)
-    addMetaTag('og:image', 'https://revela.app/revela3.png');
-    addMetaTag('og:image:secure_url', 'https://revela.app/revela3.png');
+    addMetaTag('og:image', 'https://revela.app/revela3-transparent-processed.png');
+    addMetaTag('og:image:secure_url', 'https://revela.app/revela3-transparent-processed.png');
     addMetaTag('og:image:width', '1200');
     addMetaTag('og:image:height', '630');
     addMetaTag('og:image:type', 'image/png');
@@ -63,7 +63,7 @@ export function OpenGraphHead() {
 
     // Twitter Card (reforço)
     addMetaTag('twitter:card', 'summary_large_image');
-    addMetaTag('twitter:image', 'https://revela.app/revela3.png');
+    addMetaTag('twitter:image', 'https://revela.app/revela3-transparent-processed.png');
     addMetaTag('twitter:image:alt', 'Revela - Comparação de Fotos Antes e Depois');
 
     // Facebook específico (apenas se tiver conteúdo)

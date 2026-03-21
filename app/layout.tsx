@@ -43,12 +43,12 @@ export const metadata: Metadata = {
     description: "Descubra como o Revela ajuda profissionais de saúde a comparar fotos antes e depois com privacidade total. Veja resultados práticos e transformações reais.",
     images: [
       {
-        url: "https://revela.app/revela3.png",
+        url: "https://revela.app/revela3-transparent-processed.png",
         width: 1200,
         height: 630,
         alt: "Revela - Comparação de Fotos Antes e Depois",
         type: "image/png",
-        secureUrl: "https://revela.app/revela3.png",
+        secureUrl: "https://revela.app/revela3-transparent-processed.png",
       },
     ],
   },
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Como Comparar Fotos Antes e Depois de Forma Profissional? | Revela",
     description: "Descubra como o Revela ajuda profissionais a comparar fotos antes e depois com privacidade total. Veja resultados práticos e transformações reais.",
-    images: ["/revela3.png"],
+    images: ["/revela3-transparent-processed.png"],
   },
   alternates: {
     canonical: "https://revela.app",
@@ -109,7 +109,7 @@ export default function RootLayout({
             {children}
           </ErrorBoundary>
           <ServiceWorkerRegistration />
-          <PWAInstallPrompt />
+          {process.env.NODE_ENV === 'production' && <PWAInstallPrompt />}
         </LanguageProvider>
       </body>
     </html>

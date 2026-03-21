@@ -23,12 +23,31 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (savedLanguage && (savedLanguage === 'pt-BR' || savedLanguage === 'en-US')) {
       setLanguageState(savedLanguage);
     } else {
-      // Detectar idioma do navegador
-      const browserLang = navigator.language || (navigator as any).userLanguage;
-      if (browserLang.startsWith('en')) {
-        setLanguageState('en-US');
-      } else {
-        setLanguageState('pt-BR');
+      // Detectar localização pelo fuso horário: timezones do Brasil → PT-BR
+      const BRAZIL_TIMEZONES = new Set([
+        'America/Sao_Paulo',
+        'America/Manaus',
+        'America/Belem',
+        'America/Fortaleza',
+        'America/Recife',
+        'America/Maceio',
+        'America/Bahia',
+        'America/Cuiaba',
+        'America/Porto_Velho',
+        'America/Boa_Vista',
+        'America/Rio_Branco',
+        'America/Noronha',
+        'America/Araguaina',
+        'America/Campo_Grande',
+        'America/Santarem',
+      ]);
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setLanguageState(BRAZIL_TIMEZONES.has(tz) ? 'pt-BR' : 'en-US');
+      } catch {
+        // Fallback: usar idioma do navegador
+        const browserLang = navigator.language || (navigator as any).userLanguage || '';
+        setLanguageState(browserLang.startsWith('pt') ? 'pt-BR' : 'en-US');
       }
     }
     setMounted(true);
