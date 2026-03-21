@@ -54,7 +54,7 @@ export default function ProjectsPage() {
     setLoading(false);
   }, [router]);
 
-  const loadProjects = useCallback(async (ownerEmail: string | null) => {
+  const loadProjects = useCallback(async (ownerEmail: string | null = null) => {
     try {
       setLoadingProjects(true);
       const allProjects = await getAllProjectsForUser(ownerEmail);
@@ -378,7 +378,7 @@ export default function ProjectsPage() {
     try {
       await deleteFolder(folderId);
       await loadFolders();
-      await loadProjects();
+      await loadProjects(user?.email || null);
       if (selectedFolderId === folderId) {
         setSelectedFolderId('all');
       }
@@ -394,7 +394,7 @@ export default function ProjectsPage() {
 
     try {
       await moveProjectToFolder(projectToMove, folderId);
-      await loadProjects();
+      await loadProjects(user?.email || null);
       setShowMoveModal(false);
       setProjectToMove(null);
       alert('Projeto movido com sucesso!');
