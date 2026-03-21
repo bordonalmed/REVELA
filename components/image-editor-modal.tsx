@@ -265,6 +265,80 @@ export function ImageEditorModal({
     }
   };
 
+  const bumpLayout = useCallback(() => {
+    setLayoutVersion((v) => v + 1);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    bumpLayout();
+  }, [isOpen, zoom, rotation, crop, imageLoaded, bumpLayout]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const onResize = () => bumpLayout();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isOpen, bumpLayout]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onMove = (e: MouseEvent) => {
+      if (!drawingPencilRef.current || activeTool !== 'pencil' || !allowClinicalAnnotations) return;
+      const p = clientToNaturalNorm(e.clientX, e.clientY, imgRef.current);
+      if (!p) return;
+      setStrokes((prev) => {
+        if (prev.length === 0) return prev;
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (!last) return prev;
+        next[next.length - 1] = {
+          ...last,
+          points: [...last.points, p],
+        };
+        return next;
+      });
+    };
+    const onUp = () => {
+      drawingPencilRef.current = false;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isOpen, activeTool, allowClinicalAnnotations]);
+
+  useEffect(() => {
+    if (draggingTextId === null) return;
+    const onMove = (e: MouseEvent) => {
+      const st = textDragRef.current;
+      if (!st || !imgRef.current) return;
+      const ir = imgRef.current.getBoundingClientRect();
+      const dx = (e.clientX - st.mouseX) / ir.width;
+      const dy = (e.clientY - st.mouseY) / ir.height;
+      setTextBoxes((prev) =>
+        prev.map((t) => {
+          if (t.id !== draggingTextId) return t;
+          const nx = Math.min(Math.max(st.x + dx, 0), 1 - t.width);
+          const ny = Math.min(Math.max(st.y + dy, 0), 1 - t.height);
+          return { ...t, x: nx, y: ny };
+        })
+      );
+    };
+    const onUp = () => {
+      textDragRef.current = null;
+      setDraggingTextId(null);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [draggingTextId]);
+
   if (!isOpen) return null;
 
   const startNewMask = (shape: PrivacyMaskShape) => {
@@ -355,80 +429,6 @@ export function ImageEditorModal({
   const handleRemoveMask = (index: number) => {
     setMasks((prev) => prev.filter((_, i) => i !== index));
   };
-
-  const bumpLayout = useCallback(() => {
-    setLayoutVersion((v) => v + 1);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    bumpLayout();
-  }, [isOpen, zoom, rotation, crop, imageLoaded, bumpLayout]);
-
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    const onResize = () => bumpLayout();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [isOpen, bumpLayout]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onMove = (e: MouseEvent) => {
-      if (!drawingPencilRef.current || activeTool !== 'pencil' || !allowClinicalAnnotations) return;
-      const p = clientToNaturalNorm(e.clientX, e.clientY, imgRef.current);
-      if (!p) return;
-      setStrokes((prev) => {
-        if (prev.length === 0) return prev;
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (!last) return prev;
-        next[next.length - 1] = {
-          ...last,
-          points: [...last.points, p],
-        };
-        return next;
-      });
-    };
-    const onUp = () => {
-      drawingPencilRef.current = false;
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [isOpen, activeTool, allowClinicalAnnotations]);
-
-  useEffect(() => {
-    if (draggingTextId === null) return;
-    const onMove = (e: MouseEvent) => {
-      const st = textDragRef.current;
-      if (!st || !imgRef.current) return;
-      const ir = imgRef.current.getBoundingClientRect();
-      const dx = (e.clientX - st.mouseX) / ir.width;
-      const dy = (e.clientY - st.mouseY) / ir.height;
-      setTextBoxes((prev) =>
-        prev.map((t) => {
-          if (t.id !== draggingTextId) return t;
-          const nx = Math.min(Math.max(st.x + dx, 0), 1 - t.width);
-          const ny = Math.min(Math.max(st.y + dy, 0), 1 - t.height);
-          return { ...t, x: nx, y: ny };
-        })
-      );
-    };
-    const onUp = () => {
-      textDragRef.current = null;
-      setDraggingTextId(null);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [draggingTextId]);
 
   const interactionLayerStyle = (): React.CSSProperties => {
     void layoutVersion;
