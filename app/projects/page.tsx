@@ -267,7 +267,7 @@ export default function ProjectsPage() {
       const results = await importBackup(backupData);
       
       // Recarregar projetos
-      await loadProjects();
+      await loadProjects(user?.email || null);
       
       // Trackear importação de backup
       if (user) {
