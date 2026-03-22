@@ -17,6 +17,19 @@ export function NavigationHeader() {
   const isDashboard = pathname === '/dashboard';
   const { userPlan: plan } = usePlan();
 
+  const fullPlanName =
+    plan === 'premium'
+      ? t.home.planPremiumName ?? 'Revela Premium'
+      : plan === 'pro'
+        ? t.home.planProName ?? 'Revela Pro'
+        : t.home.planFreeName ?? 'Revela Free';
+  const shortPlanName =
+    plan === 'premium'
+      ? t.common.navPlanShortPremium
+      : plan === 'pro'
+        ? t.common.navPlanShortPro
+        : t.common.navPlanShortFree;
+
   const handleLogout = async () => {
     try {
       // Trackear logout antes de sair
@@ -58,37 +71,35 @@ export function NavigationHeader() {
 
           {/* Plano + Ícones à direita */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Badge do plano - clicável para /planos */}
+            {/* Badge do plano — sempre visível; texto curto no mobile, completo a partir de sm */}
             <Link
               href="/planos"
-              className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium transition-opacity hover:opacity-90"
+              aria-label={`${fullPlanName}. ${t.common.navPlanBadgeAria}`}
+              className="inline-flex items-center justify-center min-h-[32px] sm:min-h-0 px-2 sm:px-2.5 py-1 rounded-full text-[11px] font-semibold sm:font-medium transition-opacity hover:opacity-90 shrink-0"
               style={{
                 backgroundColor:
                   plan === 'premium'
                     ? 'rgba(234, 179, 8, 0.18)'
                     : plan === 'pro'
-                    ? 'rgba(34, 197, 94, 0.18)'
-                    : 'rgba(148, 163, 184, 0.18)',
+                      ? 'rgba(34, 197, 94, 0.18)'
+                      : 'rgba(148, 163, 184, 0.18)',
                 color:
                   plan === 'premium'
                     ? '#facc15'
                     : plan === 'pro'
-                    ? '#4ade80'
-                    : '#cbd5f5',
+                      ? '#4ade80'
+                      : '#cbd5f5',
                 borderColor:
                   plan === 'premium'
                     ? 'rgba(250, 204, 21, 0.4)'
                     : plan === 'pro'
-                    ? 'rgba(34, 197, 94, 0.4)'
-                    : 'rgba(148, 163, 184, 0.4)',
+                      ? 'rgba(34, 197, 94, 0.4)'
+                      : 'rgba(148, 163, 184, 0.4)',
                 borderWidth: 1,
               }}
             >
-              {plan === 'premium'
-                ? 'Revela Premium'
-                : plan === 'pro'
-                ? 'Revela Pro'
-                : 'Revela Free'}
+              <span className="sm:hidden truncate text-center leading-tight">{shortPlanName}</span>
+              <span className="hidden sm:inline">{fullPlanName}</span>
             </Link>
 
             {/* Seletor de Idioma */}

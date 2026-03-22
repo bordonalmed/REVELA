@@ -150,6 +150,12 @@ export interface Translations {
     logoutError: string;
     settings: string;
     dashboard: string;
+    /** Rótulo curto do plano no header (mobile) */
+    navPlanShortFree: string;
+    navPlanShortPro: string;
+    navPlanShortPremium: string;
+    /** Acessibilidade: link do badge → página de planos */
+    navPlanBadgeAria: string;
   };
   // Footer
   footer: {
@@ -326,6 +332,10 @@ export const translations: Record<Language, Translations> = {
       logoutError: 'Erro ao sair. Tente novamente.',
       settings: 'Configurações',
       dashboard: 'Dashboard',
+      navPlanShortFree: 'Grátis',
+      navPlanShortPro: 'Pro',
+      navPlanShortPremium: 'Premium',
+      navPlanBadgeAria: 'Ver planos e opções de assinatura',
     },
     footer: {
       copyright: '© 2025 Revela - Powered by Equipe Revela',
@@ -498,6 +508,10 @@ export const translations: Record<Language, Translations> = {
       logoutError: 'Error logging out. Please try again.',
       settings: 'Settings',
       dashboard: 'Dashboard',
+      navPlanShortFree: 'Free',
+      navPlanShortPro: 'Pro',
+      navPlanShortPremium: 'Premium',
+      navPlanBadgeAria: 'View plans and subscription options',
     },
     footer: {
       copyright: '© 2025 Revela - Powered by Revela Team',
