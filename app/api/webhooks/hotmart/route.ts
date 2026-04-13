@@ -9,6 +9,7 @@ import {
   isGrantEvent,
   isRevokeEvent,
   normalizeEmail,
+  parseHotmartWebhookBody,
   resolvePlanFromProductId,
   verifyHotmartToken,
 } from '@/lib/hotmart-webhook';
@@ -22,14 +23,13 @@ export const dynamic = 'force-dynamic';
  * Variáveis: HOTMART_WEBHOOK_TOKEN, HOTMART_PRO_PRODUCT_IDS, HOTMART_PREMIUM_PRODUCT_IDS, SUPABASE_SERVICE_ROLE_KEY
  */
 export async function POST(request: NextRequest) {
-  let body: Record<string, unknown> = {};
-  try {
-    const text = await request.text();
-    if (text) {
-      body = JSON.parse(text) as Record<string, unknown>;
-    }
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 });
+  const text = await request.text();
+  const body = text
+    ? parseHotmartWebhookBody(text, request.headers.get('content-type'))
+    : {};
+
+  if (text && Object.keys(body).length === 0) {
+    return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
   }
 
   const url = new URL(request.url);

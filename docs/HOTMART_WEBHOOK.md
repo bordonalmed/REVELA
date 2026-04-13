@@ -31,6 +31,29 @@ Quando uma compra é **aprovada** na Hotmart, o postback chama `POST /api/webhoo
 
 O e-mail do comprador na Hotmart deve ser o **mesmo** do cadastro no Revela (Supabase Auth). Se forem diferentes, a linha é criada no banco, mas o login não “casa” com o entitlement até o usuário usar o mesmo e-mail.
 
+## Por que o usuário paga e continua “Free”? (checklist)
+
+1. **E-mail diferente**  
+   Compra com `maria@gmail.com`, cadastro no Revela com `maria@hotmail.com` → o app só lê entitlement pela conta logada. Solução: mesmo e-mail nas duas pontas, ou ajustar manualmente a linha em `revela_entitlements` no Supabase.
+
+2. **ID do produto na Hotmart ≠ variáveis `HOTMART_*_PRODUCT_IDS`**  
+   No Netlify, os IDs precisam ser os **mesmos números** que vêm no webhook (às vezes é ID da **oferta** / `offer`, não do produto). Abra **Histórico de webhooks** na Hotmart, veja o JSON e confira `product.id`, `purchase.product_id` ou `offer.id` / `offer.key`. Inclua **todos** os IDs que aparecem na venda real nas variáveis (vários separados por vírgula).
+
+3. **Webhook retornando erro**  
+   - **401**: `HOTMART_WEBHOOK_TOKEN` no Netlify diferente do **hottok** configurado na Hotmart.  
+   - **422** `Unknown product id`: IDs não mapeados (item 2).  
+   - **400** `No buyer email`: o parser não achou e-mail no JSON (ajuste em `lib/hotmart-webhook.ts` com base no payload real).  
+   - **200** `ignored: true`: o nome do **evento** não foi reconhecido como “liberar acesso”; veja o campo `event` no JSON e compare com `GRANT_EVENT_SUBSTRINGS` em `lib/hotmart-webhook.ts`.
+
+4. **`SUPABASE_SERVICE_ROLE_KEY` errada ou ausente no deploy**  
+   Sem service role, o upsert na tabela falha (**500** no webhook).
+
+5. **Tabela / RLS**  
+   Confirme que rodou o SQL `supabase-hotmart-entitlements.sql` e que existe política de **SELECT** para o usuário logado na própria linha (`email` = e-mail do JWT).
+
+6. **Atualizar o app**  
+   Após o webhook gravar, o usuário pode trocar de aba e voltar: o app recarrega o plano automaticamente; se não, um **F5** força nova leitura.
+
 ## Teste local
 
 Use [ngrok](https://ngrok.com/) ou similar para expor `localhost` e registrar a URL na Hotmart, ou use o **histórico de webhooks** da Hotmart para reenviar um POST de teste.

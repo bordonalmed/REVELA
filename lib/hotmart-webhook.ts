@@ -1,14 +1,72 @@
 import type { UserPlan } from '@/lib/plans';
 
+/**
+ * Corpo JSON ou form-urlencoded (postback legado Hotmart).
+ * Se `data` vier como string JSON, faz parse.
+ */
+export function parseHotmartWebhookBody(
+  text: string,
+  contentType: string | null,
+): Record<string, unknown> {
+  const trimmed = text.trim();
+  const ct = (contentType || '').toLowerCase();
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      /* tentar form abaixo */
+    }
+  }
+
+  if (ct.includes('application/x-www-form-urlencoded') || (trimmed.includes('=') && !trimmed.startsWith('{'))) {
+    try {
+      const params = new URLSearchParams(text);
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of params.entries()) {
+        out[k] = v;
+      }
+      const dataRaw = out.data;
+      if (typeof dataRaw === 'string' && dataRaw.trim().startsWith('{')) {
+        try {
+          const nested = JSON.parse(dataRaw) as Record<string, unknown>;
+          return { ...out, data: nested };
+        } catch {
+          return out;
+        }
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 /** Eventos que liberam o produto (nomes variam na Hotmart / histórico). */
 const GRANT_EVENT_SUBSTRINGS = [
   'PURCHASE_APPROVED',
   'PURCHASE_COMPLETE',
   'PURCHASE_FINISHED',
   'PURCHASE_ORDER',
+  'PURCHASE_ORDER_APPROVED',
+  'ORDER_APPROVED',
+  'PAYMENT_APPROVED',
   'SUBSCRIPTION_ACTIVATION',
   'SUBSCRIPTION_REACTIVATION',
   'SUBSCRIPTION_RENEWAL',
+  'SUBSCRIPTION_PURCHASE', // ex.: SUBSCRIPTION_PURCHASE_APPROVED
   'SWITCH_PLAN', // upgrade/downgrade em assinatura
 ];
 
@@ -49,7 +107,7 @@ function firstString(...vals: unknown[]): string | null {
 
 /** Nó principal onde a Hotmart costuma colocar compra / comprador (varia por versão). */
 function getDataRoot(body: Record<string, unknown>): Record<string, unknown> {
-  const raw = body.data ?? body.payload ?? body;
+  const raw = body.data ?? (body as { datas?: unknown }).datas ?? body.payload ?? body;
   return (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
 }
 
@@ -67,17 +125,29 @@ export function extractBuyerEmail(body: Record<string, unknown>): string | null 
   const customer = data.customer as Record<string, unknown> | undefined;
   const fromPurchaseBuyer = purchase?.buyer as Record<string, unknown> | undefined;
 
+  const purchaseCustomer = purchase?.customer as Record<string, unknown> | undefined;
+
   return firstString(
     buyer?.email,
+    buyer?.mail,
     purchase?.buyer_email,
+    purchase?.buyerEmail,
+    purchase?.customer_email,
+    purchaseCustomer?.email,
     fromPurchaseBuyer?.email,
+    fromPurchaseBuyer?.mail,
     subscriber?.email,
     user?.email,
     customer?.email,
+    customer?.mail,
     data.buyer_email,
+    data.buyerEmail,
     data.email,
+    data.customer_email,
     body.email,
     (body as { buyer_email?: string }).buyer_email,
+    (body as { buyerEmail?: string }).buyerEmail,
+    (body as { x_email?: string }).x_email,
   );
 }
 
@@ -92,6 +162,8 @@ export function extractProductId(body: Record<string, unknown>): string | null {
   const items = data.items as unknown[] | undefined;
   const firstItem = items?.[0] as Record<string, unknown> | undefined;
   const itemProduct = firstItem?.product as Record<string, unknown> | undefined;
+  const subscription = data.subscription as Record<string, unknown> | undefined;
+  const subProduct = subscription?.product as Record<string, unknown> | undefined;
 
   return firstString(
     product?.id,
@@ -101,11 +173,19 @@ export function extractProductId(body: Record<string, unknown>): string | null {
     purchase?.productId,
     offer?.product_id,
     offer?.id,
+    offer?.key,
+    offer?.offer_key,
     itemProduct?.id,
     itemProduct?.product_id,
+    subProduct?.id,
+    subProduct?.product_id,
     data.product_id,
     data.productId,
+    data.prod,
     body.product_id,
+    (body as { prod?: string | number }).prod,
+    (body as { product?: string | number }).product,
+    (body as { ProductId?: string | number }).ProductId,
   );
 }
 
@@ -138,7 +218,26 @@ export function extractEventName(body: Record<string, unknown>): string {
     body.type ??
     body.status ??
     data.status;
-  return typeof raw === 'string' ? raw : '';
+  if (typeof raw === 'string' && raw.trim()) return raw;
+
+  /** Postback legado / form: só vem status em texto */
+  const flatStatus = body.status ?? body.Status ?? data.status;
+  if (typeof flatStatus === 'string') {
+    const u = flatStatus.trim().toUpperCase();
+    if (
+      u === 'APPROVED' ||
+      u === 'COMPLETE' ||
+      u === 'COMPLETED' ||
+      u === 'FINISHED' ||
+      u === 'APROVADO' ||
+      u === 'FINALIZADO' ||
+      u === 'CONCLUIDO' ||
+      u === 'CONCLUÍDO'
+    ) {
+      return 'PURCHASE_APPROVED';
+    }
+  }
+  return '';
 }
 
 /**
@@ -146,7 +245,12 @@ export function extractEventName(body: Record<string, unknown>): string {
  */
 export function resolvePlanFromProductId(productId: string | null): UserPlan | null {
   if (!productId) return null;
-  const normalized = productId.trim();
+  const normalized = String(productId).trim();
+  const asNum = Number(normalized);
+  const variants = new Set<string>([normalized]);
+  if (Number.isFinite(asNum)) {
+    variants.add(String(asNum));
+  }
 
   const premiumIds = (process.env.HOTMART_PREMIUM_PRODUCT_IDS || '')
     .split(',')
@@ -157,8 +261,16 @@ export function resolvePlanFromProductId(productId: string | null): UserPlan | n
     .map((s) => s.trim())
     .filter(Boolean);
 
-  if (premiumIds.includes(normalized)) return 'premium';
-  if (proIds.includes(normalized)) return 'pro';
+  const inList = (list: string[]) =>
+    list.some((id) => {
+      const t = id.trim();
+      if (variants.has(t)) return true;
+      const n = Number(t);
+      return Number.isFinite(n) && variants.has(String(n));
+    });
+
+  if (inList(premiumIds)) return 'premium';
+  if (inList(proIds)) return 'pro';
 
   return null;
 }

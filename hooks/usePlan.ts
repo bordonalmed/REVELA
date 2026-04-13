@@ -35,22 +35,39 @@ export function usePlan(): UsePlanReturn {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user?.email) {
+    const email = user?.email;
+    if (!email) {
       setDbPlan(null);
       setEntitlementLoading(false);
       return;
     }
-    setEntitlementLoading(true);
-    fetchEntitlementPlanForEmail(user.email).then((plan) => {
-      if (!cancelled) {
-        setDbPlan(plan);
-        setEntitlementLoading(false);
-      }
-    });
+
+    const load = () => {
+      setEntitlementLoading(true);
+      fetchEntitlementPlanForEmail(email).then((plan) => {
+        if (!cancelled) {
+          setDbPlan(plan);
+          setEntitlementLoading(false);
+        }
+      });
+    };
+
+    load();
+
+    /** Após pagamento na Hotmart o usuário volta ao app: recarrega entitlement sem F5 */
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
-  }, [user?.email]);
+  }, [user?.email ?? null]);
 
   const userPlan = getUserPlan(user, dbPlan);
   return {
