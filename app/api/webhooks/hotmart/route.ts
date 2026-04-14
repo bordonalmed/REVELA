@@ -32,14 +32,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Invalid body' }, { status: 400 });
   }
 
-  const url = new URL(request.url);
-  if (!verifyHotmartToken(body, url.searchParams, request.headers)) {
-    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   if (process.env.HOTMART_WEBHOOK_DEBUG === '1') {
     const preview = JSON.stringify(body).slice(0, 4000);
     console.warn('[Hotmart webhook] DEBUG payload (truncado):', preview);
+  }
+
+  const url = new URL(request.url);
+  if (!verifyHotmartToken(body, url.searchParams, request.headers)) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const admin = createSupabaseAdmin();

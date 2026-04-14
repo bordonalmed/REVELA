@@ -280,7 +280,8 @@ export function normalizeEmail(email: string): string {
 }
 
 /**
- * Valida token opcional (Hotmart pode enviar hottok no body ou query).
+ * Valida token (hottok) vindo da Hotmart.
+ * Verifica em vários lugares: body, data.hottok, headers, query string.
  */
 export function verifyHotmartToken(
   body: Record<string, unknown>,
@@ -289,24 +290,47 @@ export function verifyHotmartToken(
 ): boolean {
   const secret = process.env.HOTMART_WEBHOOK_TOKEN;
   if (!secret) {
-    // Sem token configurado: ambiente de dev ou esquecimento — recusar em produção
     if (process.env.NODE_ENV === 'production') {
+      console.warn('[Hotmart token] HOTMART_WEBHOOK_TOKEN não configurado em produção');
       return false;
     }
     return true;
   }
 
-  const fromBody =
-    typeof body.hottok === 'string'
-      ? body.hottok
-      : typeof (body as { token?: string }).token === 'string'
-        ? (body as { token: string }).token
-        : null;
-  const fromQuery = searchParams.get('hottok') || searchParams.get('token');
-  const auth = headers.get('authorization');
-  const fromBearer =
-    auth?.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+  const data = (body.data ?? body.payload ?? {}) as Record<string, unknown>;
 
-  const received = fromBody || fromQuery || fromBearer;
-  return received === secret;
+  const candidates: (string | null | undefined)[] = [
+    typeof body.hottok === 'string' ? body.hottok : undefined,
+    typeof data.hottok === 'string' ? data.hottok : undefined,
+    typeof (body as { token?: string }).token === 'string' ? (body as { token: string }).token : undefined,
+    searchParams.get('hottok'),
+    searchParams.get('token'),
+    headers.get('x-hotmart-hottok'),
+    headers.get('X-Hotmart-Hottok'),
+    headers.get('authorization')?.startsWith('Bearer ')
+      ? headers.get('authorization')!.slice(7).trim()
+      : undefined,
+  ];
+
+  const received = candidates.find((c) => typeof c === 'string' && c.trim().length > 0);
+  const receivedTrimmed = typeof received === 'string' ? received.trim() : null;
+
+  if (receivedTrimmed === secret || receivedTrimmed === secret.trim()) {
+    return true;
+  }
+
+  console.warn(
+    '[Hotmart token] Falhou. Recebido:',
+    receivedTrimmed ? `"${receivedTrimmed.slice(0, 8)}..."` : '(nenhum)',
+    '| Esperado começa com:',
+    `"${secret.slice(0, 8)}..."`,
+    '| Headers relevantes:',
+    {
+      'x-hotmart-hottok': headers.get('x-hotmart-hottok'),
+      authorization: headers.get('authorization')?.slice(0, 20),
+    },
+    '| body.hottok?', typeof body.hottok,
+    '| data.hottok?', typeof data.hottok,
+  );
+  return false;
 }
