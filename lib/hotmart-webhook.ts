@@ -282,12 +282,19 @@ export function normalizeEmail(email: string): string {
 /**
  * Valida token (hottok) vindo da Hotmart.
  * Verifica em vários lugares: body, data.hottok, headers, query string.
+ *
+ * Se HOTMART_WEBHOOK_SKIP_TOKEN_CHECK=1, aceita sem verificar (útil para debug).
  */
 export function verifyHotmartToken(
   body: Record<string, unknown>,
   searchParams: URLSearchParams,
   headers: Headers,
 ): boolean {
+  if (process.env.HOTMART_WEBHOOK_SKIP_TOKEN_CHECK === '1') {
+    console.warn('[Hotmart token] Verificação desativada (HOTMART_WEBHOOK_SKIP_TOKEN_CHECK=1)');
+    return true;
+  }
+
   const secret = process.env.HOTMART_WEBHOOK_TOKEN;
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -324,11 +331,6 @@ export function verifyHotmartToken(
     receivedTrimmed ? `"${receivedTrimmed.slice(0, 8)}..."` : '(nenhum)',
     '| Esperado começa com:',
     `"${secret.slice(0, 8)}..."`,
-    '| Headers relevantes:',
-    {
-      'x-hotmart-hottok': headers.get('x-hotmart-hottok'),
-      authorization: headers.get('authorization')?.slice(0, 20),
-    },
     '| body.hottok?', typeof body.hottok,
     '| data.hottok?', typeof data.hottok,
   );
