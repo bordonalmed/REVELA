@@ -85,7 +85,7 @@ export function HomeClient() {
                 </Button>
               </div>
               <p className="text-xs text-revela-cream/60 pt-1">
-                Grátis para sempre. Sem cartão de crédito.
+                Comece grátis. Planos a partir de R$ 19,90/mês.
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start pt-2">
                 <span className="inline-flex items-center gap-1.5 text-xs text-revela-cream/70 bg-revela-cream/5 border border-revela-cream/10 rounded-full px-3 py-1">
