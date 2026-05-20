@@ -1,0 +1,395 @@
+================================================================================
+                     REVELA - RESUMO COMPLETO DO PROGRAMA
+================================================================================
+
+1. O QUE É O REVELA
+================================================================================
+
+O Revela é uma aplicação web profissional (PWA) para comparação de fotos 
+antes e depois de tratamentos. É voltado para profissionais da saúde como 
+médicos, dentistas, dermatologistas, cirurgiões plásticos, esteticistas, 
+fisioterapeutas e clínicas estéticas.
+
+Diferencial principal: as fotos ficam armazenadas LOCALMENTE no dispositivo 
+do usuário (IndexedDB), garantindo privacidade total. Não há upload 
+obrigatório para nuvem.
+
+URL: https://www.revela.fun
+Deploy: Netlify
+Autenticação: Supabase
+Pagamentos: Hotmart
+
+
+2. TECNOLOGIAS UTILIZADAS
+================================================================================
+
+- Framework: Next.js 14.1 (App Router)
+- Frontend: React 18.2 + TypeScript 5.3
+- Estilização: Tailwind CSS 3.4
+- Componentes UI: Radix Slot + shadcn-style + Lucide Icons
+- Auth & Backend: Supabase (autenticação + entitlements)
+- Validação: Zod + React Hook Form
+- Imagens: react-easy-crop, react-image-crop, Canvas APIs
+- PDF: jsPDF
+- Deploy: Netlify (com Next.js plugin)
+- PWA: Service Worker + manifest.json
+- Analytics: Google Analytics 4 + Meta Pixel + Twitter + TikTok
+- Internacionalização: pt-BR e en-US
+
+
+3. ESTRUTURA DE PASTAS
+================================================================================
+
+REVELA/
+├── app/                    # Páginas e rotas (Next.js App Router)
+│   ├── api/               # API routes (webhooks, backup, tracking)
+│   ├── dashboard/         # Dashboard principal (autenticado)
+│   ├── projects/          # Lista de projetos + visualizador [id]
+│   ├── new-project/       # Criação de novo projeto
+│   ├── gallery/           # Galeria legada (Supabase)
+│   ├── settings/          # Configurações da conta
+│   ├── login/             # Login
+│   ├── signup/            # Cadastro
+│   ├── planos/            # Página de preços
+│   ├── faq/               # Perguntas frequentes
+│   ├── sobre/             # Sobre o Revela
+│   ├── para-medicos/      # Landing para médicos
+│   ├── contato/           # Contato
+│   ├── debug/             # Diagnóstico técnico
+│   ├── layout.tsx         # Layout raiz (SEO, PWA, providers)
+│   ├── page.tsx           # Homepage (Server Component + SEO)
+│   └── sitemap.ts         # Sitemap para Google
+├── components/            # Componentes React reutilizáveis
+│   ├── ui/                # Primitivos (Button, Input, Card, Label)
+│   └── ...                # Componentes de feature
+├── hooks/                 # Hooks customizados (useAuth, usePlan, useBranding)
+├── contexts/              # Providers de contexto (idioma)
+├── lib/                   # Lógica de negócio e utilitários
+│   ├── i18n/              # Traduções pt-BR e en-US
+│   ├── validations/       # Schemas Zod
+│   └── ...                # Storage, plans, exports, PDF, etc.
+├── public/                # Arquivos estáticos (logos, imagens, robots.txt)
+├── docs/                  # Documentação
+└── middleware.ts          # Headers de segurança (CSP, HSTS)
+
+
+4. PÁGINAS E ROTAS
+================================================================================
+
+PÚBLICAS (sem login):
+  /                  - Homepage com apresentação, features, FAQ, planos
+  /login             - Login por email/senha via Supabase
+  /signup            - Cadastro de nova conta
+  /planos            - Página de preços (Free, Pro, Premium) com links Hotmart
+  /faq               - Perguntas frequentes
+  /sobre             - Sobre o Revela
+  /para-medicos      - Landing page para profissionais médicos
+  /contato           - Contato (email: contato@revela.fun)
+
+PRIVADAS (requer autenticação):
+  /dashboard         - Hub principal: novo projeto ou ver projetos salvos
+  /projects          - Biblioteca de projetos com busca, filtros, pastas
+  /projects/[id]     - Visualizador/editor do projeto (comparação, slider, etc.)
+  /new-project       - Assistente de criação de projeto
+  /gallery           - Galeria legada (fotos armazenadas no Supabase)
+  /settings          - Configurações: senha, logo, branding, backup
+  /debug             - Página de diagnóstico para suporte técnico
+
+API ROUTES:
+  /api/webhooks/hotmart      - Recebe notificações de compra/cancelamento
+  /api/secure-backup         - Recebe backup criptografado (stub)
+  /api/conversion-tracking   - Retorna IDs de pixels de conversão
+
+
+5. FLUXO DE AUTENTICAÇÃO
+================================================================================
+
+1. Usuário acessa /signup → preenche email + senha
+2. Supabase cria a conta (signUp)
+3. Redireciona para /dashboard
+4. Em páginas protegidas, verifica getSession()
+5. Sem sessão → redireciona para /login
+6. Logout → supabase.auth.signOut() → volta para /
+
+Modo Demo: com NEXT_PUBLIC_DEMO_MODE=true, pula Supabase e usa sessão fake.
+
+
+6. PLANOS E PREÇOS
+================================================================================
+
+┌─────────────┬──────────────┬────────────────────────────────────────────────┐
+│ PLANO       │ PREÇO        │ RECURSOS                                       │
+├─────────────┼──────────────┼────────────────────────────────────────────────┤
+│ FREE        │ R$ 0/mês     │ - Até 3 projetos                               │
+│             │              │ - 3 fotos antes + 3 fotos depois por projeto    │
+│             │              │ - Comparação com slider                         │
+│             │              │ - Dados no dispositivo                          │
+│             │              │ - Export com marca d'água Revela                │
+├─────────────┼──────────────┼────────────────────────────────────────────────┤
+│ PRO         │ R$ 19,90/mês │ - Projetos ILIMITADOS                          │
+│             │              │ - Imagens ilimitadas                            │
+│             │              │ - Export para redes sociais                     │
+│             │              │ - Logo da clínica como marca d'água             │
+│             │              │ - Remover marca Revela                          │
+│             │              │ - Hotmart: pay.hotmart.com/U104878188P          │
+├─────────────┼──────────────┼────────────────────────────────────────────────┤
+│ PREMIUM     │ R$ 49,00/mês │ - Tudo do Pro +                                │
+│             │              │ - Timeline de evolução                          │
+│             │              │ - Relatório PDF visual                          │
+│             │              │ - Marcações clínicas nas fotos                  │
+│             │              │ - Modo apresentação                             │
+│             │              │ - Captura guiada padronizada                    │
+│             │              │ - Templates profissionais                       │
+│             │              │ - Backup em nuvem criptografado (opcional)      │
+│             │              │ - Hotmart: pay.hotmart.com/X104930601U          │
+└─────────────┴──────────────┴────────────────────────────────────────────────┘
+
+Resolução do plano (ordem de prioridade):
+1. Email de dev → override via localStorage
+2. Registro ativo na tabela revela_entitlements (via webhook Hotmart)
+3. Emails hardcoded como dev/premium
+4. Padrão: free
+
+
+7. COMPONENTES PRINCIPAIS
+================================================================================
+
+COMPARAÇÃO DE FOTOS:
+  - ComparisonSlider     → Slider interativo antes/depois com branding
+  - BeforeAfterViewer    → Visualizador arrastável (galeria legada)
+  - ZoomableImage        → Pinch/zoom/pan em imagens
+  - MeasurementTool      → Desenhar medições sobre imagens
+
+EDIÇÃO:
+  - ImageEditorModal     → Corte, rotação, máscaras de privacidade, marcações
+  - GuidedCaptureModal   → Captura padronizada (Premium)
+  - EvolutionSetupModal  → Configurar etapas de evolução
+
+EXPORTAÇÃO:
+  - PdfReportModal       → Gerar relatório PDF visual (Premium)
+  - SocialMediaExportModal → Export para redes sociais (Pro+)
+  - TemplateGeneratorModal → Templates profissionais (Premium)
+  - WatermarkedContainer → Aplica marca d'água conforme plano
+
+TIMELINE:
+  - TreatmentTimeline    → Timeline visual de evolução (Premium)
+
+NAVEGAÇÃO:
+  - LandingHeader        → Header público do site
+  - NavigationHeader     → Header autenticado (plan badge, logout, idioma)
+  - Footer               → Rodapé com links
+  - StartMenu            → Menu do dashboard (novo projeto / projetos)
+  - LanguageSelector     → Troca PT-BR / EN-US
+
+SEO E INFRA:
+  - StructuredData       → JSON-LD (Organization, FAQ, HowTo, SoftwareApp)
+  - GoogleAnalytics      → GA4 script
+  - ConversionPixels     → Pixels de conversão (Meta, Twitter, Google, TikTok)
+  - ServiceWorkerRegistration → Registro do PWA
+  - PWAInstallPrompt     → Prompt de instalação do app
+  - ErrorBoundary        → Tratamento de erros com fallback UI
+  - SafeImage            → Imagem com fallback para erros de carregamento
+
+
+8. HOOKS CUSTOMIZADOS
+================================================================================
+
+useAuth(redirectToLogin?: boolean)
+  - Gerencia sessão Supabase
+  - Verifica getSession() e onAuthStateChange
+  - Redireciona para /login se não autenticado
+  - Retorna { user, loading }
+
+usePlan()
+  - Resolve plano do usuário (free/pro/premium)
+  - Consulta revela_entitlements no Supabase
+  - Refaz consulta quando aba ganha foco (pós-compra)
+  - Retorna { userPlan, hasProAccess, hasPremiumAccess, canUsePremiumFeature }
+
+useBranding()
+  - Retorna logo/watermark efetivo baseado no plano
+  - Reage a mudanças no localStorage entre abas
+
+
+9. ARMAZENAMENTO DE DADOS
+================================================================================
+
+LOCAL (IndexedDB - "RevelaDB"):
+  - Projetos (metadados, notas, medições, datas)
+  - Imagens em base64 (antes/depois/evolução)
+  - Pastas de organização
+  - Flags de backup automático
+  - Escopo por email do usuário
+
+SUPABASE (remoto):
+  - Autenticação (users)
+  - revela_entitlements (plano ativo por email)
+  - before_after_photos (galeria legada - URLs)
+  - Backup em nuvem opcional (Premium)
+
+LOCAL STORAGE:
+  - Idioma selecionado (revela-language)
+  - Branding/logo da clínica
+  - Perfil da clínica
+  - Override de plano (dev)
+
+
+10. INTEGRAÇÃO HOTMART (PAGAMENTOS)
+================================================================================
+
+Fluxo:
+1. Usuário compra plano Pro ou Premium via Hotmart
+2. Hotmart envia webhook POST para /api/webhooks/hotmart
+3. API verifica token (hottok) de segurança
+4. Extrai email do comprador e ID do produto
+5. Resolve qual plano (Pro=7372978, Premium=7393185)
+6. Insere/atualiza revela_entitlements no Supabase
+7. Quando usuário volta ao app, usePlan() detecta novo plano
+
+Eventos reconhecidos:
+  - PURCHASE_APPROVED → ativa plano
+  - SUBSCRIPTION_PURCHASE → ativa plano
+  - REFUND → revoga plano (volta para free)
+  - SUBSCRIPTION_CANCELLATION → revoga plano
+
+Variáveis de ambiente necessárias (Netlify):
+  - HOTMART_WEBHOOK_TOKEN (hottok da Hotmart)
+  - HOTMART_PRO_PRODUCT_IDS (7372978)
+  - HOTMART_PREMIUM_PRODUCT_IDS (7393185)
+  - SUPABASE_SERVICE_ROLE_KEY (admin key)
+
+
+11. INTERNACIONALIZAÇÃO (i18n)
+================================================================================
+
+Idiomas: pt-BR (padrão) e en-US
+
+Detecção automática:
+  1. localStorage (revela-language)
+  2. Timezone brasileiro → pt-BR
+  3. navigator.language
+  4. Fallback: pt-BR
+
+Arquivo: lib/i18n/translations.ts
+  - Interface tipada Translations
+  - Seções: home, login, signup, dashboard, projects, settings, common
+  - Usado via useLanguage() → { t, language, setLanguage }
+
+Seletor: componente LanguageSelector em header e login/signup
+
+
+12. LAYOUT E DESIGN
+================================================================================
+
+CORES PRINCIPAIS:
+  - revela-dark: #1A2B32 (fundo escuro principal)
+  - revela-cream: #E8DCC0 (texto e bordas claras)
+  - revela-teal: cor de destaque (botões, badges, ícones)
+  - Branco para texto em botões de ação
+
+RESPONSIVIDADE:
+  - Mobile-first com breakpoints sm/md/lg/xl
+  - Header compacto em mobile com badge de plano visível
+  - Grid adapta de 1 coluna (mobile) para 2-3 (desktop)
+  - Touch targets mínimos de 32px em mobile
+
+TIPOGRAFIA:
+  - Fonte sem-serifa (padrão do sistema + antialiased)
+  - Tamanhos escaláveis: text-xs → text-3xl conforme breakpoint
+  - Peso: font-light para títulos, font-medium para destaques
+
+COMPONENTES UI (shadcn-style):
+  - Button com variantes (default, outline, ghost)
+  - Input com estilos consistentes
+  - Card para agrupamento visual
+  - Modais para edição e configuração
+
+
+13. SEO E VISIBILIDADE
+================================================================================
+
+- Homepage é Server Component (HTML visível sem JavaScript)
+- Conteúdo estático renderizado no servidor para crawlers
+- JSON-LD: Organization, SoftwareApplication, FAQPage, HowTo, WebSite
+- Open Graph e Twitter Cards no layout.tsx
+- Sitemap dinâmico em app/sitemap.ts
+- robots.txt com regras para bots (Google, Bing, GPT, Claude, Perplexity)
+- Canonical URL: https://www.revela.fun
+- Meta viewport configurado via Next.js Viewport export
+- Headers de segurança: CSP, HSTS (via middleware e netlify.toml)
+
+
+14. FUNCIONALIDADES POR ÁREA
+================================================================================
+
+CRIAÇÃO DE PROJETO (/new-project):
+  - Escolha: antes/depois OU evolução (timeline)
+  - Upload de fotos da câmera ou galeria
+  - Limites conforme plano (Free: 3 projetos, 3 imagens)
+  - Nome do projeto, notas opcionais
+
+VISUALIZAÇÃO DE PROJETO (/projects/[id]):
+  - Slider interativo antes/depois
+  - Carrossel de imagens
+  - Zoom com pinch/pan
+  - Medições sobre imagens
+  - Modo apresentação (Premium)
+  - Timeline de evolução (Premium)
+  - Export: imagem, redes sociais (Pro+), PDF (Premium)
+  - Edição: corte, rotação, privacidade, marcações clínicas
+
+BIBLIOTECA DE PROJETOS (/projects):
+  - Lista com busca e filtros
+  - Organização por pastas
+  - Ordenação (data, nome)
+  - Import/export de backup JSON
+  - Sincronização com nuvem (Premium)
+  - Deletar projetos
+
+CONFIGURAÇÕES (/settings):
+  - Alterar senha
+  - Logo e marca d'água da clínica (Pro+)
+  - Perfil da clínica (nome, endereço, telefone)
+  - Backup criptografado
+  - Sincronização em nuvem (Premium)
+
+
+15. SEGURANÇA
+================================================================================
+
+- Autenticação via Supabase (bcrypt, JWT)
+- Row Level Security (RLS) no Supabase
+- Service Role Key apenas em API routes (servidor)
+- Webhook token verification (Hotmart hottok)
+- Content-Security-Policy headers
+- HSTS (HTTP Strict Transport Security)
+- Backup criptografado AES-GCM (client-side)
+- Dados locais isolados por email do usuário
+- .env.local no .gitignore (segredos não commitados)
+
+
+16. DEPLOY E INFRAESTRUTURA
+================================================================================
+
+- Hospedagem: Netlify
+- Build: next build
+- Plugin: @netlify/plugin-nextjs
+- Node: >= 18.16
+- Branch de produção: main
+- Variáveis no Netlify:
+  - NEXT_PUBLIC_SUPABASE_URL
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+  - SUPABASE_SERVICE_ROLE_KEY
+  - HOTMART_WEBHOOK_TOKEN
+  - HOTMART_PRO_PRODUCT_IDS
+  - HOTMART_PREMIUM_PRODUCT_IDS
+
+
+================================================================================
+                          FIM DO RESUMO
+================================================================================
+
+Documento gerado em: Maio 2026
+Versão do programa: Revela PWA (Next.js 14 / React 18)
+Domínio: https://www.revela.fun
+Contato: contato@revela.fun

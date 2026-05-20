@@ -27,6 +27,80 @@ Quando uma compra é **aprovada** na Hotmart, o postback chama `POST /api/webhoo
      - `HOTMART_PRO_PRODUCT_IDS=id1,id2`  
      - `HOTMART_PREMIUM_PRODUCT_IDS=id3`  
 
+## Validação (garantir que está funcionando)
+
+Siga nesta ordem. Só passe para o próximo passo quando o anterior estiver **ok**.
+
+1. **URL pública do webhook**  
+   No navegador, abra: `https://SEU_DOMINIO/api/webhooks/hotmart`  
+   Deve aparecer JSON parecido com: `{"ok":true,"service":"revela-hotmart-webhook"}`.  
+   Se der 404, o deploy ou a rota estão errados.
+
+2. **Variáveis no Netlify (ou outro host)**  
+   Confirme que existem e batem com o **mesmo projeto Supabase** da tabela `revela_entitlements`:  
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `HOTMART_WEBHOOK_TOKEN`, `HOTMART_PRO_PRODUCT_IDS`, `HOTMART_PREMIUM_PRODUCT_IDS`.  
+   Depois de alterar, faça **Trigger deploy** (ou novo commit) para aplicar.
+
+3. **Hotmart = mesma URL e token**  
+   Webhook apontando para `https://SEU_DOMINIO/api/webhooks/hotmart` (POST).  
+   O **hottok** (ou Bearer) na Hotmart deve ser **idêntico** a `HOTMART_WEBHOOK_TOKEN` no Netlify.
+
+4. **Teste com histórico da Hotmart**  
+   Hotmart → área de **Webhook / histórico de notificações** → escolha uma compra **aprovada** → **reenviar** para sua URL.  
+   - **200** com `{"ok":true,"action":"granted",...}` → gravou no Supabase.  
+   - **401** → token errado.  
+   - **422** + `Unknown product id` → inclua no Netlify o `product_id` (ou `offer.id`) que aparece no JSON da notificação.  
+   - **400** `No buyer email` → anote o JSON e ajuste extratores em `lib/hotmart-webhook.ts` (ou peça ajuda com o trecho sem dados sensíveis).
+
+5. **Conferir no Supabase**  
+   Table Editor → `revela_entitlements` → deve aparecer uma linha com o **e-mail do comprador** (minúsculo), `plan` = `pro` ou `premium`, `active` = true.
+
+6. **Debug temporário**  
+   `HOTMART_WEBHOOK_DEBUG=1` no Netlify, redeploy, reenviar webhook, ver **logs da função** no Netlify. **Remova** depois.
+
+Quando os passos 4 e 5 funcionarem uma vez, **compras futuras** passam a atualizar o plano **sozinhas**, desde que o e-mail da compra seja o mesmo do cadastro no Revela.
+
+## Compradores antigos (já pagaram antes do webhook funcionar)
+
+A automação **não corrige o passado** sozinha: quem comprou quando o webhook falhava não tem linha na tabela.
+
+**Opção A — Reenviar pela Hotmart (melhor)**  
+Para cada venda aprovada relevante, use **reenviar notificação** no histórico de webhooks. Se o endpoint já estiver correto, a linha é criada/atualizada como nas vendas novas.
+
+**Opção B — Inserir manualmente no Supabase**  
+No **SQL Editor**, uma linha por e-mail (use o mesmo e-mail do **login** no Revela):
+
+```sql
+-- Pro (troque o e-mail)
+INSERT INTO public.revela_entitlements (email, plan, active, updated_at)
+VALUES ('cliente@exemplo.com', 'pro', true, timezone('utc'::text, now()))
+ON CONFLICT (email) DO UPDATE SET
+  plan = EXCLUDED.plan,
+  active = EXCLUDED.active,
+  updated_at = EXCLUDED.updated_at;
+
+-- Premium (troque o e-mail)
+INSERT INTO public.revela_entitlements (email, plan, active, updated_at)
+VALUES ('cliente@exemplo.com', 'premium', true, timezone('utc'::text, now()))
+ON CONFLICT (email) DO UPDATE SET
+  plan = EXCLUDED.plan,
+  active = EXCLUDED.active,
+  updated_at = EXCLUDED.updated_at;
+```
+
+**Opção C — Lista em planilha**  
+Exporte da Hotmart (e-mail + produto Pro ou Premium) e gere vários `INSERT` ou peça um script único; o importante é `email` = e-mail da conta no Supabase Auth.
+
+## Automação para futuros compradores (resumo)
+
+| O quê | Onde |
+|--------|------|
+| Hotmart avisa compra aprovada | Webhook → `POST /api/webhooks/hotmart` |
+| Servidor grava plano | Supabase `revela_entitlements` (service role) |
+| App mostra Pro/Premium | Lê a tabela com o usuário logado (RLS) |
+
+Requisitos permanentes: URL correta, token igual, IDs de produto corretos no Netlify, `SUPABASE_SERVICE_ROLE_KEY` válida, e **mesmo e-mail** na Hotmart e no cadastro Revela.
+
 ## Regra importante
 
 O e-mail do comprador na Hotmart deve ser o **mesmo** do cadastro no Revela (Supabase Auth). Se forem diferentes, a linha é criada no banco, mas o login não “casa” com o entitlement até o usuário usar o mesmo e-mail.
@@ -85,4 +159,4 @@ Isso faz o servidor registrar no log os **primeiros 4000 caracteres** do body re
 
 ## Após o pagamento
 
-O usuário pode precisar **atualizar a página** uma vez para o app buscar de novo `revela_entitlements` (o hook `usePlan` carrega na montagem).
+O app recarrega o plano ao **voltar para a aba** ou dar foco na janela; se não atualizar, um **F5** força nova leitura de `revela_entitlements`.

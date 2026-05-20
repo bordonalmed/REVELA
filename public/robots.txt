@@ -44,5 +44,5 @@ User-agent: facebookexternalhit
 Allow: /
 
 # Sitemap
-Sitemap: https://revela.app/sitemap.xml
+Sitemap: https://www.revela.fun/sitemap.xml
 

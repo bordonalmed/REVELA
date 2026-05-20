@@ -31,7 +31,7 @@ export default function ContatoPage() {
               Clique no botão abaixo para enviar um e-mail diretamente para a equipe do Revela.
             </p>
             <Link
-              href="mailto:revela.fun@gmail.com?subject=Contato%20via%20site%20Revela"
+              href="mailto:contato@revela.fun?subject=Contato%20via%20site%20Revela"
               className="inline-block w-full sm:w-auto"
             >
               <button
@@ -39,7 +39,7 @@ export default function ContatoPage() {
                 className="w-full sm:w-auto rounded-lg px-6 py-3 text-sm sm:text-base font-medium transition-opacity hover:opacity-90"
                 style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
               >
-                Enviar e-mail para revela.fun@gmail.com
+                Enviar e-mail para contato@revela.fun
               </button>
             </Link>
           </div>
@@ -48,11 +48,11 @@ export default function ContatoPage() {
             <p>
               Se preferir, você também pode entrar em contato diretamente por e-mail:{' '}
               <Link
-                href="mailto:revela.fun@gmail.com"
+                href="mailto:contato@revela.fun"
                 className="underline hover:opacity-80"
                 style={{ color: '#00A88F' }}
               >
-                revela.fun@gmail.com
+                contato@revela.fun
               </Link>
               .
             </p>

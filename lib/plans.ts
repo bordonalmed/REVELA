@@ -13,6 +13,8 @@ const DEV_PLAN_OVERRIDE_EMAILS: string[] = ['vasculargabriel@gmail.com', 'vascul
 
 function getDevPlanOverride(): UserPlan | null {
   if (typeof window === 'undefined') return null;
+  const isDev = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEV_MODE === 'true';
+  if (!isDev) return null;
   const stored = window.localStorage.getItem('revela_dev_plan');
   if (stored === 'free' || stored === 'pro' || stored === 'premium') return stored;
   return null;

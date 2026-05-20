@@ -40,6 +40,20 @@ export function Footer({ className = "" }: { className?: string }) {
             >
               {t.footer.contact}
             </Link>
+            <span className="text-revela-cream opacity-50" aria-hidden>|</span>
+            <Link
+              href="/privacidade"
+              className="text-xs sm:text-sm text-revela-cream opacity-80 hover:opacity-100 transition-opacity"
+            >
+              Privacidade
+            </Link>
+            <span className="text-revela-cream opacity-50" aria-hidden>|</span>
+            <Link
+              href="/termos"
+              className="text-xs sm:text-sm text-revela-cream opacity-80 hover:opacity-100 transition-opacity"
+            >
+              Termos
+            </Link>
           </nav>
           <p className="text-xs sm:text-sm text-revela-cream opacity-70 text-center sm:text-right">
             {t.footer.copyright}
