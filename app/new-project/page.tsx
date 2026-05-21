@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles, GripVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAllProjectsForUser, saveProject } from '@/lib/storage';
@@ -91,6 +91,40 @@ export default function NewProjectPage() {
   
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
+
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragTarget, setDragTarget] = useState<'before' | 'after' | null>(null);
+
+  const reorderImages = (target: 'before' | 'after', fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    if (target === 'before') {
+      setBeforeImages(prev => {
+        const arr = [...prev];
+        const [moved] = arr.splice(fromIndex, 1);
+        arr.splice(toIndex, 0, moved);
+        return arr;
+      });
+      setBeforePreviewUrls(prev => {
+        const arr = [...prev];
+        const [moved] = arr.splice(fromIndex, 1);
+        arr.splice(toIndex, 0, moved);
+        return arr;
+      });
+    } else {
+      setAfterImages(prev => {
+        const arr = [...prev];
+        const [moved] = arr.splice(fromIndex, 1);
+        arr.splice(toIndex, 0, moved);
+        return arr;
+      });
+      setAfterPreviewUrls(prev => {
+        const arr = [...prev];
+        const [moved] = arr.splice(fromIndex, 1);
+        arr.splice(toIndex, 0, moved);
+        return arr;
+      });
+    }
+  };
 
   const checkUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -666,7 +700,15 @@ export default function NewProjectPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {beforePreviewUrls.map((src, index) => (
-                    <div key={index} className="relative group">
+                    <div
+                      key={index}
+                      className={`relative group cursor-grab active:cursor-grabbing ${dragIndex === index && dragTarget === 'before' ? 'opacity-50 scale-95' : ''} transition-all`}
+                      draggable
+                      onDragStart={() => { setDragIndex(index); setDragTarget('before'); }}
+                      onDragOver={(e) => { e.preventDefault(); }}
+                      onDrop={() => { if (dragIndex !== null && dragTarget === 'before') { reorderImages('before', dragIndex, index); } setDragIndex(null); setDragTarget(null); }}
+                      onDragEnd={() => { setDragIndex(null); setDragTarget(null); }}
+                    >
                       <Image
                         src={src}
                         alt={`Antes ${index + 1}`}
@@ -692,6 +734,11 @@ export default function NewProjectPage() {
                       >
                         {index + 1}
                       </div>
+                      <div
+                        className="absolute bottom-0 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" style={{ color: '#E8DCC0' }} />
+                      </div>
                     </div>
                   ))}
                   <label
@@ -703,6 +750,11 @@ export default function NewProjectPage() {
                     <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
                   </label>
                 </div>
+                {beforeImages.length > 1 && (
+                  <p className="text-[10px] mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
+                    Arraste para reordenar
+                  </p>
+                )}
               </div>
             )}
             </div>
@@ -751,7 +803,15 @@ export default function NewProjectPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {afterPreviewUrls.map((src, index) => (
-                    <div key={index} className="relative group">
+                    <div
+                      key={index}
+                      className={`relative group cursor-grab active:cursor-grabbing ${dragIndex === index && dragTarget === 'after' ? 'opacity-50 scale-95' : ''} transition-all`}
+                      draggable
+                      onDragStart={() => { setDragIndex(index); setDragTarget('after'); }}
+                      onDragOver={(e) => { e.preventDefault(); }}
+                      onDrop={() => { if (dragIndex !== null && dragTarget === 'after') { reorderImages('after', dragIndex, index); } setDragIndex(null); setDragTarget(null); }}
+                      onDragEnd={() => { setDragIndex(null); setDragTarget(null); }}
+                    >
                       <Image
                         src={src}
                         alt={`Depois ${index + 1}`}
@@ -777,6 +837,11 @@ export default function NewProjectPage() {
                       >
                         {index + 1}
                       </div>
+                      <div
+                        className="absolute bottom-0 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" style={{ color: '#E8DCC0' }} />
+                      </div>
                     </div>
                   ))}
                   <label
@@ -788,6 +853,11 @@ export default function NewProjectPage() {
                     <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
                   </label>
                 </div>
+                {afterImages.length > 1 && (
+                  <p className="text-[10px] mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
+                    Arraste para reordenar
+                  </p>
+                )}
               </div>
             )}
             </div>
