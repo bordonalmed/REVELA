@@ -233,29 +233,33 @@ export default function NewProjectPage() {
   };
 
   const handleBeforeFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (!hasProAccess && files.length > FREE_MAX_BEFORE_IMAGES) {
+    const newFiles = e.target.files ? Array.from(e.target.files) : [];
+    if (!newFiles.length) return;
+    const combined = [...beforeImages, ...newFiles];
+    if (!hasProAccess && combined.length > FREE_MAX_BEFORE_IMAGES) {
       alert(`Limite de ${FREE_MAX_BEFORE_IMAGES} fotos ANTES no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
       e.target.value = '';
       return;
     }
-    setBeforeImages(files);
-    // Comprimir e converter para data URLs (base64) para preview
-    const compressedUrls = await Promise.all(files.map(file => compressImage(file, 1920, 0.85)));
-    setBeforePreviewUrls(compressedUrls);
+    const newUrls = await Promise.all(newFiles.map(file => compressImage(file, 1920, 0.85)));
+    setBeforeImages(combined);
+    setBeforePreviewUrls(prev => [...prev, ...newUrls]);
+    e.target.value = '';
   };
 
   const handleAfterFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (!hasProAccess && files.length > FREE_MAX_AFTER_IMAGES) {
+    const newFiles = e.target.files ? Array.from(e.target.files) : [];
+    if (!newFiles.length) return;
+    const combined = [...afterImages, ...newFiles];
+    if (!hasProAccess && combined.length > FREE_MAX_AFTER_IMAGES) {
       alert(`Limite de ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
       e.target.value = '';
       return;
     }
-    setAfterImages(files);
-    // Comprimir e converter para data URLs (base64) para preview
-    const compressedUrls = await Promise.all(files.map(file => compressImage(file, 1920, 0.85)));
-    setAfterPreviewUrls(compressedUrls);
+    const newUrls = await Promise.all(newFiles.map(file => compressImage(file, 1920, 0.85)));
+    setAfterImages(combined);
+    setAfterPreviewUrls(prev => [...prev, ...newUrls]);
+    e.target.value = '';
   };
 
   const removeBeforeImage = (index: number) => {
@@ -690,6 +694,14 @@ export default function NewProjectPage() {
                       </div>
                     </div>
                   ))}
+                  <label
+                    htmlFor="before-upload"
+                    className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ borderColor: 'rgba(232, 220, 192, 0.3)', backgroundColor: 'rgba(232, 220, 192, 0.03)' }}
+                    title="Adicionar mais fotos"
+                  >
+                    <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
+                  </label>
                 </div>
               </div>
             )}
@@ -767,6 +779,14 @@ export default function NewProjectPage() {
                       </div>
                     </div>
                   ))}
+                  <label
+                    htmlFor="after-upload"
+                    className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ borderColor: 'rgba(232, 220, 192, 0.3)', backgroundColor: 'rgba(232, 220, 192, 0.03)' }}
+                    title="Adicionar mais fotos"
+                  >
+                    <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
+                  </label>
                 </div>
               </div>
             )}
