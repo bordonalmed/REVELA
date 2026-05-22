@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles, GripVertical } from 'lucide-react';
+import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { SortablePhotoThumbnails } from '@/components/sortable-photo-thumbnails';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAllProjectsForUser, saveProject } from '@/lib/storage';
@@ -91,9 +92,6 @@ export default function NewProjectPage() {
   
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
-
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragTarget, setDragTarget] = useState<'before' | 'after' | null>(null);
 
   const reorderImages = (target: 'before' | 'after', fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
@@ -690,73 +688,13 @@ export default function NewProjectPage() {
               <Camera className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
               <span style={{ color: '#E8DCC0', opacity: 0.85 }}>Adicionar fotos</span>
             </label>
-            {beforeImages.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p 
-                  className="text-xs sm:text-sm" 
-                  style={{ color: '#E8DCC0', opacity: 0.8 }}
-                >
-                  {beforeImages.length} foto(s) selecionada(s)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {beforePreviewUrls.map((src, index) => (
-                    <div
-                      key={index}
-                      className={`relative group cursor-grab active:cursor-grabbing ${dragIndex === index && dragTarget === 'before' ? 'opacity-50 scale-95' : ''} transition-all`}
-                      draggable
-                      onDragStart={() => { setDragIndex(index); setDragTarget('before'); }}
-                      onDragOver={(e) => { e.preventDefault(); }}
-                      onDrop={() => { if (dragIndex !== null && dragTarget === 'before') { reorderImages('before', dragIndex, index); } setDragIndex(null); setDragTarget(null); }}
-                      onDragEnd={() => { setDragIndex(null); setDragTarget(null); }}
-                    >
-                      <Image
-                        src={src}
-                        alt={`Antes ${index + 1}`}
-                        width={80}
-                        height={80}
-                        unoptimized
-                        className="w-16 h-16 rounded-lg object-cover"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeBeforeImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold"
-                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.95)', color: '#fff' }}
-                        aria-label="Remover foto antes"
-                        title="Remover"
-                      >
-                        ×
-                      </button>
-                      <div
-                        className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
-                      >
-                        {index + 1}
-                      </div>
-                      <div
-                        className="absolute bottom-0 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <GripVertical className="w-3.5 h-3.5" style={{ color: '#E8DCC0' }} />
-                      </div>
-                    </div>
-                  ))}
-                  <label
-                    htmlFor="before-upload"
-                    className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{ borderColor: 'rgba(232, 220, 192, 0.3)', backgroundColor: 'rgba(232, 220, 192, 0.03)' }}
-                    title="Adicionar mais fotos"
-                  >
-                    <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
-                  </label>
-                </div>
-                {beforeImages.length > 1 && (
-                  <p className="text-[10px] mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
-                    Arraste para reordenar
-                  </p>
-                )}
-              </div>
-            )}
+            <SortablePhotoThumbnails
+              previews={beforePreviewUrls}
+              uploadInputId="before-upload"
+              altPrefix="Antes"
+              onReorder={(from, to) => reorderImages('before', from, to)}
+              onRemove={removeBeforeImage}
+            />
             </div>
 
             {/* Upload Depois */}
@@ -793,73 +731,13 @@ export default function NewProjectPage() {
               <Camera className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
               <span style={{ color: '#E8DCC0', opacity: 0.85 }}>Adicionar fotos</span>
             </label>
-            {afterImages.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <p 
-                  className="text-xs sm:text-sm" 
-                  style={{ color: '#E8DCC0', opacity: 0.8 }}
-                >
-                  {afterImages.length} foto(s) selecionada(s)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {afterPreviewUrls.map((src, index) => (
-                    <div
-                      key={index}
-                      className={`relative group cursor-grab active:cursor-grabbing ${dragIndex === index && dragTarget === 'after' ? 'opacity-50 scale-95' : ''} transition-all`}
-                      draggable
-                      onDragStart={() => { setDragIndex(index); setDragTarget('after'); }}
-                      onDragOver={(e) => { e.preventDefault(); }}
-                      onDrop={() => { if (dragIndex !== null && dragTarget === 'after') { reorderImages('after', dragIndex, index); } setDragIndex(null); setDragTarget(null); }}
-                      onDragEnd={() => { setDragIndex(null); setDragTarget(null); }}
-                    >
-                      <Image
-                        src={src}
-                        alt={`Depois ${index + 1}`}
-                        width={80}
-                        height={80}
-                        unoptimized
-                        className="w-16 h-16 rounded-lg object-cover"
-                        style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeAfterImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold"
-                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.95)', color: '#fff' }}
-                        aria-label="Remover foto depois"
-                        title="Remover"
-                      >
-                        ×
-                      </button>
-                      <div
-                        className="absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
-                      >
-                        {index + 1}
-                      </div>
-                      <div
-                        className="absolute bottom-0 left-0 right-0 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <GripVertical className="w-3.5 h-3.5" style={{ color: '#E8DCC0' }} />
-                      </div>
-                    </div>
-                  ))}
-                  <label
-                    htmlFor="after-upload"
-                    className="w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{ borderColor: 'rgba(232, 220, 192, 0.3)', backgroundColor: 'rgba(232, 220, 192, 0.03)' }}
-                    title="Adicionar mais fotos"
-                  >
-                    <span className="text-2xl font-light" style={{ color: '#E8DCC0', opacity: 0.7 }}>+</span>
-                  </label>
-                </div>
-                {afterImages.length > 1 && (
-                  <p className="text-[10px] mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
-                    Arraste para reordenar
-                  </p>
-                )}
-              </div>
-            )}
+            <SortablePhotoThumbnails
+              previews={afterPreviewUrls}
+              uploadInputId="after-upload"
+              altPrefix="Depois"
+              onReorder={(from, to) => reorderImages('after', from, to)}
+              onRemove={removeAfterImage}
+            />
             </div>
           </div>
         )}

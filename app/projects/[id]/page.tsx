@@ -677,47 +677,78 @@ export default function ViewProjectPage() {
   };
 
   // Drag and Drop para reordenar imagens ANTES
-  const handleBeforeDragStart = (index: number) => {
+  const reorderEditingBeforeImages = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setEditingBeforeImages((prev) => {
+      const newImages = [...prev];
+      const [moved] = newImages.splice(fromIndex, 1);
+      newImages.splice(toIndex, 0, moved);
+      return newImages;
+    });
+  };
+
+  const reorderEditingAfterImages = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setEditingAfterImages((prev) => {
+      const newImages = [...prev];
+      const [moved] = newImages.splice(fromIndex, 1);
+      newImages.splice(toIndex, 0, moved);
+      return newImages;
+    });
+  };
+
+  const moveEditingBeforeImage = (index: number, delta: number) => {
+    reorderEditingBeforeImages(index, index + delta);
+  };
+
+  const moveEditingAfterImage = (index: number, delta: number) => {
+    reorderEditingAfterImages(index, index + delta);
+  };
+
+  const handleBeforeDragStart = (e: React.DragEvent, index: number) => {
     setDraggedBeforeIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   };
 
   const handleBeforeDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedBeforeIndex === null || draggedBeforeIndex === index) return;
-
-    setEditingBeforeImages(prev => {
-      const newImages = [...prev];
-      const draggedItem = newImages[draggedBeforeIndex];
-      newImages.splice(draggedBeforeIndex, 1);
-      newImages.splice(index, 0, draggedItem);
-      return newImages;
-    });
-
+    reorderEditingBeforeImages(draggedBeforeIndex, index);
     setDraggedBeforeIndex(index);
+  };
+
+  const handleBeforeDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedBeforeIndex !== null && draggedBeforeIndex !== index) {
+      reorderEditingBeforeImages(draggedBeforeIndex, index);
+    }
+    setDraggedBeforeIndex(null);
   };
 
   const handleBeforeDragEnd = () => {
     setDraggedBeforeIndex(null);
   };
 
-  // Drag and Drop para reordenar imagens DEPOIS
-  const handleAfterDragStart = (index: number) => {
+  const handleAfterDragStart = (e: React.DragEvent, index: number) => {
     setDraggedAfterIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   };
 
   const handleAfterDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedAfterIndex === null || draggedAfterIndex === index) return;
-
-    setEditingAfterImages(prev => {
-      const newImages = [...prev];
-      const draggedItem = newImages[draggedAfterIndex];
-      newImages.splice(draggedAfterIndex, 1);
-      newImages.splice(index, 0, draggedItem);
-      return newImages;
-    });
-
+    reorderEditingAfterImages(draggedAfterIndex, index);
     setDraggedAfterIndex(index);
+  };
+
+  const handleAfterDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedAfterIndex !== null && draggedAfterIndex !== index) {
+      reorderEditingAfterImages(draggedAfterIndex, index);
+    }
+    setDraggedAfterIndex(null);
   };
 
   const handleAfterDragEnd = () => {
@@ -1421,31 +1452,54 @@ export default function ViewProjectPage() {
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                       {displayBeforeImages.length} foto(s) antes
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 pb-6">
                       {displayBeforeImages.map((img, index) => (
                         <div
-                          key={index}
-                          draggable={isEditing}
-                          onDragStart={() => handleBeforeDragStart(index)}
-                          onDragOver={(e) => handleBeforeDragOver(e, index)}
-                          onDragEnd={handleBeforeDragEnd}
+                          key={`before-${index}-${img.slice(0, 24)}`}
                           className={`relative group transition-all ${
                             draggedBeforeIndex === index ? 'opacity-50 scale-95' : 'hover:scale-105'
                           }`}
-                          style={{
-                            cursor: draggedBeforeIndex === index ? 'grabbing' : (isEditing ? 'grab' : 'default')
-                          }}
+                          onDragOver={(e) => isEditing && e.preventDefault()}
+                          onDrop={(e) => isEditing && handleBeforeDrop(e, index)}
                         >
-                          <SafeBase64Image
-                            src={img}
-                            alt={`Antes ${index + 1}`}
-                            className="w-16 h-16 object-cover rounded-lg pointer-events-none"
-                          />
-                          {isEditing && (
-                            <div 
-                              className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <span className="text-xs text-white font-medium">Arrastar</span>
+                          <div
+                            draggable={isEditing}
+                            onDragStart={(e) => isEditing && handleBeforeDragStart(e, index)}
+                            onDragOver={(e) => isEditing && handleBeforeDragOver(e, index)}
+                            onDragEnd={handleBeforeDragEnd}
+                            className={isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
+                            title={isEditing ? 'Arrastar para reordenar' : undefined}
+                          >
+                            <SafeBase64Image
+                              src={img}
+                              alt={`Antes ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded-lg pointer-events-none select-none"
+                            />
+                          </div>
+                          {isEditing && displayBeforeImages.length > 1 && (
+                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => moveEditingBeforeImage(index, -1)}
+                                className="p-0.5 rounded disabled:opacity-30"
+                                style={{ color: '#E8DCC0' }}
+                                title="Mover para trás"
+                                aria-label={`Mover foto antes ${index + 1} para trás`}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === displayBeforeImages.length - 1}
+                                onClick={() => moveEditingBeforeImage(index, 1)}
+                                className="p-0.5 rounded disabled:opacity-30"
+                                style={{ color: '#E8DCC0' }}
+                                title="Mover para frente"
+                                aria-label={`Mover foto antes ${index + 1} para frente`}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
                             </div>
                           )}
                           <div className="absolute -top-2 -right-2 flex gap-1 z-10">
@@ -1478,6 +1532,11 @@ export default function ViewProjectPage() {
                         </div>
                       ))}
                     </div>
+                    {isEditing && displayBeforeImages.length > 1 && (
+                      <p className="text-[10px] mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        Arraste ou use as setas ao passar o mouse para reordenar
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1512,31 +1571,54 @@ export default function ViewProjectPage() {
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                       {displayAfterImages.length} foto(s) depois
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 pb-6">
                       {displayAfterImages.map((img, index) => (
                         <div
-                          key={index}
-                          draggable={isEditing}
-                          onDragStart={() => handleAfterDragStart(index)}
-                          onDragOver={(e) => handleAfterDragOver(e, index)}
-                          onDragEnd={handleAfterDragEnd}
+                          key={`after-${index}-${img.slice(0, 24)}`}
                           className={`relative group transition-all ${
                             draggedAfterIndex === index ? 'opacity-50 scale-95' : 'hover:scale-105'
                           }`}
-                          style={{
-                            cursor: draggedAfterIndex === index ? 'grabbing' : (isEditing ? 'grab' : 'default')
-                          }}
+                          onDragOver={(e) => isEditing && e.preventDefault()}
+                          onDrop={(e) => isEditing && handleAfterDrop(e, index)}
                         >
-                          <SafeBase64Image
-                            src={img}
-                            alt={`Depois ${index + 1}`}
-                            className="w-16 h-16 object-cover rounded-lg pointer-events-none"
-                          />
-                          {isEditing && (
-                            <div 
-                              className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <span className="text-xs text-white font-medium">Arrastar</span>
+                          <div
+                            draggable={isEditing}
+                            onDragStart={(e) => isEditing && handleAfterDragStart(e, index)}
+                            onDragOver={(e) => isEditing && handleAfterDragOver(e, index)}
+                            onDragEnd={handleAfterDragEnd}
+                            className={isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
+                            title={isEditing ? 'Arrastar para reordenar' : undefined}
+                          >
+                            <SafeBase64Image
+                              src={img}
+                              alt={`Depois ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded-lg pointer-events-none select-none"
+                            />
+                          </div>
+                          {isEditing && displayAfterImages.length > 1 && (
+                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                              <button
+                                type="button"
+                                disabled={index === 0}
+                                onClick={() => moveEditingAfterImage(index, -1)}
+                                className="p-0.5 rounded disabled:opacity-30"
+                                style={{ color: '#E8DCC0' }}
+                                title="Mover para trás"
+                                aria-label={`Mover foto depois ${index + 1} para trás`}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={index === displayAfterImages.length - 1}
+                                onClick={() => moveEditingAfterImage(index, 1)}
+                                className="p-0.5 rounded disabled:opacity-30"
+                                style={{ color: '#E8DCC0' }}
+                                title="Mover para frente"
+                                aria-label={`Mover foto depois ${index + 1} para frente`}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
                             </div>
                           )}
                           <div className="absolute -top-2 -right-2 flex gap-1 z-10">
@@ -1569,6 +1651,11 @@ export default function ViewProjectPage() {
                         </div>
                       ))}
                     </div>
+                    {isEditing && displayAfterImages.length > 1 && (
+                      <p className="text-[10px] mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        Arraste ou use as setas ao passar o mouse para reordenar
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
