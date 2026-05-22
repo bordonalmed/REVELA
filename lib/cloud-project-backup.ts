@@ -3,6 +3,8 @@ import type { Project } from './storage';
 import { saveProjectToIndexedDB, getAllProjectsFromIndexedDB } from './storage';
 
 const CLOUD_BACKUP_MARKER = '__revela_project_backup_v1';
+const PLACEHOLDER_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIHWNgAAIABQABNjN9GQAAAABJRElEQkSuQmCC';
+const MAX_PAYLOAD_MB = 6;
 
 function safeStringify(obj: unknown): string | null {
   try {
@@ -12,8 +14,11 @@ function safeStringify(obj: unknown): string | null {
   }
 }
 
+function estimatePayloadSizeMB(payload: string): number {
+  return new Blob([payload]).size / (1024 * 1024);
+}
+
 function projectToCloudDescription(project: Project): string {
-  // Guardar o projeto inteiro para suportar Evolution + Notes no restore.
   return safeStringify({
     __type: CLOUD_BACKUP_MARKER,
     project,
@@ -32,16 +37,16 @@ function cloudDescriptionToProject(description: string | null): Project | null {
   }
 }
 
-function pickBeforeImage(project: Project): string | null {
-  return project.beforeImages?.[0] ?? null;
+function pickBeforeImage(project: Project): string {
+  return project.beforeImages?.[0] ?? PLACEHOLDER_IMAGE;
 }
 
-function pickAfterImage(project: Project): string | null {
+function pickAfterImage(project: Project): string {
   const after = project.afterImages ?? [];
-  return after.length ? after[after.length - 1] : null;
+  return after.length ? after[after.length - 1] : PLACEHOLDER_IMAGE;
 }
 
-export type CloudSyncFailure = { projectId: string; error: string };
+export type CloudSyncFailure = { projectId: string; projectName?: string; error: string };
 
 export interface CloudSyncResult {
   uploaded: number;
@@ -63,16 +68,22 @@ async function listCloudBackupsForUser(userId: string): Promise<
 }
 
 async function upsertProjectBackupRow(userId: string, project: Project): Promise<
-  { inserted: boolean } | { skipped: true }
+  { inserted: boolean } | { skipped: true; reason: string }
 > {
+  const description = projectToCloudDescription(project);
+  if (!description) return { skipped: true, reason: 'Erro ao serializar projeto' };
+
+  const sizeMB = estimatePayloadSizeMB(description);
+  if (sizeMB > MAX_PAYLOAD_MB) {
+    return {
+      skipped: true,
+      reason: `Projeto muito grande (${sizeMB.toFixed(1)} MB). Reduza o número ou tamanho das fotos.`,
+    };
+  }
+
   const beforeImageUrl = pickBeforeImage(project);
   const afterImageUrl = pickAfterImage(project);
 
-  // A tabela já criada em Supabase tem before_image_url/after_image_url NOT NULL.
-  // Como o app permite salvar sem fotos, precisamos pular esse caso no sync.
-  if (!beforeImageUrl || !afterImageUrl) return { skipped: true };
-
-  // Buscar se já existe backup desse projectId (comparando via description).
   const existingRows = await listCloudBackupsForUser(userId);
   let existingRowId: string | null = null;
   for (const row of existingRows) {
@@ -82,8 +93,6 @@ async function upsertProjectBackupRow(userId: string, project: Project): Promise
       break;
     }
   }
-
-  const description = projectToCloudDescription(project);
 
   if (existingRowId) {
     const { error } = await supabase
@@ -127,15 +136,22 @@ export async function syncSelectedProjectsToCloud(
     try {
       const upsert = await upsertProjectBackupRow(userId, project);
       if ('skipped' in upsert) {
+        result.failures.push({
+          projectId: project.id,
+          projectName: project.name,
+          error: upsert.reason,
+        });
         result.skipped += 1;
         continue;
       }
       if (upsert.inserted) result.uploaded += 1;
       else result.updated += 1;
     } catch (e: any) {
+      const msg = e?.message || 'Erro desconhecido ao sincronizar';
       result.failures.push({
         projectId: project.id,
-        error: e?.message || 'Erro desconhecido ao sincronizar',
+        projectName: project.name,
+        error: msg.length > 200 ? msg.slice(0, 200) + '…' : msg,
       });
     }
   }
@@ -146,6 +162,7 @@ export async function syncSelectedProjectsToCloud(
 export interface CloudRestoreResult {
   restored: number;
   skipped: number;
+  alreadyExisted: number;
   failures: CloudSyncFailure[];
 }
 
@@ -162,9 +179,20 @@ async function fetchCloudBackups(userId: string): Promise<
   return (data as any[]) ?? [];
 }
 
-export async function restoreProjectsFromCloud(userId: string): Promise<CloudRestoreResult> {
+/**
+ * Restaura projetos da nuvem para o IndexedDB local.
+ * @param ownerEmail — email do usuário logado; será gravado em cada projeto restaurado
+ *                      para que getAllProjectsForUser() encontre os projetos.
+ */
+export async function restoreProjectsFromCloud(
+  userId: string,
+  ownerEmail?: string | null,
+): Promise<CloudRestoreResult> {
   const backups = await fetchCloudBackups(userId);
-  const result: CloudRestoreResult = { restored: 0, skipped: 0, failures: [] };
+  const result: CloudRestoreResult = { restored: 0, skipped: 0, alreadyExisted: 0, failures: [] };
+
+  const existingLocal = await getAllProjectsFromIndexedDB();
+  const existingIds = new Set(existingLocal.map((p) => p.id));
 
   for (const row of backups) {
     try {
@@ -174,7 +202,6 @@ export async function restoreProjectsFromCloud(userId: string): Promise<CloudRes
         continue;
       }
 
-      // Normalizar campos mínimos quando vier de backup antigo.
       const normalized: Project = {
         ...(project as Project),
         createdAt: (project as any).createdAt || row.updated_at || row.created_at || new Date().toISOString(),
@@ -182,7 +209,12 @@ export async function restoreProjectsFromCloud(userId: string): Promise<CloudRes
         afterImages: Array.isArray(project.afterImages) ? project.afterImages : [],
         evolutionImages: Array.isArray((project as any).evolutionImages) ? (project as any).evolutionImages : undefined,
         notes: (project as any).notes || undefined,
+        ownerEmail: ownerEmail || project.ownerEmail || undefined,
       };
+
+      if (existingIds.has(normalized.id)) {
+        result.alreadyExisted += 1;
+      }
 
       await saveProjectToIndexedDB(normalized);
       result.restored += 1;
@@ -197,8 +229,17 @@ export async function restoreProjectsFromCloud(userId: string): Promise<CloudRes
   return result;
 }
 
+export async function countCloudBackups(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('before_after_photos')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (error) return 0;
+  return count ?? 0;
+}
+
 export async function listLocalProjectsForCloud(): Promise<Project[]> {
   const projects = await getAllProjectsFromIndexedDB();
   return Array.isArray(projects) ? projects : [];
 }
-

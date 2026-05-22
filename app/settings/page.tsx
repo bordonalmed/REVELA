@@ -17,6 +17,7 @@ import {
   listLocalProjectsForCloud,
   restoreProjectsFromCloud,
   syncSelectedProjectsToCloud,
+  countCloudBackups,
 } from '@/lib/cloud-project-backup';
 import { readBrandingSettings, writeBrandingSettings, type BrandingSelectedLogo } from '@/lib/branding';
 import { readClinicProfileSettings, writeClinicProfileSettings } from '@/lib/clinic-profile';
@@ -53,6 +54,7 @@ export default function SettingsPage() {
     {}
   );
   const [cloudSyncScope, setCloudSyncScope] = useState<'all' | 'selected'>('selected');
+  const [cloudBackupCount, setCloudBackupCount] = useState<number | null>(null);
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -149,7 +151,6 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    // Carrega projetos locais para seleção (apenas para Premium).
     if (!isPremiumUser) return;
     if (typeof window === 'undefined') return;
 
@@ -161,9 +162,13 @@ export default function SettingsPage() {
           (projects || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
         );
       })
-      .catch(() => {
-        // Se falhar, não bloqueia a página.
-      });
+      .catch(() => {});
+
+    if (user?.id) {
+      countCloudBackups(user.id)
+        .then((n) => { if (!cancelled) setCloudBackupCount(n); })
+        .catch(() => {});
+    }
 
     return () => {
       cancelled = true;
@@ -265,14 +270,23 @@ export default function SettingsPage() {
       setCloudBackupRunning(true);
       const res = await syncSelectedProjectsToCloud(user.id, selected);
 
-      const msg = [
-        `Enviados/atualizados: +${res.uploaded} novos, +${res.updated} atualizados.`,
-        res.skipped ? `Pulados (sem fotos para armazenar): ${res.skipped}.` : null,
-        res.failures.length ? `Falhas: ${res.failures.length}.` : null,
-      ]
-        .filter(Boolean)
-        .join(' ');
-      setCloudSyncStatus(msg);
+      const parts: string[] = [];
+      if (res.uploaded > 0) parts.push(`+${res.uploaded} novo(s)`);
+      if (res.updated > 0) parts.push(`${res.updated} atualizado(s)`);
+      if (res.skipped > 0) parts.push(`${res.skipped} pulado(s)`);
+      if (res.failures.length > 0) {
+        const failNames = res.failures
+          .map((f) => f.projectName ? `"${f.projectName}": ${f.error}` : f.error)
+          .join('; ');
+        parts.push(`${res.failures.length} falha(s): ${failNames}`);
+      }
+      setCloudSyncStatus(parts.length ? parts.join(' · ') : 'Nenhum projeto para sincronizar.');
+
+      if (user?.id) {
+        countCloudBackups(user.id)
+          .then((n) => setCloudBackupCount(n))
+          .catch(() => {});
+      }
     } catch (err: any) {
       console.error('Erro ao sincronizar para nuvem:', err);
       setCloudSyncStatus(err?.message || 'Erro ao sincronizar para nuvem.');
@@ -293,17 +307,15 @@ export default function SettingsPage() {
     try {
       setCloudSyncStatus(null);
       setCloudRestoreRunning(true);
-      const res = await restoreProjectsFromCloud(user.id);
-      const msg = [
-        `Restaurados: ${res.restored}.`,
-        res.skipped ? `Ignorados (não eram backups): ${res.skipped}.` : null,
-        res.failures.length ? `Falhas: ${res.failures.length}.` : null,
-      ]
-        .filter(Boolean)
-        .join(' ');
-      setCloudSyncStatus(msg);
+      const res = await restoreProjectsFromCloud(user.id, user.email);
+      const parts: string[] = [];
+      if (res.restored > 0) parts.push(`${res.restored} projeto(s) restaurado(s).`);
+      if (res.alreadyExisted > 0) parts.push(`${res.alreadyExisted} já existia(m) localmente (atualizado(s)).`);
+      if (res.skipped > 0) parts.push(`${res.skipped} ignorado(s) (backup inválido).`);
+      if (res.failures.length > 0) parts.push(`${res.failures.length} falha(s).`);
+      if (parts.length === 0) parts.push('Nenhum projeto encontrado na nuvem.');
+      setCloudSyncStatus(parts.join(' '));
 
-      // Recarregar projetos locais
       const refreshed = await listLocalProjectsForCloud();
       setLocalCloudProjects(
         (refreshed || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
@@ -911,11 +923,11 @@ export default function SettingsPage() {
             className="text-lg sm:text-xl font-light mb-2"
             style={{ color: '#E8DCC0' }}
           >
-            Backup em nuvem (Revela Premium)
+            Sincronização na nuvem (Revela Premium)
           </h2>
           <p className="text-xs sm:text-sm mb-3" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-            Selecione quais projetos você quer sincronizar. Na fase 1, projetos sem fotos podem ser
-            ignorados ao salvar na nuvem.
+            Ative para enviar projetos para a nuvem e restaurá-los em qualquer dispositivo
+            logado na mesma conta.
           </p>
 
           {isPremiumUser ? (
@@ -929,9 +941,43 @@ export default function SettingsPage() {
                   style={{ accentColor: '#00A88F' }}
                 />
                 <span className="text-xs sm:text-sm" style={{ color: '#E8DCC0' }}>
-                  Ativar backup em nuvem (Premium)
+                  Ativar sincronização na nuvem
                 </span>
               </label>
+
+              {cloudBackupCount !== null && (
+                <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                  {cloudBackupCount > 0
+                    ? `${cloudBackupCount} projeto(s) salvos na nuvem nesta conta.`
+                    : 'Nenhum projeto salvo na nuvem ainda.'}
+                </p>
+              )}
+
+              {/* Restaurar da nuvem — SEMPRE visível para Premium */}
+              <div
+                className="rounded-lg border p-3"
+                style={{
+                  backgroundColor: 'rgba(2, 6, 23, 0.45)',
+                  borderColor: 'rgba(0, 168, 143, 0.2)',
+                }}
+              >
+                <p className="text-xs mb-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
+                  Usar em outro dispositivo? Restaure os projetos salvos na nuvem para este aparelho.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRestoreProjectsFromCloud}
+                  disabled={cloudRestoreRunning}
+                  className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'rgba(232, 220, 192, 0.1)',
+                    color: '#E8DCC0',
+                    border: '1px solid rgba(232, 220, 192, 0.2)',
+                  }}
+                >
+                  {cloudRestoreRunning ? 'Restaurando...' : 'Restaurar projetos da nuvem'}
+                </button>
+              </div>
 
               {cloudBackupEnabled && (
                 <>
@@ -944,6 +990,9 @@ export default function SettingsPage() {
                       overflowY: 'auto',
                     }}
                   >
+                    <p className="text-[11px] mb-2" style={{ color: '#94a3b8' }}>
+                      Selecione quais projetos deste aparelho enviar para a nuvem:
+                    </p>
                     <div className="flex items-center gap-4 mb-3">
                       <label className="flex items-center gap-2 cursor-pointer" style={{ color: '#E8DCC0' }}>
                         <input
@@ -1023,51 +1072,36 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSyncSelectedProjectsToCloud}
-                      disabled={cloudBackupRunning}
-                      className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: '#00A88F', color: '#0f172a' }}
-                    >
-                      {cloudBackupRunning ? 'Sincronizando...' : 'Sincronizar selecionados'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleRestoreProjectsFromCloud}
-                      disabled={cloudRestoreRunning}
-                      className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{
-                        backgroundColor: 'rgba(232, 220, 192, 0.08)',
-                        color: '#E8DCC0',
-                        border: '1px solid rgba(232, 220, 192, 0.15)',
-                      }}
-                    >
-                      {cloudRestoreRunning ? 'Restaurando...' : 'Restaurar da nuvem'}
-                    </button>
-                  </div>
-
-                  {cloudSyncStatus && (
-                    <div
-                      className="p-3 rounded-lg text-xs sm:text-sm"
-                      style={{
-                        backgroundColor: 'rgba(0, 168, 143, 0.12)',
-                        color: '#bff7ea',
-                        border: '1px solid rgba(0, 168, 143, 0.25)',
-                      }}
-                    >
-                      {cloudSyncStatus}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleSyncSelectedProjectsToCloud}
+                    disabled={cloudBackupRunning}
+                    className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#00A88F', color: '#0f172a' }}
+                  >
+                    {cloudBackupRunning ? 'Sincronizando...' : 'Enviar para a nuvem'}
+                  </button>
                 </>
+              )}
+
+              {cloudSyncStatus && (
+                <div
+                  className="p-3 rounded-lg text-xs sm:text-sm"
+                  style={{
+                    backgroundColor: 'rgba(0, 168, 143, 0.12)',
+                    color: '#bff7ea',
+                    border: '1px solid rgba(0, 168, 143, 0.25)',
+                  }}
+                >
+                  {cloudSyncStatus}
+                </div>
               )}
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Backup em nuvem é exclusivo do plano <strong>Revela Premium</strong>.
+                Sincronização na nuvem é exclusiva do plano <strong>Revela Premium</strong>.
+                Envie projetos para a nuvem e restaure em qualquer dispositivo.
               </p>
               <button
                 type="button"
