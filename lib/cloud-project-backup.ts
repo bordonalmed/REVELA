@@ -4,7 +4,9 @@ import { saveProjectToIndexedDB, getAllProjectsFromIndexedDB } from './storage';
 
 const CLOUD_BACKUP_MARKER = '__revela_project_backup_v1';
 const PLACEHOLDER_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQIHWNgAAIABQABNjN9GQAAAABJRElEQkSuQmCC';
-const MAX_PAYLOAD_MB = 6;
+const MAX_PAYLOAD_MB = 5.5;
+const CLOUD_IMG_MAX_WIDTH = 1200;
+const CLOUD_IMG_QUALITY = 0.55;
 
 function safeStringify(obj: unknown): string | null {
   try {
@@ -16,6 +18,67 @@ function safeStringify(obj: unknown): string | null {
 
 function estimatePayloadSizeMB(payload: string): number {
   return new Blob([payload]).size / (1024 * 1024);
+}
+
+/**
+ * Comprime uma imagem base64 para o cloud sync (menor resolucao/qualidade).
+ * Retorna a mesma string se nao for base64 valido ou se ja for pequena.
+ */
+function compressBase64ForCloud(base64: string): Promise<string> {
+  return new Promise((resolve) => {
+    if (!base64 || !base64.startsWith('data:image')) {
+      resolve(base64);
+      return;
+    }
+    // Skip if already very small (< 100KB)
+    if (base64.length < 130_000) {
+      resolve(base64);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > CLOUD_IMG_MAX_WIDTH) {
+          height = Math.round(height * (CLOUD_IMG_MAX_WIDTH / width));
+          width = CLOUD_IMG_MAX_WIDTH;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(base64); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', CLOUD_IMG_QUALITY);
+        resolve(compressed.length < base64.length ? compressed : base64);
+      } catch {
+        resolve(base64);
+      }
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+}
+
+async function compressProjectForCloud(project: Project): Promise<Project> {
+  const beforeImages = await Promise.all(
+    (project.beforeImages || []).map(compressBase64ForCloud)
+  );
+  const afterImages = await Promise.all(
+    (project.afterImages || []).map(compressBase64ForCloud)
+  );
+
+  let evolutionImages = project.evolutionImages;
+  if (Array.isArray(evolutionImages) && evolutionImages.length > 0) {
+    evolutionImages = await Promise.all(
+      evolutionImages.map(async (ev) => ({
+        ...ev,
+        image: await compressBase64ForCloud(ev.image),
+      }))
+    );
+  }
+
+  return { ...project, beforeImages, afterImages, evolutionImages };
 }
 
 function projectToCloudDescription(project: Project): string {
@@ -70,19 +133,20 @@ async function listCloudBackupsForUser(userId: string): Promise<
 async function upsertProjectBackupRow(userId: string, project: Project): Promise<
   { inserted: boolean } | { skipped: true; reason: string }
 > {
-  const description = projectToCloudDescription(project);
+  const compressed = await compressProjectForCloud(project);
+  const description = projectToCloudDescription(compressed);
   if (!description) return { skipped: true, reason: 'Erro ao serializar projeto' };
 
   const sizeMB = estimatePayloadSizeMB(description);
   if (sizeMB > MAX_PAYLOAD_MB) {
     return {
       skipped: true,
-      reason: `Projeto muito grande (${sizeMB.toFixed(1)} MB). Reduza o número ou tamanho das fotos.`,
+      reason: `Projeto muito grande mesmo após compressão (${sizeMB.toFixed(1)} MB). Reduza o número de fotos.`,
     };
   }
 
-  const beforeImageUrl = pickBeforeImage(project);
-  const afterImageUrl = pickAfterImage(project);
+  const beforeImageUrl = pickBeforeImage(compressed);
+  const afterImageUrl = pickAfterImage(compressed);
 
   const existingRows = await listCloudBackupsForUser(userId);
   let existingRowId: string | null = null;
