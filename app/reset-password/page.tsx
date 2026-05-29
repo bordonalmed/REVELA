@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
+import type { AuthChangeEvent } from '@supabase/supabase-js';
 
 export default function ResetPasswordPage() {
   const { t } = useLanguage();
@@ -59,7 +60,7 @@ export default function ResetPasswordPage() {
 
     verifyRecoverySession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === 'PASSWORD_RECOVERY' && mounted) {
         setHasRecoverySession(true);
         setLoading(false);
