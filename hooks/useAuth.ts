@@ -24,6 +24,7 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
   const isCheckingRef = useRef(false);
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
   const mountedRef = useRef(true);
+  const userRef = useRef<User | null>(null);
 
   const checkSession = useCallback(async () => {
     // Prevenir múltiplas chamadas simultâneas
@@ -51,6 +52,7 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
       if (sessionError) {
         console.error('Erro ao verificar sessão:', sessionError);
         setError(sessionError.message);
+        userRef.current = null;
         setUser(null);
         // Não redirecionar imediatamente em caso de erro de rede
         // Permitir que o usuário tente novamente
@@ -60,13 +62,15 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
         return;
       }
 
-      setUser(session?.user ?? null);
+      const nextUser = session?.user ?? null;
+      userRef.current = nextUser;
+      setUser(nextUser);
       
       // Só redirecionar se realmente não houver sessão (não em caso de erro)
       if (!session && redirectToLogin) {
         // Pequeno delay para evitar loops
         setTimeout(() => {
-          if (mountedRef.current && !user) {
+          if (mountedRef.current && !userRef.current) {
             router.push('/login');
           }
         }, 100);
@@ -76,11 +80,12 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
       if (mountedRef.current) {
         const errorMessage = err.message || 'Erro ao verificar autenticação';
         setError(errorMessage);
+        userRef.current = null;
         setUser(null);
         // Não redirecionar em caso de timeout ou erro de rede
         if (redirectToLogin && !errorMessage.includes('Timeout') && !errorMessage.includes('network') && !errorMessage.includes('fetch')) {
           setTimeout(() => {
-            if (mountedRef.current && !user) {
+            if (mountedRef.current && !userRef.current) {
               router.push('/login');
             }
           }, 100);
@@ -112,13 +117,15 @@ export function useAuth(redirectToLogin = true): UseAuthReturn {
           }
 
           try {
-            setUser(session?.user ?? null);
+            const nextUser = session?.user ?? null;
+            userRef.current = nextUser;
+            setUser(nextUser);
             
             // Só redirecionar se realmente não houver sessão e não for um erro de rede
             if (!session && redirectToLogin && event !== 'TOKEN_REFRESHED') {
               // Pequeno delay para evitar loops
               setTimeout(() => {
-                if (mountedRef.current && !user) {
+                if (mountedRef.current && !userRef.current) {
                   router.push('/login');
                 }
               }, 100);

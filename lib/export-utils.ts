@@ -39,7 +39,9 @@ async function getExportBranding(): Promise<{ enabled: boolean; logo: HTMLImageE
   try {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user ?? null;
-    const entitlement = await fetchEntitlementPlanForEmail(user?.email);
+    const entitlementResult = await fetchEntitlementPlanForEmail(user?.email);
+    const entitlement =
+      entitlementResult.status === 'ok' ? entitlementResult.plan : null;
     const effective = resolveEffectiveBranding({
       ownerEmail: user?.email || null,
       hasProAccess: isPro(user, entitlement),

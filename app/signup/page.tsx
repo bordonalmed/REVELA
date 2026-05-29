@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [checkEmailMessage, setCheckEmailMessage] = useState('');
   const router = useRouter();
   const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
@@ -26,6 +27,7 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setCheckEmailMessage('');
 
     if (password !== confirmPassword) {
       setError(t.signup.passwordMismatch);
@@ -47,17 +49,20 @@ export default function SignupPage() {
         return;
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) throw error;
 
-      // Trackear signup
       trackSignup('email');
 
-      // Redirecionar direto para o dashboard após criar conta
+      if (data.user && !data.session) {
+        setCheckEmailMessage(t.signup.checkEmail);
+        return;
+      }
+
       router.push('/dashboard');
     } catch (error: any) {
       setError(error.message || t.signup.error);
@@ -122,6 +127,19 @@ export default function SignupPage() {
                   }}
                 >
                   {error}
+                </div>
+              )}
+
+              {checkEmailMessage && (
+                <div
+                  className="p-3 text-sm rounded-md border"
+                  style={{
+                    backgroundColor: 'rgba(0, 168, 143, 0.1)',
+                    borderColor: 'rgba(0, 168, 143, 0.3)',
+                    color: '#86efac',
+                  }}
+                >
+                  {checkEmailMessage}
                 </div>
               )}
 

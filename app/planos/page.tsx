@@ -7,10 +7,16 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { canOverridePlan, setDevPlanOverride, type UserPlan } from '@/lib/plans';
 import { usePlan } from '@/hooks/usePlan';
+import { PlanEntitlementAlerts } from '@/components/plan-entitlement-alerts';
 
 export default function PlanosPage() {
   const { user } = useAuth(false);
-  const { userPlan: plan } = usePlan();
+  const {
+    userPlan: plan,
+    entitlementLoading,
+    entitlementFetchError,
+    showPurchaseEmailHint,
+  } = usePlan();
   const isDev = canOverridePlan(user);
 
   const handleDevPlanChange = (next: UserPlan) => {
@@ -36,6 +42,17 @@ export default function PlanosPage() {
               PDF, templates, apresentação, captura guiada e backup opcional na nuvem (criptografado).
             </p>
           </header>
+
+          {user && (
+            <div className="mb-4">
+              <PlanEntitlementAlerts
+                email={user.email}
+                entitlementLoading={entitlementLoading}
+                entitlementFetchError={entitlementFetchError}
+                showPurchaseEmailHint={showPurchaseEmailHint}
+              />
+            </div>
+          )}
 
           {/* Dev: alternar plano sem Hotmart (somente para emails autorizados) */}
           {isDev && (

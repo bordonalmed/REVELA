@@ -57,6 +57,16 @@ export default function FAQPage() {
             </div>
 
             <div>
+              <h2 className="font-medium mb-1">Esqueci minha senha. Como recupero?</h2>
+              <p>
+                Na tela de login, clique em &quot;Esqueci minha senha&quot;, informe o email da sua conta e
+                siga o link que enviaremos por email para definir uma nova senha. Se não receber o email em
+                alguns minutos, verifique a pasta de spam. Usuários já logados podem alterar a senha em
+                Configurações da conta.
+              </p>
+            </div>
+
+            <div>
               <h2 className="font-medium mb-1">O Revela é pago?</h2>
               <p>
                 Nesta fase de desenvolvimento, o Revela está disponível em modo gratuito para testes e

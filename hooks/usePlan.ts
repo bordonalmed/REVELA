@@ -22,6 +22,13 @@ export interface UsePlanReturn {
   canUsePremiumFeature: (featureId: PremiumFeatureId) => boolean;
   /** true enquanto busca entitlement no Supabase */
   entitlementLoading: boolean;
+  /** Última busca no Supabase falhou (rede/RLS); plano exibido pode ser o cache anterior */
+  entitlementFetchError: boolean;
+  /**
+   * Sem assinatura Hotmart neste e-mail — avisar quem comprou com outro e-mail.
+   * Só após busca bem-sucedida, sem plano na tabela e sem Premium/Pro fixo no código.
+   */
+  showPurchaseEmailHint: boolean;
 }
 
 /**
@@ -32,6 +39,8 @@ export function usePlan(): UsePlanReturn {
   const { user } = useAuth(false);
   const [dbPlan, setDbPlan] = useState<UserPlan | null>(null);
   const [entitlementLoading, setEntitlementLoading] = useState(false);
+  const [entitlementFetchError, setEntitlementFetchError] = useState(false);
+  const [entitlementChecked, setEntitlementChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,16 +48,26 @@ export function usePlan(): UsePlanReturn {
     if (!email) {
       setDbPlan(null);
       setEntitlementLoading(false);
+      setEntitlementFetchError(false);
+      setEntitlementChecked(false);
       return;
     }
 
     const load = () => {
       setEntitlementLoading(true);
-      fetchEntitlementPlanForEmail(email).then((plan) => {
-        if (!cancelled) {
-          setDbPlan(plan);
-          setEntitlementLoading(false);
+      fetchEntitlementPlanForEmail(email).then((result) => {
+        if (cancelled) return;
+
+        if (result.status === 'error') {
+          // Mantém o último plano válido em dbPlan — não zera para Free
+          setEntitlementFetchError(true);
+        } else {
+          setDbPlan(result.plan);
+          setEntitlementFetchError(false);
         }
+
+        setEntitlementChecked(true);
+        setEntitlementLoading(false);
       });
     };
 
@@ -70,6 +89,14 @@ export function usePlan(): UsePlanReturn {
   }, [user?.email ?? null]);
 
   const userPlan = getUserPlan(user, dbPlan);
+
+  const showPurchaseEmailHint =
+    !!user?.email &&
+    entitlementChecked &&
+    !entitlementFetchError &&
+    dbPlan === null &&
+    getUserPlan(user, null) === 'free';
+
   return {
     userPlan,
     hasProAccess: hasProAccessFn(user, dbPlan),
@@ -77,5 +104,7 @@ export function usePlan(): UsePlanReturn {
     canUsePremiumFeature: (featureId: PremiumFeatureId) =>
       canUsePremiumFeature(userPlan, featureId),
     entitlementLoading,
+    entitlementFetchError,
+    showPurchaseEmailHint,
   };
 }

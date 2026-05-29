@@ -128,9 +128,18 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" style={{ color: '#E8DCC0' }}>
-                  {t.login.password}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" style={{ color: '#E8DCC0' }}>
+                    {t.login.password}
+                  </Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs sm:text-sm hover:opacity-80 transition-opacity"
+                    style={{ color: '#00A88F' }}
+                  >
+                    {t.login.forgotPassword}
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"

@@ -8,14 +8,22 @@ import { SafeImage } from '@/components/safe-image';
 import { LanguageSelector } from '@/components/language-selector';
 import { useLanguage } from '@/contexts/language-context';
 import { trackLogout } from '@/lib/analytics';
+import { useAuth } from '@/hooks/useAuth';
 import { usePlan } from '@/hooks/usePlan';
+import { PlanEntitlementAlerts } from '@/components/plan-entitlement-alerts';
 
 export function NavigationHeader() {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const isDashboard = pathname === '/dashboard';
-  const { userPlan: plan } = usePlan();
+  const { user } = useAuth(false);
+  const {
+    userPlan: plan,
+    entitlementLoading,
+    entitlementFetchError,
+    showPurchaseEmailHint,
+  } = usePlan();
 
   const fullPlanName =
     plan === 'premium'
@@ -138,6 +146,13 @@ export function NavigationHeader() {
             </button>
           </div>
         </div>
+        <PlanEntitlementAlerts
+          compact
+          email={user?.email}
+          entitlementLoading={entitlementLoading}
+          entitlementFetchError={entitlementFetchError}
+          showPurchaseEmailHint={showPurchaseEmailHint}
+        />
       </div>
     </header>
   );

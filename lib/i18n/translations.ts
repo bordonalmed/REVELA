@@ -80,6 +80,33 @@ export interface Translations {
     noAccount: string;
     createAccount: string;
     backToHome: string;
+    forgotPassword: string;
+    error: string;
+  };
+  forgotPassword: {
+    title: string;
+    subtitle: string;
+    email: string;
+    emailPlaceholder: string;
+    submit: string;
+    submitting: string;
+    success: string;
+    backToLogin: string;
+    error: string;
+  };
+  resetPassword: {
+    title: string;
+    subtitle: string;
+    newPassword: string;
+    confirmPassword: string;
+    passwordPlaceholder: string;
+    submit: string;
+    submitting: string;
+    success: string;
+    invalidLink: string;
+    backToLogin: string;
+    passwordMismatch: string;
+    passwordTooShort: string;
     error: string;
   };
   // Signup
@@ -99,7 +126,16 @@ export interface Translations {
     backToHome: string;
     passwordMismatch: string;
     passwordTooShort: string;
+    checkEmail: string;
     error: string;
+  };
+  planAlerts: {
+    fetchError: string;
+    emailMismatch: string;
+    loggedInAs: string;
+    viewPlans: string;
+    contactSupport: string;
+    dismiss: string;
   };
   // Dashboard
   dashboard: {
@@ -266,7 +302,34 @@ export const translations: Record<Language, Translations> = {
       noAccount: 'Não tem uma conta?',
       createAccount: 'Criar conta',
       backToHome: '← Voltar para início',
+      forgotPassword: 'Esqueci minha senha',
       error: 'Erro ao fazer login',
+    },
+    forgotPassword: {
+      title: 'Recuperar senha',
+      subtitle: 'Informe seu email e enviaremos um link para redefinir sua senha',
+      email: 'Email',
+      emailPlaceholder: 'seu@email.com',
+      submit: 'Enviar link',
+      submitting: 'Enviando...',
+      success: 'Se este email estiver cadastrado, você receberá um link para redefinir sua senha. Verifique também a pasta de spam.',
+      backToLogin: '← Voltar para o login',
+      error: 'Erro ao enviar email de recuperação',
+    },
+    resetPassword: {
+      title: 'Nova senha',
+      subtitle: 'Defina uma nova senha para sua conta',
+      newPassword: 'Nova senha',
+      confirmPassword: 'Confirmar senha',
+      passwordPlaceholder: '••••••••',
+      submit: 'Salvar nova senha',
+      submitting: 'Salvando...',
+      success: 'Senha alterada com sucesso! Redirecionando para o login...',
+      invalidLink: 'Link inválido ou expirado. Solicite um novo link de recuperação.',
+      backToLogin: '← Voltar para o login',
+      passwordMismatch: 'As senhas não coincidem',
+      passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
+      error: 'Erro ao redefinir senha',
     },
     signup: {
       title: 'Criar Conta',
@@ -284,7 +347,18 @@ export const translations: Record<Language, Translations> = {
       backToHome: '← Voltar para início',
       passwordMismatch: 'As senhas não coincidem',
       passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
+      checkEmail: 'Conta criada! Verifique seu email para confirmar o cadastro antes de entrar.',
       error: 'Erro ao criar conta',
+    },
+    planAlerts: {
+      fetchError:
+        'Não foi possível verificar seu plano agora. Mantivemos o último plano conhecido — tente recarregar em instantes.',
+      emailMismatch:
+        'Não encontramos assinatura Pro/Premium neste e-mail. Se você já comprou na Hotmart, entre com o mesmo e-mail da compra ou fale conosco.',
+      loggedInAs: 'Você está entrando como:',
+      viewPlans: 'Ver planos',
+      contactSupport: 'Contato',
+      dismiss: 'Fechar',
     },
     dashboard: {
       welcome: 'Bem-vindo ao Revela',
@@ -442,7 +516,34 @@ export const translations: Record<Language, Translations> = {
       noAccount: "Don't have an account?",
       createAccount: 'Create account',
       backToHome: '← Back to home',
+      forgotPassword: 'Forgot password',
       error: 'Error logging in',
+    },
+    forgotPassword: {
+      title: 'Reset password',
+      subtitle: 'Enter your email and we will send you a link to reset your password',
+      email: 'Email',
+      emailPlaceholder: 'your@email.com',
+      submit: 'Send link',
+      submitting: 'Sending...',
+      success: 'If this email is registered, you will receive a link to reset your password. Check your spam folder too.',
+      backToLogin: '← Back to login',
+      error: 'Error sending recovery email',
+    },
+    resetPassword: {
+      title: 'New password',
+      subtitle: 'Set a new password for your account',
+      newPassword: 'New password',
+      confirmPassword: 'Confirm password',
+      passwordPlaceholder: '••••••••',
+      submit: 'Save new password',
+      submitting: 'Saving...',
+      success: 'Password changed successfully! Redirecting to login...',
+      invalidLink: 'Invalid or expired link. Request a new recovery link.',
+      backToLogin: '← Back to login',
+      passwordMismatch: 'Passwords do not match',
+      passwordTooShort: 'Password must be at least 6 characters',
+      error: 'Error resetting password',
     },
     signup: {
       title: 'Create Account',
@@ -460,7 +561,18 @@ export const translations: Record<Language, Translations> = {
       backToHome: '← Back to home',
       passwordMismatch: 'Passwords do not match',
       passwordTooShort: 'Password must be at least 6 characters',
+      checkEmail: 'Account created! Check your email to confirm your registration before logging in.',
       error: 'Error creating account',
+    },
+    planAlerts: {
+      fetchError:
+        'We could not verify your plan right now. Your last known plan is still active — try refreshing in a moment.',
+      emailMismatch:
+        'No Pro/Premium subscription found for this email. If you purchased on Hotmart, sign in with the same email used at checkout or contact us.',
+      loggedInAs: 'You are signed in as:',
+      viewPlans: 'View plans',
+      contactSupport: 'Contact',
+      dismiss: 'Dismiss',
     },
     dashboard: {
       welcome: 'Welcome to Revela',

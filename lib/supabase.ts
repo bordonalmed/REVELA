@@ -144,6 +144,8 @@ export const supabase = (() => {
         },
         signUp: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
         signInWithPassword: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
+        resetPasswordForEmail: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
+        updateUser: async () => ({ data: null, error: { message: 'Supabase não configurado' } }),
         signOut: async () => ({ error: null }),
       },
       from: () => ({
