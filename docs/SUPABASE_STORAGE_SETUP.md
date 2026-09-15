@@ -107,3 +107,97 @@ project-backups/
 ## Compatibilidade
 
 O restore continua suportando backups antigos (v1, dados no campo `description`). Novos syncs usam Storage (v2).
+
+---
+
+# Bucket para backup seguro criptografado (`secure-backups`)
+
+## O que faz
+
+A feature "Backup seguro" (`app/settings/page.tsx`) criptografa os projetos no navegador
+(AES-GCM + PBKDF2, ver `lib/secure-backup.ts`) e envia apenas o ciphertext para este bucket.
+A senha **nunca** sai do cliente — o backend só guarda bytes criptografados, um arquivo
+`backup.json` por usuário, sobrescrito a cada novo backup.
+
+## Passos no Supabase
+
+### 1. Criar o bucket
+
+**Storage** → **New bucket**:
+
+- **Name:** `secure-backups`
+- **Public:** Não (privado)
+- **File size limit:** 20 MB
+- **Allowed MIME types:** `application/json`
+
+### 2. Criar políticas de acesso (RLS)
+
+No bucket `secure-backups` → **Policies**:
+
+```sql
+CREATE POLICY "Users can upload own secure backup"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'secure-backups'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can update own secure backup"
+ON storage.objects FOR UPDATE
+USING (
+  bucket_id = 'secure-backups'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can download own secure backup"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'secure-backups'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can delete own secure backup"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'secure-backups'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+```
+
+### 3. Alternativa via SQL Editor (cria bucket + políticas de uma vez)
+
+```sql
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('secure-backups', 'secure-backups', false, 20971520, ARRAY['application/json'])
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Users can upload own secure backup"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'secure-backups' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can update own secure backup"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'secure-backups' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can download own secure backup"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'secure-backups' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete own secure backup"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'secure-backups' AND auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+## Estrutura de arquivos no bucket
+
+```
+secure-backups/
+  {user_id}/
+    backup.json   ← ciphertext + salt + iv (payload de lib/secure-backup.ts)
+```
+
+## Importante
+
+Sem esse bucket/políticas criados no seu projeto Supabase, o botão "Criar backup seguro agora"
+vai falhar com erro de upload (RLS/bucket inexistente) em vez de falhar silenciosamente como
+antes — é intencional: melhor um erro visível do que perder o backup do usuário sem avisar.

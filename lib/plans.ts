@@ -6,10 +6,19 @@ export const FREE_MAX_PROJECTS = 3;
 export const FREE_MAX_BEFORE_IMAGES = 3;
 export const FREE_MAX_AFTER_IMAGES = 3;
 
-const DEV_PRO_EMAILS = ['vasculargabriel@gmail.com'];
-const DEV_PREMIUM_EMAILS: string[] = ['vasculargabriel@gmail.com', 'vasculagabriel@gmail.com'];
+// Acesso Premium permanente do dono do produto, sem depender de pagamento via Hotmart.
+// Mantido intencionalmente (não é código de debug) — normalizado em minúsculas para
+// não falhar por causa de maiúsculas/minúsculas no e-mail da conta.
+const OWNER_PREMIUM_EMAILS = ['vasculargabriel@gmail.com', 'vasculagabriel@gmail.com'];
 
-const DEV_PLAN_OVERRIDE_EMAILS: string[] = ['vasculargabriel@gmail.com', 'vasculagabriel@gmail.com'];
+const DEV_PRO_EMAILS = OWNER_PREMIUM_EMAILS;
+const DEV_PREMIUM_EMAILS: string[] = OWNER_PREMIUM_EMAILS;
+
+const DEV_PLAN_OVERRIDE_EMAILS: string[] = OWNER_PREMIUM_EMAILS;
+
+function normalizeUserEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
 
 function getDevPlanOverride(): UserPlan | null {
   if (typeof window === 'undefined') return null;
@@ -22,7 +31,7 @@ function getDevPlanOverride(): UserPlan | null {
 
 export function canOverridePlan(user: User | null): boolean {
   const email = user?.email || '';
-  return !!email && DEV_PLAN_OVERRIDE_EMAILS.includes(email);
+  return !!email && DEV_PLAN_OVERRIDE_EMAILS.includes(normalizeUserEmail(email));
 }
 
 export function setDevPlanOverride(plan: UserPlan | null): void {
@@ -38,8 +47,9 @@ export function setDevPlanOverride(plan: UserPlan | null): void {
  * @param hotmartEntitlement — plano vindo da tabela `revela_entitlements` (fetch no cliente).
  */
 export function getUserPlan(user: User | null, hotmartEntitlement?: UserPlan | null): UserPlan {
-  const email = user?.email || '';
-  if (!email) return 'free';
+  const rawEmail = user?.email || '';
+  if (!rawEmail) return 'free';
+  const email = normalizeUserEmail(rawEmail);
 
   if (DEV_PLAN_OVERRIDE_EMAILS.includes(email)) {
     const override = getDevPlanOverride();

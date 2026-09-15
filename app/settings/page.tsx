@@ -11,7 +11,11 @@ import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/contexts/language-context';
 import { trackChangePassword } from '@/lib/analytics';
 import { usePlan } from '@/hooks/usePlan';
-import { createEncryptedBackup, sendEncryptedBackupToServer } from '@/lib/secure-backup';
+import {
+  createEncryptedBackup,
+  sendEncryptedBackupToServer,
+  restoreEncryptedBackupFromServer,
+} from '@/lib/secure-backup';
 import type { Project } from '@/lib/storage';
 import {
   listLocalProjectsForCloud,
@@ -43,6 +47,7 @@ export default function SettingsPage() {
   const [secureBackupStatus, setSecureBackupStatus] = useState<string | null>(null);
   const [secureBackupPassword, setSecureBackupPassword] = useState('');
   const [secureBackupRunning, setSecureBackupRunning] = useState(false);
+  const [secureBackupRestoring, setSecureBackupRestoring] = useState(false);
 
   // Backup em nuvem (Premium)
   const [cloudBackupEnabled, setCloudBackupEnabled] = useState(false);
@@ -195,10 +200,14 @@ export default function SettingsPage() {
       alert('Defina uma senha de backup com pelo menos 8 caracteres.');
       return;
     }
+    if (!user?.id) {
+      alert('Usuário não carregado. Tente novamente.');
+      return;
+    }
     try {
       setSecureBackupRunning(true);
       const { payload } = await createEncryptedBackup(secureBackupPassword);
-      await sendEncryptedBackupToServer(payload);
+      await sendEncryptedBackupToServer(user.id, payload);
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('revela_secure_backup_last_cloud', payload.createdAt);
       }
@@ -213,6 +222,37 @@ export default function SettingsPage() {
       alert(err.message || 'Erro ao criar backup seguro. Tente novamente.');
     } finally {
       setSecureBackupRunning(false);
+    }
+  };
+
+  const handleRestoreSecureBackup = async () => {
+    if (!isPremiumUser) {
+      router.push('/planos');
+      return;
+    }
+    if (!user?.id) {
+      alert('Usuário não carregado. Tente novamente.');
+      return;
+    }
+    if (!secureBackupPassword) {
+      alert('Digite a senha usada para criar o backup seguro.');
+      return;
+    }
+    if (!window.confirm('Isso vai restaurar os projetos do backup seguro no armazenamento local deste dispositivo. Continuar?')) {
+      return;
+    }
+    try {
+      setSecureBackupRestoring(true);
+      const result = await restoreEncryptedBackupFromServer(user.id, secureBackupPassword);
+      alert(
+        `Restauração concluída: ${result.success} projeto(s) restaurado(s)` +
+          (result.failed > 0 ? `, ${result.failed} com falha.` : '.')
+      );
+    } catch (err: any) {
+      console.error('Erro ao restaurar backup seguro:', err);
+      alert(err.message || 'Erro ao restaurar backup seguro. Verifique a senha e tente novamente.');
+    } finally {
+      setSecureBackupRestoring(false);
     }
   };
 
@@ -875,15 +915,26 @@ export default function SettingsPage() {
                     <div className="text-[11px] sm:text-xs" style={{ color: '#9ca3af' }}>
                       {secureBackupStatus || 'Nenhum backup seguro criado ainda.'}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleRunSecureBackup}
-                      disabled={secureBackupRunning}
-                      className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: '#facc15', color: '#0f172a' }}
-                    >
-                      {secureBackupRunning ? 'Gerando backup...' : 'Criar backup seguro agora'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRunSecureBackup}
+                        disabled={secureBackupRunning || secureBackupRestoring}
+                        className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#facc15', color: '#0f172a' }}
+                      >
+                        {secureBackupRunning ? 'Gerando backup...' : 'Criar backup seguro agora'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRestoreSecureBackup}
+                        disabled={secureBackupRunning || secureBackupRestoring}
+                        className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: '#facc15', color: '#facc15', backgroundColor: 'transparent' }}
+                      >
+                        {secureBackupRestoring ? 'Restaurando...' : 'Restaurar deste dispositivo'}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}

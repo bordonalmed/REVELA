@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
 import { LanguageSelector } from '@/components/language-selector';
+import { OAuthButtons } from '@/components/oauth-buttons';
 import { useLanguage } from '@/contexts/language-context';
 import { trackLogin } from '@/lib/analytics';
 
@@ -163,6 +164,18 @@ export default function LoginPage() {
               >
                 {loading ? t.login.submitting : t.login.submit}
               </button>
+
+              {!isDemoMode && (
+                <OAuthButtons
+                  redirectPath="/dashboard"
+                  strings={{
+                    orDivider: t.login.orDivider,
+                    continueWithGoogle: t.login.continueWithGoogle,
+                    continueWithApple: t.login.continueWithApple,
+                    oauthError: t.login.oauthError,
+                  }}
+                />
+              )}
 
               <div className="text-center space-y-3 pt-4">
                 <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>

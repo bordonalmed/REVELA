@@ -82,6 +82,10 @@ export interface Translations {
     backToHome: string;
     forgotPassword: string;
     error: string;
+    orDivider: string;
+    continueWithGoogle: string;
+    continueWithApple: string;
+    oauthError: string;
   };
   forgotPassword: {
     title: string;
@@ -128,6 +132,10 @@ export interface Translations {
     passwordTooShort: string;
     checkEmail: string;
     error: string;
+    orDivider: string;
+    continueWithGoogle: string;
+    continueWithApple: string;
+    oauthError: string;
   };
   planAlerts: {
     fetchError: string;
@@ -304,6 +312,10 @@ export const translations: Record<Language, Translations> = {
       backToHome: '← Voltar para início',
       forgotPassword: 'Esqueci minha senha',
       error: 'Erro ao fazer login',
+      orDivider: 'ou',
+      continueWithGoogle: 'Continuar com Google',
+      continueWithApple: 'Continuar com Apple',
+      oauthError: 'Erro ao entrar. Tente novamente.',
     },
     forgotPassword: {
       title: 'Recuperar senha',
@@ -349,6 +361,10 @@ export const translations: Record<Language, Translations> = {
       passwordTooShort: 'A senha deve ter pelo menos 6 caracteres',
       checkEmail: 'Conta criada! Verifique seu email para confirmar o cadastro antes de entrar.',
       error: 'Erro ao criar conta',
+      orDivider: 'ou',
+      continueWithGoogle: 'Continuar com Google',
+      continueWithApple: 'Continuar com Apple',
+      oauthError: 'Erro ao entrar. Tente novamente.',
     },
     planAlerts: {
       fetchError:
@@ -518,6 +534,10 @@ export const translations: Record<Language, Translations> = {
       backToHome: '← Back to home',
       forgotPassword: 'Forgot password',
       error: 'Error logging in',
+      orDivider: 'or',
+      continueWithGoogle: 'Continue with Google',
+      continueWithApple: 'Continue with Apple',
+      oauthError: 'Error signing in. Please try again.',
     },
     forgotPassword: {
       title: 'Reset password',
@@ -563,6 +583,10 @@ export const translations: Record<Language, Translations> = {
       passwordTooShort: 'Password must be at least 6 characters',
       checkEmail: 'Account created! Check your email to confirm your registration before logging in.',
       error: 'Error creating account',
+      orDivider: 'or',
+      continueWithGoogle: 'Continue with Google',
+      continueWithApple: 'Continue with Apple',
+      oauthError: 'Error signing in. Please try again.',
     },
     planAlerts: {
       fetchError:

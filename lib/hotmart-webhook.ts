@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { UserPlan } from '@/lib/plans';
 
 /**
@@ -279,18 +280,26 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/** Compara duas strings em tempo constante (hash de tamanho fixo evita até vazamento pelo length). */
+function safeTokenEquals(received: string, expected: string): boolean {
+  const a = crypto.createHash('sha256').update(received).digest();
+  const b = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 /**
  * Valida token (hottok) vindo da Hotmart.
  * Verifica em vários lugares: body, data.hottok, headers, query string.
  *
  * Se HOTMART_WEBHOOK_SKIP_TOKEN_CHECK=1, aceita sem verificar (útil para debug).
+ * Esse bypass é ignorado em produção para evitar deixá-lo ligado por engano.
  */
 export function verifyHotmartToken(
   body: Record<string, unknown>,
   searchParams: URLSearchParams,
   headers: Headers,
 ): boolean {
-  if (process.env.HOTMART_WEBHOOK_SKIP_TOKEN_CHECK === '1') {
+  if (process.env.HOTMART_WEBHOOK_SKIP_TOKEN_CHECK === '1' && process.env.NODE_ENV !== 'production') {
     console.warn('[Hotmart token] Verificação desativada (HOTMART_WEBHOOK_SKIP_TOKEN_CHECK=1)');
     return true;
   }
@@ -322,7 +331,7 @@ export function verifyHotmartToken(
   const received = candidates.find((c) => typeof c === 'string' && c.trim().length > 0);
   const receivedTrimmed = typeof received === 'string' ? received.trim() : null;
 
-  if (receivedTrimmed === secret || receivedTrimmed === secret.trim()) {
+  if (receivedTrimmed && safeTokenEquals(receivedTrimmed, secret.trim())) {
     return true;
   }
 
