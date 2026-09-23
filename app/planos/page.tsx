@@ -186,8 +186,7 @@ export default function PlanosPage() {
               <div className="mt-auto space-y-1.5">
                 <Button
                   asChild
-                  variant="outline"
-                  className="w-full border-revela-cream text-revela-cream hover:bg-revela-cream/10"
+                  className="w-full bg-revela-cream text-revela-dark hover:opacity-90 font-semibold"
                 >
                   <Link
                     href="https://pay.hotmart.com/X104930601U"

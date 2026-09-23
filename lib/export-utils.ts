@@ -9,6 +9,7 @@ import { resolveEffectiveBranding } from '@/lib/branding';
 import { fetchEntitlementPlanForEmail } from '@/lib/entitlements';
 import { isPro } from '@/lib/plans';
 import { supabase } from '@/lib/supabase';
+import { formatLocalDate } from '@/lib/utils';
 
 /**
  * Converte base64 para Blob
@@ -216,7 +217,7 @@ export async function exportComparisonImage(
       
       ctx.fillStyle = '#CCCCCC'; // Cor clara para contraste com fundo preto
       ctx.font = '20px Arial';
-      const dateStr = new Date(projectDate).toLocaleDateString('pt-BR');
+      const dateStr = formatLocalDate(projectDate);
       ctx.fillText(`Data: ${dateStr}`, canvasWidth / 2, currentY + 60);
       
       currentY += infoHeight;

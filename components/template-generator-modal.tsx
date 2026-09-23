@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, LayoutTemplate, Loader2, Download, Sparkles } from 'lucide-react';
 import type { Project, EvolutionImage } from '@/lib/storage';
+import { formatLocalDate } from '@/lib/utils';
 import {
   exportClinicTemplate,
   generateClinicTemplatePreview,
@@ -110,7 +111,7 @@ export function TemplateGeneratorModal({
         label:
           evo.label ||
           evo.momentType ||
-          `Sessão ${index + 1} (${new Date(evo.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })})`,
+          `Sessão ${index + 1} (${formatLocalDate(evo.date, 'pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })})`,
         base64: evo.image,
         kind: 'evolution',
         meta: evo,

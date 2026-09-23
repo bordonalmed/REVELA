@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
+import { formatLocalDate } from '@/lib/utils';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
@@ -1234,7 +1235,7 @@ export default function ViewProjectPage() {
                   className="text-[10px] sm:text-base" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
-                  Data: {new Date(project.date).toLocaleDateString('pt-BR')}
+                  Data: {formatLocalDate(project.date)}
                 </p>
                 {!isEditing && project.notes && (
                   <div 
@@ -2718,7 +2719,7 @@ export default function ViewProjectPage() {
                   }
 
                   const dateText = evo.date
-                    ? new Date(evo.date).toLocaleDateString('pt-BR', {
+                    ? formatLocalDate(evo.date, 'pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

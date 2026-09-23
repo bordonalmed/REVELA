@@ -16,12 +16,16 @@ export function middleware(request: NextRequest) {
   // scripts inline (self.__next_f...) para hidratação/streaming de RSC sem
   // aplicar nonce automaticamente (testado em produção nesta versão do Next —
   // um CSP com nonce + 'strict-dynamic' bloqueia os próprios chunks do Next.js).
-  // 'unsafe-eval' foi removido (não é necessário em build de produção) e o
-  // antigo `https:` (qualquer domínio HTTPS) foi trocado por uma lista explícita
-  // dos domínios de scripts realmente usados (pixels de conversão).
+  // 'unsafe-eval' foi removido em produção (build não precisa) — mas o `next dev`
+  // usa eval internamente (webpack/HMR) e trava a app inteira sem essa permissão,
+  // então mantemos em desenvolvimento (isso nunca chega no build publicado).
+  const scriptSrc =
+    process.env.NODE_ENV === 'production'
+      ? `'self' 'unsafe-inline' blob: ${THIRD_PARTY_SCRIPT_HOSTS}`
+      : `'self' 'unsafe-inline' 'unsafe-eval' blob: ${THIRD_PARTY_SCRIPT_HOSTS}`;
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' blob: ${THIRD_PARTY_SCRIPT_HOSTS}`,
+    `script-src ${scriptSrc}`,
     "style-src 'self' 'unsafe-inline' https:",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",

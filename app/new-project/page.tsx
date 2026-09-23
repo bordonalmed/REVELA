@@ -34,7 +34,7 @@ export default function NewProjectPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('');
-  const [projectDate, setProjectDate] = useState('');
+  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [projectNotes, setProjectNotes] = useState('');
   const [beforeImages, setBeforeImages] = useState<File[]>([]);
   const [afterImages, setAfterImages] = useState<File[]>([]);

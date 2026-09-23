@@ -6,13 +6,14 @@ import type { EvolutionImage } from '@/lib/storage';
 import { SafeBase64Image } from '@/components/safe-image';
 import { ComparisonSlider } from '@/components/comparison-slider';
 import { WatermarkedContainer } from '@/components/watermarked-container';
+import { parseLocalDate } from '@/lib/utils';
 
 type ViewMode = 'side-by-side' | 'slider';
 
 /** Formata data no padrão dia/mês/ano (DD/MM/AAAA) */
 function formatDateDMY(dateStr: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',

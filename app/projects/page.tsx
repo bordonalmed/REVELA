@@ -11,6 +11,7 @@ import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
 import { trackDeleteProject, trackExportBackup, trackImportBackup, trackCreateFolder, trackUpdateFolder, trackDeleteFolder } from '@/lib/analytics';
+import { parseLocalDate, formatLocalDate } from '@/lib/utils';
 
 type SortOption = 'recent' | 'oldest' | 'name-asc' | 'name-desc';
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
@@ -93,7 +94,7 @@ export default function ProjectsPage() {
       const now = new Date();
       
       filtered = filtered.filter(project => {
-        const projectDateObj = new Date(project.date);
+        const projectDateObj = parseLocalDate(project.date);
         
         switch (dateFilter) {
           case 'today':
@@ -906,7 +907,7 @@ export default function ProjectsPage() {
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
                   <Calendar className="w-4 h-4" />
-                  <span>{new Date(project.date).toLocaleDateString('pt-BR')}</span>
+                  <span>{formatLocalDate(project.date)}</span>
                 </div>
                 
                 {/* Preview das imagens */}

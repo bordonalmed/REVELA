@@ -25,6 +25,7 @@ import {
 } from '@/lib/cloud-project-backup';
 import { readBrandingSettings, writeBrandingSettings, type BrandingSelectedLogo } from '@/lib/branding';
 import { readClinicProfileSettings, writeClinicProfileSettings } from '@/lib/clinic-profile';
+import { formatLocalDate } from '@/lib/utils';
 
 export default function SettingsPage() {
   const { t } = useLanguage();
@@ -1105,7 +1106,7 @@ export default function SettingsPage() {
                               </div>
                               <div className="text-[11px] mt-0.5" style={{ color: '#94a3b8' }}>
                                 {p.date
-                                  ? new Date(p.date).toLocaleDateString('pt-BR')
+                                  ? formatLocalDate(p.date)
                                   : new Date(p.createdAt).toLocaleDateString('pt-BR')}
                               </div>
                             </div>
