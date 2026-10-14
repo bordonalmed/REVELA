@@ -1,5 +1,7 @@
 'use client';
 
+import { notify, confirmDialog } from '@/lib/notify';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -194,15 +196,15 @@ export default function SettingsPage() {
       return;
     }
     if (!secureBackupEnabled) {
-      alert('Ative o backup seguro antes de criar um backup.');
+      notify.info('Ative o backup seguro antes de criar um backup.');
       return;
     }
     if (!secureBackupPassword || secureBackupPassword.length < 8) {
-      alert('Defina uma senha de backup com pelo menos 8 caracteres.');
+      notify.info('Defina uma senha de backup com pelo menos 8 caracteres.');
       return;
     }
     if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
+      notify.error('Usuário não carregado. Tente novamente.');
       return;
     }
     try {
@@ -217,10 +219,10 @@ export default function SettingsPage() {
           payload.createdAt
         ).toLocaleTimeString()}`
       );
-      alert('Backup seguro criado com sucesso. Armazenamento local continua sendo o padrão.');
+      notify.success('Backup seguro criado com sucesso. Armazenamento local continua sendo o padrão.');
     } catch (err: any) {
       console.error('Erro ao criar backup seguro:', err);
-      alert(err.message || 'Erro ao criar backup seguro. Tente novamente.');
+      notify.error(err.message || 'Erro ao criar backup seguro. Tente novamente.');
     } finally {
       setSecureBackupRunning(false);
     }
@@ -232,26 +234,26 @@ export default function SettingsPage() {
       return;
     }
     if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
+      notify.error('Usuário não carregado. Tente novamente.');
       return;
     }
     if (!secureBackupPassword) {
-      alert('Digite a senha usada para criar o backup seguro.');
+      notify.info('Digite a senha usada para criar o backup seguro.');
       return;
     }
-    if (!window.confirm('Isso vai restaurar os projetos do backup seguro no armazenamento local deste dispositivo. Continuar?')) {
+    if (!(await confirmDialog('Isso vai restaurar os projetos do backup seguro no armazenamento local deste dispositivo. Continuar?', { confirmLabel: 'Restaurar' }))) {
       return;
     }
     try {
       setSecureBackupRestoring(true);
       const result = await restoreEncryptedBackupFromServer(user.id, secureBackupPassword);
-      alert(
+      notify.success(
         `Restauração concluída: ${result.success} projeto(s) restaurado(s)` +
           (result.failed > 0 ? `, ${result.failed} com falha.` : '.')
       );
     } catch (err: any) {
       console.error('Erro ao restaurar backup seguro:', err);
-      alert(err.message || 'Erro ao restaurar backup seguro. Verifique a senha e tente novamente.');
+      notify.error(err.message || 'Erro ao restaurar backup seguro. Verifique a senha e tente novamente.');
     } finally {
       setSecureBackupRestoring(false);
     }
@@ -285,11 +287,11 @@ export default function SettingsPage() {
       return;
     }
     if (!cloudBackupEnabled) {
-      alert('Ative o backup em nuvem antes de sincronizar.');
+      notify.info('Ative o backup em nuvem antes de sincronizar.');
       return;
     }
     if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
+      notify.error('Usuário não carregado. Tente novamente.');
       return;
     }
 
@@ -298,7 +300,7 @@ export default function SettingsPage() {
         ? localCloudProjects
         : localCloudProjects.filter((p) => selectedCloudProjectIds[p.id]);
     if (!selected.length) {
-      alert(
+      notify.info(
         cloudSyncScope === 'all'
           ? 'Não há projetos locais para sincronizar.'
           : 'Selecione ao menos 1 projeto para sincronizar.'
@@ -342,7 +344,7 @@ export default function SettingsPage() {
       return;
     }
     if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
+      notify.error('Usuário não carregado. Tente novamente.');
       return;
     }
     try {

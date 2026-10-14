@@ -1,5 +1,7 @@
 'use client';
 
+import { notify } from '@/lib/notify';
+
 import React, { useEffect, useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import type { EvolutionImage } from '@/lib/storage';
@@ -86,7 +88,7 @@ export function EvolutionSetupModal({
   const handleFileChange = (id: string, file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Envie apenas arquivos de imagem.');
+      notify.info('Envie apenas arquivos de imagem.');
       return;
     }
     const reader = new FileReader();
@@ -102,11 +104,11 @@ export function EvolutionSetupModal({
 
   const handleSave = async () => {
     if (!milestones.length) {
-      alert('Adicione pelo menos um marco.');
+      notify.info('Adicione pelo menos um marco.');
       return;
     }
     if (milestones.some((m) => !m.preview)) {
-      alert('Envie uma foto para cada marco antes de salvar.');
+      notify.info('Envie uma foto para cada marco antes de salvar.');
       return;
     }
     setSaving(true);

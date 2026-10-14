@@ -1,5 +1,7 @@
 'use client';
 
+import { notify } from '@/lib/notify';
+
 import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { X, RotateCw, RotateCcw, Crop, Check, Loader2, Square, Circle, Trash2, Pencil, Type } from 'lucide-react';
 import ReactCrop, { Crop as ReactCropType, PixelCrop, makeAspectCrop, centerCrop } from 'react-image-crop';
@@ -259,7 +261,7 @@ export function ImageEditorModal({
       onClose();
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
-      alert('Erro ao processar imagem. Tente novamente.');
+      notify.error('Erro ao processar imagem. Tente novamente.');
     } finally {
       setProcessing(false);
     }

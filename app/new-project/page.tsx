@@ -1,5 +1,7 @@
 'use client';
 
+import { notify, PLANS_ACTION } from '@/lib/notify';
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react';
@@ -269,7 +271,7 @@ export default function NewProjectPage() {
     if (!newFiles.length) return;
     const combined = [...beforeImages, ...newFiles];
     if (!hasProAccess && combined.length > FREE_MAX_BEFORE_IMAGES) {
-      alert(`Limite de ${FREE_MAX_BEFORE_IMAGES} fotos ANTES no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
+      notify.info(`Limite de ${FREE_MAX_BEFORE_IMAGES} fotos ANTES no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`, PLANS_ACTION);
       e.target.value = '';
       return;
     }
@@ -284,7 +286,7 @@ export default function NewProjectPage() {
     if (!newFiles.length) return;
     const combined = [...afterImages, ...newFiles];
     if (!hasProAccess && combined.length > FREE_MAX_AFTER_IMAGES) {
-      alert(`Limite de ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
+      notify.info(`Limite de ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`, PLANS_ACTION);
       e.target.value = '';
       return;
     }
@@ -343,12 +345,12 @@ export default function NewProjectPage() {
       if (!hasProAccess) {
         const existingProjects = await getAllProjectsForUser(user?.email || null);
         if (existingProjects.length >= FREE_MAX_PROJECTS) {
-          alert(`Limite de ${FREE_MAX_PROJECTS} projetos no plano Free. Para criar novos projetos, faça upgrade para o Revela Pro ou Premium.`);
+          notify.info(`Limite de ${FREE_MAX_PROJECTS} projetos no plano Free. Para criar novos projetos, faça upgrade para o Revela Pro ou Premium.`, PLANS_ACTION);
           document.body.removeChild(processingMessage);
           return;
         }
         if (beforeImages.length > FREE_MAX_BEFORE_IMAGES || afterImages.length > FREE_MAX_AFTER_IMAGES) {
-          alert(`No plano Free cada projeto pode ter no máximo ${FREE_MAX_BEFORE_IMAGES} fotos ANTES e ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS. Reduza a quantidade de imagens ou faça upgrade para o Revela Pro ou Premium.`);
+          notify.info(`No plano Free cada projeto pode ter no máximo ${FREE_MAX_BEFORE_IMAGES} fotos ANTES e ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS. Reduza a quantidade de imagens ou faça upgrade para o Revela Pro ou Premium.`, PLANS_ACTION);
           document.body.removeChild(processingMessage);
           return;
         }
@@ -455,19 +457,19 @@ export default function NewProjectPage() {
         void triggerAutoCloudSync();
         
         document.body.removeChild(processingMessage);
-        alert('Projeto salvo com sucesso no seu dispositivo!');
+        notify.success('Projeto salvo com sucesso no seu dispositivo!');
         // Após salvar, limpar formulário para permitir criar um novo projeto em branco
         clearForm();
       } catch (error: any) {
         document.body.removeChild(processingMessage);
-        alert(error.message || 'Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
+        notify.error(error.message || 'Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
         return;
       }
     } catch (error) {
       console.error('Erro ao salvar projeto:', error);
       const errorMessage = document.querySelector('div[style*="position: fixed"]');
       if (errorMessage) document.body.removeChild(errorMessage);
-      alert('Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
+      notify.error('Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
     }
   };
 
@@ -565,7 +567,7 @@ export default function NewProjectPage() {
               onClick={() => {
                 const canUseTimeline = hasPremiumAccess && canUsePremiumFeature('timeline');
                 if (!canUseTimeline) {
-                  alert('O modo Revela Evolução é exclusivo para usuários do plano Premium. Faça upgrade para ativar este recurso.');
+                  notify.info('O modo Revela Evolução é exclusivo para usuários do plano Premium. Faça upgrade para ativar este recurso.', PLANS_ACTION);
                   return;
                 }
                 setProjectMode('evolution');

@@ -1,5 +1,7 @@
 'use client';
 
+import { notify } from '@/lib/notify';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Instagram, Download, Loader2 } from 'lucide-react';
@@ -91,7 +93,7 @@ export function SocialMediaExportModal({
       }, 500);
     } catch (error: any) {
       console.error('Erro ao exportar:', error);
-      alert(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      notify.error(error.message || 'Erro ao exportar imagem. Tente novamente.');
       setExporting(false);
     }
   };

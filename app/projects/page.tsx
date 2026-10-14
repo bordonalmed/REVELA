@@ -1,5 +1,7 @@
 'use client';
 
+import { notify, confirmDialog } from '@/lib/notify';
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -183,7 +185,7 @@ export default function ProjectsPage() {
   }, [showBackupMenu]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este projeto?')) {
+    if (!(await confirmDialog('Tem certeza que deseja excluir este projeto? Essa ação não pode ser desfeita.', { confirmLabel: 'Excluir', danger: true }))) {
       return;
     }
 
@@ -199,10 +201,10 @@ export default function ProjectsPage() {
         trackDeleteProject(id, projectToDelete.name);
       }
       
-      alert('Projeto excluído com sucesso!');
+      notify.success('Projeto excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
-      alert('Erro ao excluir projeto. Tente novamente.');
+      notify.error('Erro ao excluir projeto. Tente novamente.');
     }
   };
 
@@ -236,10 +238,10 @@ export default function ProjectsPage() {
         trackExportBackup(backup.metadata?.totalProjects || 0);
       }
       
-      alert(`Backup exportado com sucesso! ${backup.metadata?.totalProjects || 0} projeto(s) exportado(s).`);
+      notify.success(`Backup exportado com sucesso! ${backup.metadata?.totalProjects || 0} projeto(s) exportado(s).`);
     } catch (error) {
       console.error('Erro ao exportar backup:', error);
-      alert('Erro ao exportar backup. Tente novamente.');
+      notify.error('Erro ao exportar backup. Tente novamente.');
     } finally {
       setExporting(false);
     }
@@ -260,7 +262,7 @@ export default function ProjectsPage() {
       const confirmMsg = `Deseja importar ${backupData.projects.length} projeto(s) do backup?\n\n` +
         `Atenção: Projetos com o mesmo ID serão substituídos.`;
       
-      if (!confirm(confirmMsg)) {
+      if (!(await confirmDialog(confirmMsg, { confirmLabel: 'Importar' }))) {
         return;
       }
       
@@ -288,12 +290,13 @@ export default function ProjectsPage() {
         }
       }
       
-      alert(message);
+      if (results.failed > 0) notify.error(message);
+      else notify.success(message);
       setShowImportModal(false);
     } catch (error) {
       console.error('Erro ao importar backup:', error);
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao importar backup: ${errorMsg}`);
+      notify.error(`Erro ao importar backup: ${errorMsg}`);
     } finally {
       setImporting(false);
     }
@@ -308,21 +311,21 @@ export default function ProjectsPage() {
       // Criar backup imediatamente
       exportBackup().then(backup => {
         setLastBackupDate(backup.exportDate);
-        alert('Backup automático ativado! Um backup foi criado automaticamente.');
+        notify.success('Backup automático ativado! Um backup foi criado automaticamente.');
       }).catch(error => {
         console.error('Erro ao criar backup automático:', error);
-        alert('Erro ao criar backup automático inicial.');
+        notify.error('Erro ao criar backup automático inicial.');
       });
     } else {
       disableAutoBackup();
-      alert('Backup automático desativado.');
+      notify.success('Backup automático desativado.');
     }
   };
 
   // Funções de gerenciamento de pastas
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
-      alert('Digite um nome para a pasta');
+      notify.info('Digite um nome para a pasta');
       return;
     }
 
@@ -338,16 +341,16 @@ export default function ProjectsPage() {
         trackCreateFolder(folderName);
       }
       
-      alert('Pasta criada com sucesso!');
+      notify.success('Pasta criada com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao criar pasta: ${errorMsg}`);
+      notify.error(`Erro ao criar pasta: ${errorMsg}`);
     }
   };
 
   const handleEditFolder = async (folder: Folder) => {
     if (!newFolderName.trim()) {
-      alert('Digite um nome para a pasta');
+      notify.info('Digite um nome para a pasta');
       return;
     }
 
@@ -364,15 +367,15 @@ export default function ProjectsPage() {
         trackUpdateFolder(folder.id, folderName);
       }
       
-      alert('Pasta atualizada com sucesso!');
+      notify.success('Pasta atualizada com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao atualizar pasta: ${errorMsg}`);
+      notify.error(`Erro ao atualizar pasta: ${errorMsg}`);
     }
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta pasta? Os projetos serão movidos para "Sem Pasta".')) {
+    if (!(await confirmDialog('Tem certeza que deseja excluir esta pasta? Os projetos serão movidos para "Sem Pasta".', { confirmLabel: 'Excluir', danger: true }))) {
       return;
     }
 
@@ -383,10 +386,10 @@ export default function ProjectsPage() {
       if (selectedFolderId === folderId) {
         setSelectedFolderId('all');
       }
-      alert('Pasta excluída com sucesso!');
+      notify.success('Pasta excluída com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao excluir pasta: ${errorMsg}`);
+      notify.error(`Erro ao excluir pasta: ${errorMsg}`);
     }
   };
 
@@ -398,10 +401,10 @@ export default function ProjectsPage() {
       await loadProjects(user?.email || null);
       setShowMoveModal(false);
       setProjectToMove(null);
-      alert('Projeto movido com sucesso!');
+      notify.success('Projeto movido com sucesso!');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      alert(`Erro ao mover projeto: ${errorMsg}`);
+      notify.error(`Erro ao mover projeto: ${errorMsg}`);
     }
   };
 
