@@ -2264,6 +2264,23 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={() => {
+                      setShowShareCaseModal(true);
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Gerar link público para enviar ao paciente"
+                  >
+                    <Link2 className="w-4 h-4" />
+                    <span>Link</span>
+                  </button>
+                  <button
+                    onClick={() => {
                       handleEnterPresentationMode();
                       setShowMobileMenu(false);
                     }}
@@ -2449,6 +2466,23 @@ export default function ViewProjectPage() {
                   >
                     <Share2 className="w-4 h-4" />
                     <span>Publicar</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowShareCaseModal(true);
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Gerar link público para enviar ao paciente"
+                  >
+                    <Link2 className="w-4 h-4" />
+                    <span>Link</span>
                   </button>
                   <button
                     onClick={() => {
