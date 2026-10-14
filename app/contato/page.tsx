@@ -16,7 +16,7 @@ export default function ContatoPage() {
               Fale com a equipe Revela
             </h1>
             <p className="text-sm sm:text-base opacity-80">
-              Use o formulário abaixo para enviar dúvidas, sugestões ou feedback sobre o Revela.
+              Envie dúvidas, sugestões ou feedback sobre o Revela diretamente para a nossa equipe.
             </p>
           </header>
 

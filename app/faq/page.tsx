@@ -32,9 +32,11 @@ export default function FAQPage() {
             <div>
               <h2 className="font-medium mb-1">As fotos ficam na nuvem?</h2>
               <p>
-                Não. No modelo atual, as fotos ficam armazenadas apenas no seu dispositivo, usando o próprio
-                armazenamento local do navegador. Isso significa que você mantém o controle dos arquivos e
-                evita o envio automático para servidores externos.
+                Por padrão, não: as fotos ficam armazenadas apenas no seu dispositivo, sem envio automático
+                para servidores externos. Duas ações são sempre manuais, nunca automáticas: gerar um link
+                compartilhável de um caso específico para enviar ao paciente (disponível em todos os planos)
+                e, no plano Premium, sincronizar os projetos na nuvem para acessá-los em outro aparelho. Fora
+                dessas ações que você escolhe fazer, nada sai do seu dispositivo.
               </p>
             </div>
 
@@ -69,9 +71,14 @@ export default function FAQPage() {
             <div>
               <h2 className="font-medium mb-1">O Revela é pago?</h2>
               <p>
-                Nesta fase de desenvolvimento, o Revela está disponível em modo gratuito para testes e
-                validação com profissionais. No futuro, poderão existir planos específicos, sempre com foco
-                em acessibilidade e custo-benefício para consultórios de diferentes portes.
+                Tem um plano gratuito (até 3 projetos, com marca d&apos;água) pra começar sem compromisso.
+                Os planos pagos são o Revela Pro (projetos ilimitados e exportação completa) e o Revela
+                Premium (tudo do Pro, mais timeline de evolução, relatório em PDF, marcações clínicas e
+                backup na nuvem). Veja os valores e detalhes atualizados na página de{' '}
+                <a href="/planos" className="underline" style={{ color: '#00A88F' }}>
+                  planos
+                </a>
+                .
               </p>
             </div>
 
