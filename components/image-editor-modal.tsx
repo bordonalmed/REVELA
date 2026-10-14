@@ -261,7 +261,7 @@ export function ImageEditorModal({
       onClose();
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
-      notify.error('Erro ao processar imagem. Tente novamente.');
+      notify.error(t => t.msg.imageProcessError);
     } finally {
       setProcessing(false);
     }

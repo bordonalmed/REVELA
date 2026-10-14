@@ -3,7 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
-import { registerNotifier, type Toast, type ConfirmRequest } from '@/lib/notify';
+import { registerNotifier, resolveMsg, type Toast, type ConfirmRequest } from '@/lib/notify';
+import { useLanguage } from '@/contexts/language-context';
+import type { Translations } from '@/lib/i18n/translations';
 
 const MAX_TOASTS = 4;
 
@@ -14,12 +16,15 @@ const kindStyle = {
 } as const;
 
 // Tempo na tela: erros e textos longos ficam mais tempo
-function durationOf(t: Toast) {
-  const base = t.kind === 'error' ? 7000 : t.kind === 'info' ? 5000 : 3500;
-  return Math.min(base + t.message.length * 30, 15000);
+function durationOf(toast: Toast, t: Translations) {
+  const base = toast.kind === 'error' ? 7000 : toast.kind === 'info' ? 5000 : 3500;
+  return Math.min(base + resolveMsg(toast.message, t).length * 30, 15000);
 }
 
 export function Notifier() {
+  const { t } = useLanguage();
+  const tRef = useRef(t);
+  tRef.current = t;
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmReq, setConfirmReq] = useState<ConfirmRequest | null>(null);
   const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
@@ -37,7 +42,7 @@ export function Notifier() {
     registerNotifier({
       onToast: (t) => {
         setToasts((list) => [...list, t].slice(-MAX_TOASTS));
-        allTimers.set(t.id, setTimeout(() => dismiss(t.id), durationOf(t)));
+        allTimers.set(t.id, setTimeout(() => dismiss(t.id), durationOf(t, tRef.current)));
       },
       onConfirm: (c) => {
         // Uma confirmação por vez: se já havia outra aberta, ela é cancelada
@@ -78,40 +83,40 @@ export function Notifier() {
         aria-live="polite"
         role="status"
       >
-        {toasts.map((t) => {
-          const { color, Icon } = kindStyle[t.kind];
+        {toasts.map((toast) => {
+          const { color, Icon } = kindStyle[toast.kind];
           return (
             <div
-              key={t.id}
+              key={toast.id}
               className="pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg"
               style={{
                 backgroundColor: '#1B3C45',
                 borderColor: 'rgba(232, 220, 192, 0.2)',
                 borderLeft: `4px solid ${color}`,
               }}
-              role={t.kind === 'error' ? 'alert' : undefined}
+              role={toast.kind === 'error' ? 'alert' : undefined}
             >
               <Icon className="w-5 h-5 shrink-0 mt-0.5" style={{ color }} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm whitespace-pre-line break-words" style={{ color: '#E8DCC0' }}>
-                  {t.message}
+                  {resolveMsg(toast.message, t)}
                 </p>
-                {t.action && (
+                {toast.action && (
                   <Link
-                    href={t.action.href}
-                    onClick={() => dismiss(t.id)}
+                    href={toast.action.href}
+                    onClick={() => dismiss(toast.id)}
                     className="inline-block mt-2 text-sm font-medium underline"
                     style={{ color: '#00A88F' }}
                   >
-                    {t.action.label}
+                    {resolveMsg(toast.action.label ?? '', t)}
                   </Link>
                 )}
               </div>
               <button
-                onClick={() => dismiss(t.id)}
+                onClick={() => dismiss(toast.id)}
                 className="p-1 -m-1 rounded hover:bg-white/10"
                 style={{ color: '#E8DCC0' }}
-                aria-label="Fechar aviso"
+                aria-label={t.msg.closeNotice}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -140,7 +145,7 @@ export function Notifier() {
               className="text-sm whitespace-pre-line mb-5"
               style={{ color: '#E8DCC0' }}
             >
-              {confirmReq.message}
+              {resolveMsg(confirmReq.message, t)}
             </p>
             <div className="flex gap-2">
               <button
@@ -152,7 +157,7 @@ export function Notifier() {
                   borderColor: 'rgba(232, 220, 192, 0.15)',
                 }}
               >
-                Cancelar
+                {t.common.cancel}
               </button>
               <button
                 ref={confirmBtnRef}
@@ -163,7 +168,7 @@ export function Notifier() {
                   color: '#FFFFFF',
                 }}
               >
-                {confirmReq.confirmLabel}
+                {confirmReq.confirmLabel ? resolveMsg(confirmReq.confirmLabel, t) : t.msg.confirm}
               </button>
             </div>
           </div>

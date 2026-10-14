@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Ruler, X, Save, Crosshair, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 import type { Measurement } from '@/lib/storage';
-import { formatCm } from '@/lib/measurements';
+import { formatCm as formatCmLocale } from '@/lib/measurements';
+import { useLanguage } from '@/contexts/language-context';
 
 interface MeasurementToolProps {
   imageSrc: string;
@@ -55,6 +56,9 @@ export function MeasurementTool({
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [displayWidth, setDisplayWidth] = useState(0);
   const imageRef = useRef<HTMLImageElement>(null);
+  const { t: tr, language } = useLanguage();
+  const mt = tr.measure;
+  const formatCm = (cm: number) => formatCmLocale(cm, language);
 
   // Tamanho real da foto + largura exibida (para manter traços e textos legíveis em qualquer tela)
   useEffect(() => {
@@ -116,7 +120,7 @@ export function MeasurementTool({
     pxPerCm ? formatCm(lengthPx(l) / pxPerCm) : `${Math.round(lengthPx(l))} px`;
 
   const valueOf = (m: Measurement): string => {
-    if (m.coordSpace !== 'normalized') return `${Math.round(m.length ?? 0)} px (antiga)`;
+    if (m.coordSpace !== 'normalized') return `${Math.round(m.length ?? 0)} px (${mt.legacy})`;
     return formatLength(toLine(m));
   };
 
@@ -187,7 +191,7 @@ export function MeasurementTool({
     if (!pending) return;
     const cm = Number(cmInput.trim().replace(',', '.'));
     if (!Number.isFinite(cm) || cm <= 0) {
-      setCmError('Digite um tamanho maior que zero (ex.: 1 ou 2,5).');
+      setCmError(mt.realSizeError);
       return;
     }
     const m: Measurement = { ...baseFromLine(pending.line), isCalibration: true, calibrationCm: cm };
@@ -260,9 +264,9 @@ export function MeasurementTool({
 
   const hint =
     mode === 'calibrate'
-      ? 'Arraste sobre um objeto de tamanho conhecido na foto (ex.: 1 cm de uma régua).'
+      ? mt.hintCalibrate
       : mode === 'measure'
-        ? 'Arraste sobre a foto para medir.'
+        ? mt.hintMeasure
         : null;
 
   return (
@@ -272,13 +276,13 @@ export function MeasurementTool({
         <div className="flex items-center gap-2 mb-3">
           <Ruler className="w-4 h-4" style={{ color: '#E8DCC0' }} />
           <span className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-            Ferramenta de Medição
+            {mt.title}
           </span>
           <button
             onClick={onClose}
             className="ml-auto p-1 rounded hover:bg-white/10 transition-colors"
             style={{ color: '#E8DCC0' }}
-            aria-label="Fechar"
+            aria-label={tr.common.close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -288,17 +292,12 @@ export function MeasurementTool({
         {calibration && pxPerCm ? (
           <div className="flex items-start gap-2 text-xs mb-3" style={{ color: '#E8DCC0' }}>
             <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: COLOR_MEASURE }} />
-            <span>
-              Calibrada: a linha amarela vale {formatCm(calibration.calibrationCm!)}. Medidas em cm reais.
-            </span>
+            <span>{mt.calibrated(formatCm(calibration.calibrationCm!))}</span>
           </div>
         ) : (
           <div className="flex items-start gap-2 text-xs mb-3" style={{ color: '#E8DCC0' }}>
             <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: COLOR_CALIBRATION }} />
-            <span>
-              Sem calibração: as medidas saem em pixels. Para medir em cm, fotografe com uma régua ou
-              objeto de tamanho conhecido ao lado e toque em &quot;Calibrar&quot;.
-            </span>
+            <span>{mt.notCalibrated}</span>
           </div>
         )}
 
@@ -312,7 +311,7 @@ export function MeasurementTool({
             }}
           >
             <Crosshair className="w-4 h-4" />
-            {calibration ? 'Recalibrar' : 'Calibrar'}
+            {calibration ? mt.recalibrate : mt.calibrate}
           </button>
           <button
             onClick={() => toggleMode('measure')}
@@ -323,13 +322,13 @@ export function MeasurementTool({
             }}
           >
             <Ruler className="w-4 h-4" />
-            {mode === 'measure' ? 'Medindo…' : 'Medir'}
+            {mode === 'measure' ? mt.measuring : mt.measure}
           </button>
         </div>
 
         {(hint || draft) && (
           <div className="text-xs mt-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-            {draft ? `Comprimento: ${formatLength(draft)}` : hint}
+            {draft ? mt.lengthLive(formatLength(draft)) : hint}
           </div>
         )}
 
@@ -337,16 +336,16 @@ export function MeasurementTool({
         {(lines.length > 0 || calibration) && (
           <div className="mt-3 pt-3 border-t max-h-48 overflow-y-auto" style={{ borderColor: 'rgba(232, 220, 192, 0.15)' }}>
             <div className="text-xs font-medium mb-1" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              Medidas desta foto ({lines.length})
+              {mt.listTitle(lines.length)}
             </div>
             <div className="space-y-1">
               {calibration && (
                 <div className="flex items-center justify-between px-2 py-1 rounded text-xs" style={{ color: COLOR_CALIBRATION }}>
-                  <span>Calibração: {formatCm(calibration.calibrationCm!)}</span>
+                  <span>{mt.calibrationItem(formatCm(calibration.calibrationCm!))}</span>
                   <button
                     onClick={() => handleDelete(calibration.id)}
                     className="p-1 rounded hover:bg-white/10"
-                    aria-label="Remover calibração"
+                    aria-label={mt.removeCalibration}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -365,7 +364,7 @@ export function MeasurementTool({
                   <button
                     onClick={() => handleDelete(m.id)}
                     className="p-1 rounded hover:bg-white/10"
-                    aria-label="Remover medida"
+                    aria-label={mt.removeMeasurement}
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -383,7 +382,7 @@ export function MeasurementTool({
           <img
             ref={imageRef}
             src={imageSrc}
-            alt="Imagem para medição"
+            alt={mt.imageAlt}
             className="block max-w-full max-h-[70vh] w-auto h-auto select-none"
             draggable={false}
           />
@@ -401,7 +400,7 @@ export function MeasurementTool({
               onPointerUp={handlePointerUp}
               onPointerCancel={() => setDraft(null)}
             >
-              {calibration && renderLine(toLine(calibration), COLOR_CALIBRATION, `ref. ${formatCm(calibration.calibrationCm!)}`, calibration.id, true)}
+              {calibration && renderLine(toLine(calibration), COLOR_CALIBRATION, mt.refLabel(formatCm(calibration.calibrationCm!)), calibration.id, true)}
               {lines.map(m =>
                 renderLine(drawLineOf(m), COLOR_MEASURE, m.label ? `${m.label}: ${valueOf(m)}` : valueOf(m), m.id)
               )}
@@ -427,12 +426,12 @@ export function MeasurementTool({
             {pending.kind === 'calibrate' ? (
               <div className="mb-3">
                 <div className="text-sm mb-2" style={{ color: '#E8DCC0' }}>
-                  Qual o tamanho real dessa linha, em centímetros?
+                  {mt.askRealSize}
                 </div>
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="Ex.: 1 ou 2,5"
+                  placeholder={mt.realSizePlaceholder}
                   value={cmInput}
                   onChange={(e) => { setCmInput(e.target.value); setCmError(''); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveCalibration(); }}
@@ -445,11 +444,11 @@ export function MeasurementTool({
             ) : (
               <div className="mb-3">
                 <div className="text-sm mb-2" style={{ color: '#E8DCC0' }}>
-                  Nova medida: <strong>{formatLength(pending.line)}</strong>
+                  {mt.newMeasurement} <strong>{formatLength(pending.line)}</strong>
                 </div>
                 <input
                   type="text"
-                  placeholder="Rótulo (opcional, ex.: Lesão A)"
+                  placeholder={mt.labelPlaceholder}
                   value={labelInput}
                   onChange={(e) => setLabelInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMeasurement(); }}
@@ -469,7 +468,7 @@ export function MeasurementTool({
                   borderColor: 'rgba(232, 220, 192, 0.1)',
                 }}
               >
-                Cancelar
+                {tr.common.cancel}
               </button>
               <button
                 onClick={pending.kind === 'calibrate' ? handleSaveCalibration : handleSaveMeasurement}
@@ -480,7 +479,7 @@ export function MeasurementTool({
                 }}
               >
                 <Save className="w-4 h-4" />
-                {pending.kind === 'calibrate' ? 'Salvar calibração' : 'Salvar'}
+                {pending.kind === 'calibrate' ? mt.saveCalibration : tr.common.save}
               </button>
             </div>
           </div>

@@ -88,7 +88,7 @@ export function EvolutionSetupModal({
   const handleFileChange = (id: string, file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      notify.info('Envie apenas arquivos de imagem.');
+      notify.info(t => t.msg.onlyImageFiles);
       return;
     }
     const reader = new FileReader();
@@ -104,11 +104,11 @@ export function EvolutionSetupModal({
 
   const handleSave = async () => {
     if (!milestones.length) {
-      notify.info('Adicione pelo menos um marco.');
+      notify.info(t => t.msg.addAtLeastOneMilestone);
       return;
     }
     if (milestones.some((m) => !m.preview)) {
-      notify.info('Envie uma foto para cada marco antes de salvar.');
+      notify.info(t => t.msg.photoForEachMilestone);
       return;
     }
     setSaving(true);

@@ -93,7 +93,7 @@ export function SocialMediaExportModal({
       }, 500);
     } catch (error: any) {
       console.error('Erro ao exportar:', error);
-      notify.error(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      notify.error(t => error.message || t.msg.exportImageError);
       setExporting(false);
     }
   };

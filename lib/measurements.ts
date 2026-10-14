@@ -49,8 +49,8 @@ export async function measurementsAfterImageEdit(
   return measurements.filter((m) => !(m.imageType === imageType && m.imageIndex === imageIndex));
 }
 
-// Formata um comprimento em cm no padrão brasileiro (mm abaixo de 1 cm)
-export function formatCm(cm: number): string {
-  if (cm < 1) return `${(cm * 10).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mm`;
-  return `${cm.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} cm`;
+// Formata um comprimento em cm no padrão do idioma (mm abaixo de 1 cm)
+export function formatCm(cm: number, locale = 'pt-BR'): string {
+  if (cm < 1) return `${(cm * 10).toLocaleString(locale, { maximumFractionDigits: 1 })} mm`;
+  return `${cm.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} cm`;
 }

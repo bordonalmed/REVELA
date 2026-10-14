@@ -196,15 +196,15 @@ export default function SettingsPage() {
       return;
     }
     if (!secureBackupEnabled) {
-      notify.info('Ative o backup seguro antes de criar um backup.');
+      notify.info(t => t.msg.enableSecureBackupFirst);
       return;
     }
     if (!secureBackupPassword || secureBackupPassword.length < 8) {
-      notify.info('Defina uma senha de backup com pelo menos 8 caracteres.');
+      notify.info(t => t.msg.backupPasswordMin);
       return;
     }
     if (!user?.id) {
-      notify.error('Usuário não carregado. Tente novamente.');
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
     try {
@@ -219,10 +219,10 @@ export default function SettingsPage() {
           payload.createdAt
         ).toLocaleTimeString()}`
       );
-      notify.success('Backup seguro criado com sucesso. Armazenamento local continua sendo o padrão.');
+      notify.success(t => t.msg.secureBackupCreated);
     } catch (err: any) {
       console.error('Erro ao criar backup seguro:', err);
-      notify.error(err.message || 'Erro ao criar backup seguro. Tente novamente.');
+      notify.error(t => err.message || t.msg.secureBackupError);
     } finally {
       setSecureBackupRunning(false);
     }
@@ -234,26 +234,23 @@ export default function SettingsPage() {
       return;
     }
     if (!user?.id) {
-      notify.error('Usuário não carregado. Tente novamente.');
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
     if (!secureBackupPassword) {
-      notify.info('Digite a senha usada para criar o backup seguro.');
+      notify.info(t => t.msg.enterBackupPassword);
       return;
     }
-    if (!(await confirmDialog('Isso vai restaurar os projetos do backup seguro no armazenamento local deste dispositivo. Continuar?', { confirmLabel: 'Restaurar' }))) {
+    if (!(await confirmDialog(t => t.msg.confirmRestore, { confirmLabel: t => t.msg.restoreLabel }))) {
       return;
     }
     try {
       setSecureBackupRestoring(true);
       const result = await restoreEncryptedBackupFromServer(user.id, secureBackupPassword);
-      notify.success(
-        `Restauração concluída: ${result.success} projeto(s) restaurado(s)` +
-          (result.failed > 0 ? `, ${result.failed} com falha.` : '.')
-      );
+      notify.success(t => t.msg.restoreDone(result.success, result.failed));
     } catch (err: any) {
       console.error('Erro ao restaurar backup seguro:', err);
-      notify.error(err.message || 'Erro ao restaurar backup seguro. Verifique a senha e tente novamente.');
+      notify.error(t => err.message || t.msg.restoreError);
     } finally {
       setSecureBackupRestoring(false);
     }
@@ -287,11 +284,11 @@ export default function SettingsPage() {
       return;
     }
     if (!cloudBackupEnabled) {
-      notify.info('Ative o backup em nuvem antes de sincronizar.');
+      notify.info(t => t.msg.enableCloudFirst);
       return;
     }
     if (!user?.id) {
-      notify.error('Usuário não carregado. Tente novamente.');
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
 
@@ -301,9 +298,7 @@ export default function SettingsPage() {
         : localCloudProjects.filter((p) => selectedCloudProjectIds[p.id]);
     if (!selected.length) {
       notify.info(
-        cloudSyncScope === 'all'
-          ? 'Não há projetos locais para sincronizar.'
-          : 'Selecione ao menos 1 projeto para sincronizar.'
+        t => (cloudSyncScope === 'all' ? t.msg.noLocalProjects : t.msg.selectAtLeastOneProject)
       );
       return;
     }
@@ -344,7 +339,7 @@ export default function SettingsPage() {
       return;
     }
     if (!user?.id) {
-      notify.error('Usuário não carregado. Tente novamente.');
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
     try {

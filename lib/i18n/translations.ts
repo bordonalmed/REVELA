@@ -1,3 +1,5 @@
+import { appMessages, measureTexts, type AppMessages, type MeasureTexts } from './app-messages';
+
 export type Language = 'pt-BR' | 'en-US';
 
 export interface Translations {
@@ -208,6 +210,9 @@ export interface Translations {
     about: string;
     contact: string;
   };
+  // Avisos, confirmações e Ferramenta de Medição
+  msg: AppMessages;
+  measure: MeasureTexts;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -433,6 +438,8 @@ export const translations: Record<Language, Translations> = {
       about: 'Sobre',
       contact: 'Contato',
     },
+    msg: appMessages['pt-BR'],
+    measure: measureTexts['pt-BR'],
   },
   'en-US': {
     home: {
@@ -655,6 +662,8 @@ export const translations: Record<Language, Translations> = {
       about: 'About',
       contact: 'Contact',
     },
+    msg: appMessages['en-US'],
+    measure: measureTexts['en-US'],
   },
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { notify, confirmDialog } from '@/lib/notify';
+import type { Translations } from '@/lib/i18n/translations';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -185,7 +186,7 @@ export default function ProjectsPage() {
   }, [showBackupMenu]);
 
   const handleDelete = async (id: string) => {
-    if (!(await confirmDialog('Tem certeza que deseja excluir este projeto? Essa ação não pode ser desfeita.', { confirmLabel: 'Excluir', danger: true }))) {
+    if (!(await confirmDialog(t => t.msg.confirmDeleteProject, { confirmLabel: t => t.common.delete, danger: true }))) {
       return;
     }
 
@@ -201,10 +202,10 @@ export default function ProjectsPage() {
         trackDeleteProject(id, projectToDelete.name);
       }
       
-      notify.success('Projeto excluído com sucesso!');
+      notify.success(t => t.msg.projectDeleted);
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
-      notify.error('Erro ao excluir projeto. Tente novamente.');
+      notify.error(t => t.msg.deleteProjectError);
     }
   };
 
@@ -238,10 +239,10 @@ export default function ProjectsPage() {
         trackExportBackup(backup.metadata?.totalProjects || 0);
       }
       
-      notify.success(`Backup exportado com sucesso! ${backup.metadata?.totalProjects || 0} projeto(s) exportado(s).`);
+      notify.success(t => t.msg.backupExported(backup.metadata?.totalProjects || 0));
     } catch (error) {
       console.error('Erro ao exportar backup:', error);
-      notify.error('Erro ao exportar backup. Tente novamente.');
+      notify.error(t => t.msg.exportBackupError);
     } finally {
       setExporting(false);
     }
@@ -259,10 +260,8 @@ export default function ProjectsPage() {
       }
       
       // Confirmar importação
-      const confirmMsg = `Deseja importar ${backupData.projects.length} projeto(s) do backup?\n\n` +
-        `Atenção: Projetos com o mesmo ID serão substituídos.`;
-      
-      if (!(await confirmDialog(confirmMsg, { confirmLabel: 'Importar' }))) {
+      const projectCount = backupData.projects.length;
+      if (!(await confirmDialog(t => t.msg.confirmImport(projectCount), { confirmLabel: t => t.msg.importLabel }))) {
         return;
       }
       
@@ -278,25 +277,14 @@ export default function ProjectsPage() {
       }
       
       // Mostrar resultados
-      let message = `Importação concluída!\n\n`;
-      message += `✓ ${results.success} projeto(s) importado(s) com sucesso`;
-      if (results.failed > 0) {
-        message += `\n✗ ${results.failed} projeto(s) falharam`;
-        if (results.errors.length > 0) {
-          message += `\n\nErros:\n${results.errors.slice(0, 5).join('\n')}`;
-          if (results.errors.length > 5) {
-            message += `\n... e mais ${results.errors.length - 5} erro(s)`;
-          }
-        }
-      }
-      
+      const message = (t: Translations) => t.msg.importSummary(results.success, results.failed, results.errors);
       if (results.failed > 0) notify.error(message);
       else notify.success(message);
       setShowImportModal(false);
     } catch (error) {
       console.error('Erro ao importar backup:', error);
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      notify.error(`Erro ao importar backup: ${errorMsg}`);
+      notify.error(t => t.msg.importBackupError(errorMsg));
     } finally {
       setImporting(false);
     }
@@ -311,21 +299,21 @@ export default function ProjectsPage() {
       // Criar backup imediatamente
       exportBackup().then(backup => {
         setLastBackupDate(backup.exportDate);
-        notify.success('Backup automático ativado! Um backup foi criado automaticamente.');
+        notify.success(t => t.msg.autoBackupEnabled);
       }).catch(error => {
         console.error('Erro ao criar backup automático:', error);
-        notify.error('Erro ao criar backup automático inicial.');
+        notify.error(t => t.msg.autoBackupInitialError);
       });
     } else {
       disableAutoBackup();
-      notify.success('Backup automático desativado.');
+      notify.success(t => t.msg.autoBackupDisabled);
     }
   };
 
   // Funções de gerenciamento de pastas
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
-      notify.info('Digite um nome para a pasta');
+      notify.info(t => t.msg.folderNameRequired);
       return;
     }
 
@@ -341,16 +329,16 @@ export default function ProjectsPage() {
         trackCreateFolder(folderName);
       }
       
-      notify.success('Pasta criada com sucesso!');
+      notify.success(t => t.msg.folderCreated);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      notify.error(`Erro ao criar pasta: ${errorMsg}`);
+      notify.error(t => t.msg.createFolderError(errorMsg));
     }
   };
 
   const handleEditFolder = async (folder: Folder) => {
     if (!newFolderName.trim()) {
-      notify.info('Digite um nome para a pasta');
+      notify.info(t => t.msg.folderNameRequired);
       return;
     }
 
@@ -367,15 +355,15 @@ export default function ProjectsPage() {
         trackUpdateFolder(folder.id, folderName);
       }
       
-      notify.success('Pasta atualizada com sucesso!');
+      notify.success(t => t.msg.folderUpdated);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      notify.error(`Erro ao atualizar pasta: ${errorMsg}`);
+      notify.error(t => t.msg.updateFolderError(errorMsg));
     }
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    if (!(await confirmDialog('Tem certeza que deseja excluir esta pasta? Os projetos serão movidos para "Sem Pasta".', { confirmLabel: 'Excluir', danger: true }))) {
+    if (!(await confirmDialog(t => t.msg.confirmDeleteFolder, { confirmLabel: t => t.common.delete, danger: true }))) {
       return;
     }
 
@@ -386,10 +374,10 @@ export default function ProjectsPage() {
       if (selectedFolderId === folderId) {
         setSelectedFolderId('all');
       }
-      notify.success('Pasta excluída com sucesso!');
+      notify.success(t => t.msg.folderDeleted);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      notify.error(`Erro ao excluir pasta: ${errorMsg}`);
+      notify.error(t => t.msg.deleteFolderError(errorMsg));
     }
   };
 
@@ -401,10 +389,10 @@ export default function ProjectsPage() {
       await loadProjects(user?.email || null);
       setShowMoveModal(false);
       setProjectToMove(null);
-      notify.success('Projeto movido com sucesso!');
+      notify.success(t => t.msg.projectMoved);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      notify.error(`Erro ao mover projeto: ${errorMsg}`);
+      notify.error(t => t.msg.moveProjectError(errorMsg));
     }
   };
 

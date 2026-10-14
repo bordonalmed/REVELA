@@ -497,10 +497,10 @@ export default function ViewProjectPage() {
         trackSaveNotes(updatedProject.id, updatedProject.name, tempNotes.trim().length);
       }
       
-      notify.success('Notas salvas com sucesso!');
+      notify.success(t => t.msg.notesSaved);
     } catch (error: any) {
       console.error('Erro ao salvar notas:', error);
-      notify.error('Erro ao salvar notas. Tente novamente.');
+      notify.error(t => t.msg.notesSaveError);
     } finally {
       setSavingNotes(false);
     }
@@ -508,7 +508,7 @@ export default function ViewProjectPage() {
 
   const handleOpenMeasurementTool = () => {
     if (isEditing) {
-      notify.info('Salve ou cancele a edição do projeto antes de medir.');
+      notify.info(t => t.msg.saveBeforeMeasuring);
       return;
     }
     setMeasuringImageType(displayBeforeImages.length > 0 ? 'before' : 'after');
@@ -530,7 +530,7 @@ export default function ViewProjectPage() {
       void triggerAutoCloudSync();
     } catch (error) {
       console.error('Erro ao salvar medidas:', error);
-      notify.error('Erro ao salvar medidas. Tente novamente.');
+      notify.error(t => t.msg.measurementsSaveError);
     }
   };
 
@@ -538,10 +538,10 @@ export default function ViewProjectPage() {
     // Em Revela Evolução Premium não exibimos a tela fullscreen ANTES/DEPOIS.
     if (project?.evolutionImages?.length) {
       if (!isEvolutionPremiumProject) {
-        notify.info('O modo Revela Evolução é exclusivo do plano Premium.', PLANS_ACTION);
+        notify.info(t => t.msg.evolutionPremiumOnly, PLANS_ACTION);
         return;
       }
-      notify.info('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      notify.info(t => t.msg.evolutionUseTimeline);
       return;
     }
 
@@ -564,10 +564,10 @@ export default function ViewProjectPage() {
     // Em Revela Evolução Premium não exibimos o slider clássico ANTES/DEPOIS.
     if (project?.evolutionImages?.length) {
       if (!isEvolutionPremiumProject) {
-        notify.info('O modo Revela Evolução é exclusivo do plano Premium.', PLANS_ACTION);
+        notify.info(t => t.msg.evolutionPremiumOnly, PLANS_ACTION);
         return;
       }
-      notify.info('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      notify.info(t => t.msg.evolutionUseTimeline);
       return;
     }
 
@@ -657,7 +657,7 @@ export default function ViewProjectPage() {
       setEditingBeforeImages(prev => [...prev, ...compressedUrls]);
     } catch (error) {
       console.error('Erro ao processar imagens antes:', error);
-      notify.error('Não foi possível adicionar algumas imagens. Tente novamente.');
+      notify.error(t => t.msg.addImagesError);
     }
   };
 
@@ -674,7 +674,7 @@ export default function ViewProjectPage() {
       setEditingAfterImages(prev => [...prev, ...compressedUrls]);
     } catch (error) {
       console.error('Erro ao processar imagens depois:', error);
-      notify.error('Não foi possível adicionar algumas imagens. Tente novamente.');
+      notify.error(t => t.msg.addImagesError);
     }
   };
 
@@ -901,7 +901,7 @@ export default function ViewProjectPage() {
       setEditingImageType(null);
     } catch (error) {
       console.error('Erro ao salvar foto editada:', error);
-      notify.error('Erro ao salvar foto editada. Tente novamente.');
+      notify.error(t => t.msg.editedPhotoSaveError);
     }
   };
 
@@ -914,7 +914,7 @@ export default function ViewProjectPage() {
 
   const handleExportImage = async () => {
     if (!project || displayBeforeImages.length === 0 || displayAfterImages.length === 0) {
-      notify.info('É necessário ter pelo menos uma imagem antes e uma depois para exportar.');
+      notify.info(t => t.msg.exportNeedsBothImages);
       return;
     }
 
@@ -949,7 +949,7 @@ export default function ViewProjectPage() {
       }, 500);
     } catch (error: any) {
       console.error('Erro ao exportar imagem:', error);
-      notify.error(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      notify.error(t => error.message || t.msg.exportImageError);
       setExporting(false);
     }
   };
@@ -1017,10 +1017,10 @@ export default function ViewProjectPage() {
         });
       }
       
-      notify.success('Projeto atualizado com sucesso!');
+      notify.success(t => t.msg.projectUpdated);
     } catch (error: any) {
       console.error('Erro ao salvar edição:', error);
-      notify.error(error.message || 'Erro ao salvar alterações. Tente novamente.');
+      notify.error(t => error.message || t.msg.saveChangesError);
     } finally {
       setSaving(false);
     }
