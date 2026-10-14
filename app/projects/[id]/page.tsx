@@ -21,6 +21,7 @@ import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
 import { MeasurementTool } from '@/components/measurement-tool';
+import { remapMeasurements, measurementsAfterImageEdit } from '@/lib/measurements';
 import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { 
   trackViewProject, 
@@ -504,7 +505,11 @@ export default function ViewProjectPage() {
   };
 
   const handleOpenMeasurementTool = () => {
-    setMeasuringImageType('before');
+    if (isEditing) {
+      alert('Salve ou cancele a edição do projeto antes de medir.');
+      return;
+    }
+    setMeasuringImageType(displayBeforeImages.length > 0 ? 'before' : 'after');
     setShowMeasurementTool(true);
   };
 
@@ -820,6 +825,10 @@ export default function ViewProjectPage() {
         const updatedProject: Project = {
           ...project,
           beforeImages: newImages,
+          // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
+          measurements: await measurementsAfterImageEdit(
+            project.measurements, 'before', editingImageIndex, project.beforeImages[editingImageIndex], editedImage
+          ),
         };
         
         // Salvar permanentemente no IndexedDB
@@ -847,6 +856,10 @@ export default function ViewProjectPage() {
         const updatedProject: Project = {
           ...project,
           afterImages: newImages,
+          // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
+          measurements: await measurementsAfterImageEdit(
+            project.measurements, 'after', editingImageIndex, project.afterImages[editingImageIndex], editedImage
+          ),
         };
         
         // Salvar permanentemente no IndexedDB
@@ -976,6 +989,12 @@ export default function ViewProjectPage() {
         beforeImages: beforeToSave,
         afterImages: afterToSave,
         notes: editingNotes.trim() || undefined,
+        // Medidas acompanham a foto quando ela é reordenada; fotos excluídas levam suas medidas junto
+        measurements: remapMeasurements(
+          project.measurements,
+          { before: project.beforeImages, after: project.afterImages },
+          { before: beforeToSave, after: afterToSave }
+        ),
       };
 
       await updateProject(updatedProject);

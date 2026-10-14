@@ -51,8 +51,15 @@ export interface Measurement {
   endY: number; // Coordenada Y final (em pixels)
   length?: number; // Comprimento em pixels (calculado)
   label?: string; // Rótulo opcional para a medida
-  unit?: string; // Unidade de medida (cm, mm, etc.)
-  scale?: number; // Escala de conversão (pixels por unidade)
+  unit?: string; // Unidade de medida (cm, mm, etc.) — legado
+  scale?: number; // Escala de conversão (pixels por unidade) — legado
+  // 'normalized' = coordenadas de 0 a 1 em relação à largura/altura da foto
+  // (independe do tamanho da tela e sobrevive à recompressão do backup na nuvem).
+  // Ausente = medida antiga, salva em pixels da tela.
+  coordSpace?: 'normalized';
+  // Linha de calibração: um objeto de tamanho conhecido na foto (ex.: régua de papel)
+  isCalibration?: boolean;
+  calibrationCm?: number; // Tamanho real da linha de calibração, em cm
 }
 
 // Marco de evolução do tratamento (Revela Premium)
