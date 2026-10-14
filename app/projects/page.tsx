@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import { notify, confirmDialog } from '@/lib/notify';
 import type { Translations } from '@/lib/i18n/translations';
 
@@ -21,6 +23,7 @@ type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const tr = useTr();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -256,7 +259,7 @@ export default function ProjectsPage() {
       
       // Validar formato
       if (!backupData.projects || !Array.isArray(backupData.projects)) {
-        throw new Error('Formato de backup inválido');
+        throw new Error(tr('Formato de backup inválido', 'Invalid backup format'));
       }
       
       // Confirmar importação
@@ -283,7 +286,7 @@ export default function ProjectsPage() {
       setShowImportModal(false);
     } catch (error) {
       console.error('Erro ao importar backup:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = error instanceof Error ? error.message : tr('Erro desconhecido', 'Unknown error');
       notify.error(t => t.msg.importBackupError(errorMsg));
     } finally {
       setImporting(false);
@@ -331,7 +334,7 @@ export default function ProjectsPage() {
       
       notify.success(t => t.msg.folderCreated);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = error instanceof Error ? error.message : tr('Erro desconhecido', 'Unknown error');
       notify.error(t => t.msg.createFolderError(errorMsg));
     }
   };
@@ -357,7 +360,7 @@ export default function ProjectsPage() {
       
       notify.success(t => t.msg.folderUpdated);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = error instanceof Error ? error.message : tr('Erro desconhecido', 'Unknown error');
       notify.error(t => t.msg.updateFolderError(errorMsg));
     }
   };
@@ -376,7 +379,7 @@ export default function ProjectsPage() {
       }
       notify.success(t => t.msg.folderDeleted);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = error instanceof Error ? error.message : tr('Erro desconhecido', 'Unknown error');
       notify.error(t => t.msg.deleteFolderError(errorMsg));
     }
   };
@@ -391,7 +394,7 @@ export default function ProjectsPage() {
       setProjectToMove(null);
       notify.success(t => t.msg.projectMoved);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = error instanceof Error ? error.message : tr('Erro desconhecido', 'Unknown error');
       notify.error(t => t.msg.moveProjectError(errorMsg));
     }
   };
@@ -407,7 +410,7 @@ export default function ProjectsPage() {
             className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
             style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
           ></div>
-          <p style={{ color: '#E8DCC0' }}>Carregando...</p>
+          <p style={{ color: '#E8DCC0' }}>{tr('Carregando...', 'Loading...')}</p>
         </div>
       </div>
     );
@@ -429,10 +432,10 @@ export default function ProjectsPage() {
               color: '#E8DCC0', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
-            title="Voltar para dashboard"
+            title={tr('Voltar para dashboard', 'Back to dashboard')}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Voltar</span>
+            <span>{tr('Voltar', 'Back')}</span>
           </button>
         </div>
 
@@ -442,11 +445,11 @@ export default function ProjectsPage() {
               className="text-2xl sm:text-3xl font-light" 
               style={{ color: '#E8DCC0' }}
             >
-              Projetos Armazenados
+              {tr('Projetos Armazenados', 'Saved Projects')}
             </h1>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="text-sm text-right sm:text-left" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                {filteredAndSortedProjects.length} de {projects.length} projeto{projects.length !== 1 ? 's' : ''}
+                {filteredAndSortedProjects.length} {tr('de', 'of')} {projects.length} {projects.length !== 1 ? tr('projetos', 'projects') : tr('projeto', 'project')}
               </div>
               <button
                 onClick={() => router.push('/new-project')}
@@ -457,7 +460,7 @@ export default function ProjectsPage() {
                   borderColor: '#00A88F' 
                 }}
               >
-                + Novo Projeto
+                + {tr('Novo Projeto', 'New Project')}
               </button>
             </div>
           </div>
@@ -468,7 +471,7 @@ export default function ProjectsPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              Pastas
+              {tr('Pastas', 'Folders')}
             </h2>
             <button
               onClick={() => {
@@ -482,10 +485,10 @@ export default function ProjectsPage() {
                 color: '#E8DCC0', 
                 borderColor: 'rgba(232, 220, 192, 0.1)' 
               }}
-              title="Criar nova pasta"
+              title={tr('Criar nova pasta', 'Create new folder')}
             >
               <FolderPlus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Nova Pasta</span>
+              <span className="hidden sm:inline">{tr('Nova Pasta', 'New Folder')}</span>
             </button>
           </div>
 
@@ -502,7 +505,7 @@ export default function ProjectsPage() {
               }}
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              Todos
+              {tr('Todos', 'All')}
             </button>
 
             {/* Opção "Sem Pasta" */}
@@ -516,7 +519,7 @@ export default function ProjectsPage() {
               }}
             >
               <FolderIcon className="w-3.5 h-3.5" />
-              Sem Pasta
+              {tr('Sem Pasta', 'No Folder')}
             </button>
 
             {/* Pastas criadas */}
@@ -558,7 +561,7 @@ export default function ProjectsPage() {
                         style={{ color: '#E8DCC0' }}
                       >
                         <Edit2 className="w-3 h-3" />
-                        Editar
+                        {tr('Editar', 'Edit')}
                       </button>
                       <button
                         onClick={(e) => {
@@ -569,7 +572,7 @@ export default function ProjectsPage() {
                         style={{ color: '#E8DCC0' }}
                       >
                         <TrashIcon className="w-3 h-3" />
-                        Excluir
+                        {tr('Excluir', 'Delete')}
                       </button>
                     </div>
                   </div>
@@ -586,7 +589,7 @@ export default function ProjectsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#E8DCC0', opacity: 0.5 }} />
             <input
               type="text"
-              placeholder="Buscar por nome do projeto..."
+              placeholder={tr('Buscar por nome do projeto...', 'Search by project name...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm sm:text-base"
@@ -608,7 +611,7 @@ export default function ProjectsPage() {
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/10 transition-colors"
                 style={{ color: '#E8DCC0' }}
-                aria-label="Limpar busca"
+                aria-label={tr('Limpar busca', 'Clear search')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -628,7 +631,7 @@ export default function ProjectsPage() {
               }}
             >
               <Filter className="w-4 h-4" />
-              Filtros
+              {tr('Filtros', 'Filters')}
             </button>
 
             {/* Dropdown de Ordenação */}
@@ -644,10 +647,10 @@ export default function ProjectsPage() {
                   outline: 'none'
                 }}
               >
-                <option value="recent">Mais Recentes</option>
-                <option value="oldest">Mais Antigos</option>
-                <option value="name-asc">Nome A-Z</option>
-                <option value="name-desc">Nome Z-A</option>
+                <option value="recent">{tr('Mais Recentes', 'Newest')}</option>
+                <option value="oldest">{tr('Mais Antigos', 'Oldest')}</option>
+                <option value="name-asc">{tr('Nome A-Z', 'Name A-Z')}</option>
+                <option value="name-desc">{tr('Nome Z-A', 'Name Z-A')}</option>
               </select>
               <ArrowUpDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#E8DCC0', opacity: 0.5 }} />
             </div>
@@ -662,7 +665,7 @@ export default function ProjectsPage() {
                   borderColor: showBackupMenu ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
                   color: showBackupMenu ? '#FFFFFF' : '#E8DCC0'
                 }}
-                title="Opções de Backup"
+                title={tr('Opções de Backup', 'Backup Options')}
               >
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Backup</span>
@@ -690,7 +693,7 @@ export default function ProjectsPage() {
                       style={{ color: '#E8DCC0' }}
                     >
                       <Download className="w-4 h-4" />
-                      <span>Exportar Backup</span>
+                      <span>{tr('Exportar Backup', 'Export Backup')}</span>
                     </button>
 
                     {/* Importar */}
@@ -704,7 +707,7 @@ export default function ProjectsPage() {
                       style={{ color: '#E8DCC0' }}
                     >
                       <Upload className="w-4 h-4" />
-                      <span>Importar Backup</span>
+                      <span>{tr('Importar Backup', 'Import Backup')}</span>
                     </button>
 
                     {/* Divisor */}
@@ -716,7 +719,7 @@ export default function ProjectsPage() {
                         <div className="flex items-center gap-2">
                           <Database className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
                           <span className="text-sm" style={{ color: '#E8DCC0' }}>
-                            Backup Automático
+                            {tr('Backup Automático', 'Automatic Backup')}
                           </span>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
@@ -744,7 +747,7 @@ export default function ProjectsPage() {
                       </div>
                       {lastBackupDate && (
                         <div className="mt-1 text-xs" style={{ color: '#E8DCC0', opacity: 0.5 }}>
-                          Último: {new Date(lastBackupDate).toLocaleDateString('pt-BR')}
+                          {tr('Último', 'Last')}: {new Date(lastBackupDate).toLocaleDateString(tr('pt-BR', 'en-US'))}
                         </div>
                       )}
                     </div>
@@ -765,7 +768,7 @@ export default function ProjectsPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                  Filtrar por Data
+                  {tr('Filtrar por Data', 'Filter by Date')}
                 </h3>
                 {dateFilter !== 'all' && (
                   <button
@@ -773,18 +776,18 @@ export default function ProjectsPage() {
                     className="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
                     style={{ color: '#00A88F' }}
                   >
-                    Limpar filtro
+                    {tr('Limpar filtro', 'Clear filter')}
                   </button>
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {(['all', 'today', 'week', 'month', 'year'] as DateFilter[]).map((filter) => {
                   const labels: Record<DateFilter, string> = {
-                    all: 'Todos',
-                    today: 'Hoje',
-                    week: 'Última Semana',
-                    month: 'Último Mês',
-                    year: 'Último Ano'
+                    all: tr('Todos', 'All'),
+                    today: tr('Hoje', 'Today'),
+                    week: tr('Última Semana', 'Last Week'),
+                    month: tr('Último Mês', 'Last Month'),
+                    year: tr('Último Ano', 'Last Year')
                   };
                   
                   return (
@@ -812,7 +815,7 @@ export default function ProjectsPage() {
               className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
               style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
             ></div>
-            <p style={{ color: '#E8DCC0' }}>Carregando projetos...</p>
+            <p style={{ color: '#E8DCC0' }}>{tr('Carregando projetos...', 'Loading projects...')}</p>
           </div>
         ) : filteredAndSortedProjects.length === 0 ? (
           <div 
@@ -828,14 +831,14 @@ export default function ProjectsPage() {
                   className="text-base sm:text-lg mb-4" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
-                  Nenhum projeto salvo ainda
+                  {tr('Nenhum projeto salvo ainda', 'No saved projects yet')}
                 </p>
                 <Link href="/new-project">
                   <button
                     className="px-6 py-3 rounded-2xl text-sm sm:text-base font-medium transition-all hover:scale-105"
                     style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
                   >
-                    Criar Primeiro Projeto
+                    {tr('Criar Primeiro Projeto', 'Create First Project')}
                   </button>
                 </Link>
               </>
@@ -845,7 +848,7 @@ export default function ProjectsPage() {
                   className="text-base sm:text-lg mb-4" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
-                  Nenhum projeto encontrado com os filtros aplicados
+                  {tr('Nenhum projeto encontrado com os filtros aplicados', 'No projects match the current filters')}
                 </p>
                 <button
                   onClick={() => {
@@ -856,7 +859,7 @@ export default function ProjectsPage() {
                   className="px-6 py-3 rounded-2xl text-sm sm:text-base font-medium transition-all hover:opacity-90"
                   style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
                 >
-                  Limpar Filtros
+                  {tr('Limpar Filtros', 'Clear Filters')}
                 </button>
               </>
             )}
@@ -889,7 +892,7 @@ export default function ProjectsPage() {
                         color: '#7dd3fc'
                       }}
                     >
-                      Revela Evolução
+                      {tr('Revela Evolução', 'Revela Evolution')}
                     </span>
                   </div>
                 )}
@@ -907,7 +910,7 @@ export default function ProjectsPage() {
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                       <SafeBase64Image
                         src={project.beforeImages[0]}
-                        alt="Antes"
+                        alt={tr('Antes', 'Before')}
                         className="w-full h-24 sm:h-32 object-cover pointer-events-none"
                         style={{ minHeight: '96px' }}
                       />
@@ -927,7 +930,7 @@ export default function ProjectsPage() {
                     <div className="relative rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                       <SafeBase64Image
                         src={project.afterImages[0]}
-                        alt="Depois"
+                        alt={tr('Depois', 'After')}
                         className="w-full h-24 sm:h-32 object-cover pointer-events-none"
                         style={{ minHeight: '96px' }}
                       />
@@ -953,7 +956,7 @@ export default function ProjectsPage() {
                     style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.1)' }}
                   >
                     <Eye className="w-4 h-4" />
-                    Visualizar
+                    {tr('Visualizar', 'View')}
                   </button>
                   <button
                     onClick={() => router.push(`/projects/${project.id}?mode=edit`)}
@@ -963,11 +966,11 @@ export default function ProjectsPage() {
                       color: '#E8DCC0', 
                       borderColor: 'rgba(232, 220, 192, 0.1)' 
                     }}
-                    title="Editar projeto"
-                    aria-label="Editar projeto"
+                    title={tr('Editar projeto', 'Edit project')}
+                    aria-label={tr('Editar projeto', 'Edit project')}
                   >
                     <Edit2 className="w-4 h-4" />
-                    Editar
+                    {tr('Editar', 'Edit')}
                   </button>
                   <button
                     onClick={() => {
@@ -980,8 +983,8 @@ export default function ProjectsPage() {
                       color: '#E8DCC0', 
                       borderColor: 'rgba(232, 220, 192, 0.1)' 
                     }}
-                    title="Mover para pasta"
-                    aria-label="Mover projeto"
+                    title={tr('Mover para pasta', 'Move to folder')}
+                    aria-label={tr('Mover projeto', 'Move project')}
                   >
                     <Move className="w-4 h-4" />
                   </button>
@@ -989,7 +992,7 @@ export default function ProjectsPage() {
                     onClick={() => handleDelete(project.id)}
                     className="px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all hover:opacity-80"
                     style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5' }}
-                    aria-label="Excluir projeto"
+                    aria-label={tr('Excluir projeto', 'Delete project')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1015,7 +1018,7 @@ export default function ProjectsPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 style={{ color: '#E8DCC0', fontSize: '1.25rem', fontWeight: 600 }}>
-                {editingFolder ? 'Editar Pasta' : 'Nova Pasta'}
+                {editingFolder ? tr('Editar Pasta', 'Edit Folder') : tr('Nova Pasta', 'New Folder')}
               </h2>
               <button
                 onClick={() => {
@@ -1032,7 +1035,7 @@ export default function ProjectsPage() {
 
             <div className="mb-4">
               <label className="block text-sm mb-2" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Nome da Pasta
+                {tr('Nome da Pasta', 'Folder Name')}
               </label>
               <input
                 type="text"
@@ -1050,7 +1053,7 @@ export default function ProjectsPage() {
                   color: '#E8DCC0',
                   outline: 'none'
                 }}
-                placeholder="Digite o nome da pasta"
+                placeholder={tr('Digite o nome da pasta', 'Enter the folder name')}
                 autoFocus
               />
             </div>
@@ -1069,14 +1072,14 @@ export default function ProjectsPage() {
                   borderColor: 'rgba(232, 220, 192, 0.1)' 
                 }}
               >
-                Cancelar
+                {tr('Cancelar', 'Cancel')}
               </button>
               <button
                 onClick={() => editingFolder ? handleEditFolder(editingFolder) : handleCreateFolder()}
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
                 style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
               >
-                {editingFolder ? 'Salvar' : 'Criar'}
+                {editingFolder ? tr('Salvar', 'Save') : tr('Criar', 'Create')}
               </button>
             </div>
           </div>
@@ -1100,7 +1103,7 @@ export default function ProjectsPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 style={{ color: '#E8DCC0', fontSize: '1.25rem', fontWeight: 600 }}>
-                Mover Projeto
+                {tr('Mover Projeto', 'Move Project')}
               </h2>
               <button
                 onClick={() => {
@@ -1125,7 +1128,7 @@ export default function ProjectsPage() {
                   }}
                 >
                   <FolderIcon className="w-4 h-4" />
-                  Sem Pasta
+                  {tr('Sem Pasta', 'No Folder')}
                 </button>
                 {folders.map((folder) => (
                   <button
@@ -1161,7 +1164,7 @@ export default function ProjectsPage() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 style={{ color: '#E8DCC0', fontSize: '1.25rem', fontWeight: 600 }}>
-                Importar Backup
+                {tr('Importar Backup', 'Import Backup')}
               </h2>
               <button
                 onClick={() => setShowImportModal(false)}
@@ -1175,7 +1178,7 @@ export default function ProjectsPage() {
 
             <div className="mb-4">
               <p className="text-sm mb-4" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Selecione o arquivo JSON de backup para importar. Projetos com o mesmo ID serão substituídos.
+                {tr('Selecione o arquivo JSON de backup para importar. Projetos com o mesmo ID serão substituídos.', 'Select the backup JSON file to import. Projects with the same ID will be replaced.')}
               </p>
               
               <label className="block">
@@ -1204,12 +1207,12 @@ export default function ProjectsPage() {
                         className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-2" 
                         style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
                       ></div>
-                      <p style={{ color: '#E8DCC0' }}>Importando...</p>
+                      <p style={{ color: '#E8DCC0' }}>{tr('Importando...', 'Importing...')}</p>
                     </>
                   ) : (
                     <>
                       <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: '#E8DCC0', opacity: 0.7 }} />
-                      <p style={{ color: '#E8DCC0' }}>Clique ou arraste o arquivo aqui</p>
+                      <p style={{ color: '#E8DCC0' }}>{tr('Clique ou arraste o arquivo aqui', 'Click or drag the file here')}</p>
                       <p className="text-xs mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
                         Arquivo JSON (.json)
                       </p>
@@ -1230,7 +1233,7 @@ export default function ProjectsPage() {
                   borderColor: 'rgba(232, 220, 192, 0.1)' 
                 }}
               >
-                Cancelar
+                {tr('Cancelar', 'Cancel')}
               </button>
             </div>
           </div>
