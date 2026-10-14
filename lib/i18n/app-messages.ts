@@ -55,6 +55,9 @@ export interface AppMessages {
   enableCloudFirst: string;
   noLocalProjects: string;
   selectAtLeastOneProject: string;
+  confirmDeleteUnencrypted: (n: number) => string;
+  unencryptedDeleted: (n: number) => string;
+  unencryptedDeleteError: string;
   // Novo projeto
   freeLimitBefore: (n: number) => string;
   freeLimitAfter: (n: number) => string;
@@ -163,6 +166,10 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     enableCloudFirst: 'Ative o backup em nuvem antes de sincronizar.',
     noLocalProjects: 'Não há projetos locais para sincronizar.',
     selectAtLeastOneProject: 'Selecione ao menos 1 projeto para sincronizar.',
+    confirmDeleteUnencrypted: (n) =>
+      `Apagar da nuvem ${n} projeto(s) enviados sem criptografia? Os projetos neste aparelho não são afetados.`,
+    unencryptedDeleted: (n) => `${n} cópia(s) antigas apagadas da nuvem.`,
+    unencryptedDeleteError: 'Erro ao apagar as cópias antigas da nuvem. Tente novamente.',
     freeLimitBefore: (n) =>
       `Limite de ${n} fotos ANTES no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`,
     freeLimitAfter: (n) =>
@@ -243,6 +250,10 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     enableCloudFirst: 'Enable cloud backup before syncing.',
     noLocalProjects: 'There are no local projects to sync.',
     selectAtLeastOneProject: 'Select at least 1 project to sync.',
+    confirmDeleteUnencrypted: (n) =>
+      `Delete ${n} project(s) sent to the cloud without encryption? Projects on this device are not affected.`,
+    unencryptedDeleted: (n) => `${n} old copy(ies) deleted from the cloud.`,
+    unencryptedDeleteError: 'Could not delete the old cloud copies. Please try again.',
     freeLimitBefore: (n) =>
       `The Free plan allows up to ${n} BEFORE photos. Upgrade to Revela Pro or Premium to add more.`,
     freeLimitAfter: (n) =>

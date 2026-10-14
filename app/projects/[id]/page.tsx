@@ -26,7 +26,6 @@ import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
 import { MeasurementTool } from '@/components/measurement-tool';
 import { remapMeasurements, measurementsAfterImageEdit } from '@/lib/measurements';
-import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { 
   trackViewProject, 
   trackUpdateProject, 
@@ -88,50 +87,6 @@ export default function ViewProjectPage() {
 
   const { hasProAccess, hasPremiumAccess, canUsePremiumFeature } = usePlan();
 
-  // Sync automática da nuvem Premium (background)
-  const cloudAutoSyncInFlightRef = React.useRef(false);
-  const cloudAutoSyncPendingRef = React.useRef(false);
-
-  const triggerAutoCloudSync = useCallback(async () => {
-    if (!hasPremiumAccess) return;
-    if (!user?.id) return;
-    if (typeof window === 'undefined') return;
-
-    const enabled = window.localStorage.getItem('revela_cloud_backup_enabled') === 'true';
-    if (!enabled) return;
-
-    if (cloudAutoSyncInFlightRef.current) {
-      cloudAutoSyncPendingRef.current = true;
-      return;
-    }
-
-    cloudAutoSyncInFlightRef.current = true;
-    try {
-      const projects = await listLocalProjectsForCloud();
-      if (!projects.length) return;
-
-      const res = await syncSelectedProjectsToCloud(user.id, projects);
-      window.localStorage.setItem(
-        'revela_cloud_last_auto_sync',
-        JSON.stringify({
-          at: new Date().toISOString(),
-          uploaded: res.uploaded,
-          updated: res.updated,
-          skipped: res.skipped,
-          failures: res.failures.length,
-        })
-      );
-    } catch (e) {
-      console.error('Auto cloud sync error:', e);
-    } finally {
-      cloudAutoSyncInFlightRef.current = false;
-      if (cloudAutoSyncPendingRef.current) {
-        cloudAutoSyncPendingRef.current = false;
-        // Rodar mais uma vez para pegar mudanças pendentes.
-        void triggerAutoCloudSync();
-      }
-    }
-  }, [hasPremiumAccess, user?.id]);
 
   // Detectar orientação e calcular dimensões responsivas
   useEffect(() => {
@@ -491,8 +446,6 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
-      // Sync automática (Premium) após salvar notas/foto
-      void triggerAutoCloudSync();
       setShowNotesModal(false);
       
       // Trackear salvamento de notas
@@ -529,8 +482,6 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
-      // Sync automática (Premium) após alterar medidas
-      void triggerAutoCloudSync();
     } catch (error) {
       console.error('Erro ao salvar medidas:', error);
       notify.error(t => t.msg.measurementsSaveError);
@@ -839,8 +790,6 @@ export default function ViewProjectPage() {
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto
-        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -870,8 +819,6 @@ export default function ViewProjectPage() {
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto
-        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -894,8 +841,6 @@ export default function ViewProjectPage() {
         };
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto (evolução)
-        void triggerAutoCloudSync();
       }
       
       setShowImageEditor(false);
@@ -1004,8 +949,6 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
-      // Sync automática (Premium) após atualizar projeto
-      void triggerAutoCloudSync();
       setIsEditing(false);
       setNewBeforeFiles([]);
       setNewAfterFiles([]);

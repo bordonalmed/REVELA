@@ -26,6 +26,9 @@ import {
   restoreProjectsFromCloud,
   syncSelectedProjectsToCloud,
   countCloudBackups,
+  countUnencryptedCloudCopies,
+  deleteUnencryptedCloudCopies,
+  CloudPasswordError,
 } from '@/lib/cloud-project-backup';
 import { readBrandingSettings, writeBrandingSettings, type BrandingSelectedLogo } from '@/lib/branding';
 import { readClinicProfileSettings, writeClinicProfileSettings } from '@/lib/clinic-profile';
@@ -66,6 +69,10 @@ export default function SettingsPage() {
   );
   const [cloudSyncScope, setCloudSyncScope] = useState<'all' | 'selected'>('selected');
   const [cloudBackupCount, setCloudBackupCount] = useState<number | null>(null);
+  // Senha da nuvem: fica só na memória desta tela, nunca é salva nem enviada
+  const [cloudPassword, setCloudPassword] = useState('');
+  const [unencryptedCount, setUnencryptedCount] = useState(0);
+  const [cleaningUnencrypted, setCleaningUnencrypted] = useState(false);
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -128,21 +135,6 @@ export default function SettingsPage() {
     const enabled = window.localStorage.getItem('revela_cloud_backup_enabled');
     setCloudBackupEnabled(enabled === 'true');
 
-    const lastAuto = window.localStorage.getItem('revela_cloud_last_auto_sync');
-    if (lastAuto) {
-      try {
-        const parsed = JSON.parse(lastAuto) as { at?: string; uploaded?: number; updated?: number; skipped?: number; failures?: number };
-        if (parsed?.at) {
-          const d = new Date(parsed.at);
-          setCloudSyncStatus(
-            `${tr('Última sincronização automática', 'Last automatic sync')}: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
-          );
-        }
-      } catch {
-        // ignore
-      }
-    }
-
     const stored = window.localStorage.getItem('revela_cloud_selected_project_ids');
     if (stored) {
       try {
@@ -178,6 +170,9 @@ export default function SettingsPage() {
     if (user?.id) {
       countCloudBackups(user.id)
         .then((n) => { if (!cancelled) setCloudBackupCount(n); })
+        .catch(() => {});
+      countUnencryptedCloudCopies(user.id)
+        .then((n) => { if (!cancelled) setUnencryptedCount(n); })
         .catch(() => {});
     }
 
@@ -259,6 +254,27 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeleteUnencryptedCopies = async () => {
+    if (!user?.id) return;
+    const ok = await confirmDialog(
+      (t) => t.msg.confirmDeleteUnencrypted(unencryptedCount),
+      { confirmLabel: (t) => t.common.delete, danger: true }
+    );
+    if (!ok) return;
+    try {
+      setCleaningUnencrypted(true);
+      const n = await deleteUnencryptedCloudCopies(user.id);
+      setUnencryptedCount(0);
+      notify.success((t) => t.msg.unencryptedDeleted(n));
+      countCloudBackups(user.id).then(setCloudBackupCount).catch(() => {});
+    } catch (err: any) {
+      console.error('Erro ao apagar cópias antigas da nuvem:', err);
+      notify.error((t) => err?.message || t.msg.unencryptedDeleteError);
+    } finally {
+      setCleaningUnencrypted(false);
+    }
+  };
+
   const handleToggleCloudBackupEnabled = (enabled: boolean) => {
     setCloudBackupEnabled(enabled);
     if (typeof window !== 'undefined') {
@@ -309,7 +325,7 @@ export default function SettingsPage() {
     try {
       setCloudSyncStatus(null);
       setCloudBackupRunning(true);
-      const res = await syncSelectedProjectsToCloud(user.id, selected);
+      const res = await syncSelectedProjectsToCloud(user.id, selected, cloudPassword);
 
       const parts: string[] = [];
       if (res.uploaded > 0) parts.push(`+${res.uploaded} ${tr('novo(s)', 'new')}`);
@@ -327,9 +343,13 @@ export default function SettingsPage() {
         countCloudBackups(user.id)
           .then((n) => setCloudBackupCount(n))
           .catch(() => {});
+        countUnencryptedCloudCopies(user.id)
+          .then((n) => setUnencryptedCount(n))
+          .catch(() => {});
       }
     } catch (err: any) {
       console.error('Erro ao sincronizar para nuvem:', err);
+      if (err instanceof CloudPasswordError) notify.error(err.message);
       setCloudSyncStatus(err?.message || tr('Erro ao sincronizar para nuvem.', 'Could not sync to the cloud.'));
     } finally {
       setCloudBackupRunning(false);
@@ -348,7 +368,7 @@ export default function SettingsPage() {
     try {
       setCloudSyncStatus(null);
       setCloudRestoreRunning(true);
-      const res = await restoreProjectsFromCloud(user.id, user.email);
+      const res = await restoreProjectsFromCloud(user.id, user.email, cloudPassword);
       const parts: string[] = [];
       if (res.restored > 0) parts.push(tr(`${res.restored} projeto(s) restaurado(s).`, `${res.restored} project(s) restored.`));
       if (res.alreadyExisted > 0) parts.push(tr(`${res.alreadyExisted} já existia(m) localmente (atualizado(s)).`, `${res.alreadyExisted} already existed locally (updated).`));
@@ -363,6 +383,7 @@ export default function SettingsPage() {
       );
     } catch (err: any) {
       console.error('Erro ao restaurar da nuvem:', err);
+      if (err instanceof CloudPasswordError) notify.error(err.message);
       setCloudSyncStatus(err?.message || tr('Erro ao restaurar da nuvem.', 'Could not restore from the cloud.'));
     } finally {
       setCloudRestoreRunning(false);
@@ -1001,6 +1022,58 @@ export default function SettingsPage() {
                     ? tr(`${cloudBackupCount} projeto(s) salvos na nuvem nesta conta.`, `${cloudBackupCount} project(s) saved in the cloud on this account.`)
                     : tr('Nenhum projeto salvo na nuvem ainda.', 'No projects saved in the cloud yet.')}
                 </p>
+              )}
+
+              {/* Senha da nuvem: criptografa as fotos e os dados antes do envio */}
+              <div className="space-y-1">
+                <label className="block text-xs sm:text-sm" style={{ color: '#E8DCC0' }} htmlFor="cloud-password">
+                  {tr('Senha da nuvem', 'Cloud password')}
+                </label>
+                <input
+                  id="cloud-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={cloudPassword}
+                  onChange={(e) => setCloudPassword(e.target.value)}
+                  placeholder={tr('Mínimo de 8 caracteres', 'At least 8 characters')}
+                  className="w-full sm:w-80 px-3 py-2 rounded-lg text-sm border"
+                  style={{
+                    backgroundColor: 'rgba(2, 6, 23, 0.6)',
+                    borderColor: 'rgba(232, 220, 192, 0.2)',
+                    color: '#E8DCC0',
+                  }}
+                />
+                <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                  {tr(
+                    'Fotos e dados são criptografados neste aparelho antes de ir para a nuvem. Use a mesma senha em todos os aparelhos. A senha não é salva nem enviada: se você esquecer, não é possível recuperar os projetos da nuvem.',
+                    'Photos and data are encrypted on this device before going to the cloud. Use the same password on all your devices. The password is never saved or sent: if you forget it, the cloud projects cannot be recovered.'
+                  )}
+                </p>
+              </div>
+
+              {unencryptedCount > 0 && (
+                <div
+                  className="rounded-lg border p-3"
+                  style={{ backgroundColor: 'rgba(234, 179, 8, 0.08)', borderColor: 'rgba(234, 179, 8, 0.45)' }}
+                >
+                  <p className="text-xs mb-2" style={{ color: '#fde68a' }}>
+                    {tr(
+                      `Há ${unencryptedCount} projeto(s) enviados antes da criptografia, ainda guardados na nuvem sem proteção. Envie-os de novo (ficam criptografados) ou apague as cópias antigas.`,
+                      `${unencryptedCount} project(s) were sent before encryption and are still stored in the cloud unprotected. Send them again (they will be encrypted) or delete the old copies.`
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteUnencryptedCopies}
+                    disabled={cleaningUnencrypted}
+                    className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50"
+                    style={{ backgroundColor: 'rgba(192, 57, 43, 0.85)', color: '#FFFFFF' }}
+                  >
+                    {cleaningUnencrypted
+                      ? tr('Apagando...', 'Deleting...')
+                      : tr('Apagar cópias antigas sem criptografia', 'Delete old unencrypted copies')}
+                  </button>
+                </div>
               )}
 
               {/* Restaurar da nuvem — SEMPRE visível para Premium */}

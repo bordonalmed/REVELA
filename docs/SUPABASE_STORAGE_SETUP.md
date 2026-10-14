@@ -2,7 +2,9 @@
 
 ## O que faz
 
-O backup na nuvem (Premium) agora usa **Supabase Storage** para armazenar imagens separadamente do banco de dados. Cada imagem é enviada como arquivo JPEG para o bucket `project-backups`, e apenas os metadados (nome, data, contagem de imagens) ficam no banco.
+O backup na nuvem (Premium) usa **Supabase Storage** para armazenar imagens separadamente do banco de dados.
+
+**Criptografia (formato `revela_storage_v3_enc`):** cada imagem é criptografada no aparelho (AES-GCM, chave derivada da senha da nuvem do usuário via PBKDF2) e enviada como `*.enc.jpg` para o bucket `project-backups` (declarada como `image/jpeg` só para passar pela restrição de tipos do bucket — o conteúdo é ilegível). No banco ficam apenas o ID do projeto, o salt e os dados cifrados; nome, notas e medidas também vão criptografados. A senha nunca é salva nem enviada. Projetos enviados no formato antigo (`revela_storage_v2`, sem criptografia) ainda podem ser restaurados e podem ser apagados em Configurações.
 
 ## Passos no Supabase
 

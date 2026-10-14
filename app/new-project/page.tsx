@@ -11,7 +11,6 @@ import { SortablePhotoThumbnails } from '@/components/sortable-photo-thumbnails'
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAllProjectsForUser, saveProject } from '@/lib/storage';
-import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import Image from 'next/image';
@@ -51,49 +50,6 @@ export default function NewProjectPage() {
   const [projectMode, setProjectMode] = useState<'before-after' | 'evolution'>('before-after');
   const [evolutionSteps, setEvolutionSteps] = useState<EvolutionStepState[]>([]);
 
-  // Sync automática da nuvem Premium (background)
-  const cloudAutoSyncInFlightRef = useRef(false);
-  const cloudAutoSyncPendingRef = useRef(false);
-
-  const triggerAutoCloudSync = useCallback(async () => {
-    if (!hasPremiumAccess) return;
-    if (!user?.id) return;
-    if (typeof window === 'undefined') return;
-
-    const enabled = window.localStorage.getItem('revela_cloud_backup_enabled') === 'true';
-    if (!enabled) return;
-
-    if (cloudAutoSyncInFlightRef.current) {
-      cloudAutoSyncPendingRef.current = true;
-      return;
-    }
-
-    cloudAutoSyncInFlightRef.current = true;
-    try {
-      const projects = await listLocalProjectsForCloud();
-      if (!projects.length) return;
-      const res = await syncSelectedProjectsToCloud(user.id, projects);
-
-      window.localStorage.setItem(
-        'revela_cloud_last_auto_sync',
-        JSON.stringify({
-          at: new Date().toISOString(),
-          uploaded: res.uploaded,
-          updated: res.updated,
-          skipped: res.skipped,
-          failures: res.failures.length,
-        })
-      );
-    } catch (e) {
-      console.error('Auto cloud sync error:', e);
-    } finally {
-      cloudAutoSyncInFlightRef.current = false;
-      if (cloudAutoSyncPendingRef.current) {
-        cloudAutoSyncPendingRef.current = false;
-        void triggerAutoCloudSync();
-      }
-    }
-  }, [hasPremiumAccess, user?.id]);
   
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
@@ -456,8 +412,6 @@ export default function NewProjectPage() {
         
         // Trackear criação de projeto
         trackCreateProject(project.name, beforeBase64.length, afterBase64.length);
-        // Sync automática (Premium) após criar projeto
-        void triggerAutoCloudSync();
         
         document.body.removeChild(processingMessage);
         notify.success(t => t.msg.projectSavedLocal);
