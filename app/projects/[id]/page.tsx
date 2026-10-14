@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2, Ruler } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
+import { getProjectFromIndexedDB, updateProject, type Project, type Measurement } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
@@ -20,6 +20,7 @@ import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
+import { MeasurementTool } from '@/components/measurement-tool';
 import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { 
   trackViewProject, 
@@ -58,6 +59,8 @@ export default function ViewProjectPage() {
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
+  const [showMeasurementTool, setShowMeasurementTool] = useState(false);
+  const [measuringImageType, setMeasuringImageType] = useState<'before' | 'after'>('before');
   const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
   const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
@@ -497,6 +500,30 @@ export default function ViewProjectPage() {
       alert('Erro ao salvar notas. Tente novamente.');
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleOpenMeasurementTool = () => {
+    setMeasuringImageType('before');
+    setShowMeasurementTool(true);
+  };
+
+  const handleMeasurementsChange = async (newMeasurements: Measurement[]) => {
+    if (!project) return;
+
+    try {
+      const updatedProject: Project = {
+        ...project,
+        measurements: newMeasurements,
+      };
+
+      await updateProject(updatedProject);
+      setProject(updatedProject);
+      // Sync automática (Premium) após alterar medidas
+      void triggerAutoCloudSync();
+    } catch (error) {
+      console.error('Erro ao salvar medidas:', error);
+      alert('Erro ao salvar medidas. Tente novamente.');
     }
   };
 
@@ -1345,6 +1372,19 @@ export default function ViewProjectPage() {
                       >
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="hidden sm:inline">Slider</span>
+                      </button>
+                      <button
+                        onClick={handleOpenMeasurementTool}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
+                          color: '#E8DCC0',
+                          borderColor: 'rgba(232, 220, 192, 0.1)'
+                        }}
+                        title="Medir distâncias na imagem"
+                      >
+                        <Ruler className="w-4 h-4" />
+                        <span className="hidden sm:inline">Medir</span>
                       </button>
                     </>
                   )}
@@ -2286,6 +2326,23 @@ export default function ViewProjectPage() {
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>Slider</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      handleOpenMeasurementTool();
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Medir"
+                  >
+                    <Ruler className="w-4 h-4" />
+                    <span>Medir</span>
+                  </button>
                 </>
               )}
               <button
@@ -2474,6 +2531,23 @@ export default function ViewProjectPage() {
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>Slider</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      handleOpenMeasurementTool();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title="Medir"
+                  >
+                    <Ruler className="w-4 h-4" />
+                    <span>Medir</span>
+                  </button>
               </>
             )}
                   <button
@@ -2641,6 +2715,59 @@ export default function ViewProjectPage() {
               rightId: evolutionSelectedRightId,
             }}
           />
+        )}
+
+        {/* Modal de Ferramenta de Medição */}
+        {showMeasurementTool && project && (
+          <div
+            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
+          >
+            <div className="w-full max-w-4xl my-8">
+              {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <button
+                    onClick={() => setMeasuringImageType('before')}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
+                    style={{
+                      backgroundColor: measuringImageType === 'before' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
+                      color: '#E8DCC0',
+                      borderColor: measuringImageType === 'before' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
+                      ...(measuringImageType === 'before' && { boxShadow: '0 0 0 2px #00A88F' })
+                    }}
+                  >
+                    Antes
+                  </button>
+                  <button
+                    onClick={() => setMeasuringImageType('after')}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
+                    style={{
+                      backgroundColor: measuringImageType === 'after' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
+                      color: '#E8DCC0',
+                      borderColor: measuringImageType === 'after' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
+                      ...(measuringImageType === 'after' && { boxShadow: '0 0 0 2px #00A88F' })
+                    }}
+                  >
+                    Depois
+                  </button>
+                </div>
+              )}
+              {(measuringImageType === 'before' ? displayBeforeImages : displayAfterImages).length > 0 && (
+                <MeasurementTool
+                  imageSrc={
+                    measuringImageType === 'before'
+                      ? displayBeforeImages[beforeCurrentIndex]
+                      : displayAfterImages[afterCurrentIndex]
+                  }
+                  imageType={measuringImageType}
+                  imageIndex={measuringImageType === 'before' ? beforeCurrentIndex : afterCurrentIndex}
+                  measurements={project.measurements || []}
+                  onMeasurementsChange={handleMeasurementsChange}
+                  onClose={() => setShowMeasurementTool(false)}
+                />
+              )}
+            </div>
+          </div>
         )}
 
         {/* Modal de Edição de Imagem */}

@@ -28,6 +28,7 @@ export function MeasurementTool({
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [currentMeasurement, setCurrentMeasurement] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
+  const [labelInput, setLabelInput] = useState('');
   const [scale, setScale] = useState(10); // 10 pixels = 1cm por padrão
   const [unit, setUnit] = useState<'px' | 'cm' | 'mm'>('cm');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -246,15 +247,15 @@ export function MeasurementTool({
   const handleSaveMeasurement = () => {
     if (!editingMeasurement) return;
 
-    const label = prompt('Digite um rótulo para esta medida (opcional):');
     const updatedMeasurement = {
       ...editingMeasurement,
-      label: label || undefined,
+      label: labelInput.trim() || undefined,
     };
 
     // Adicionar nova medida mantendo todas as outras (desta e de outras imagens)
     onMeasurementsChange([...measurements, updatedMeasurement]);
     setEditingMeasurement(null);
+    setLabelInput('');
   };
 
   const handleDeleteMeasurement = (id: string) => {
@@ -420,10 +421,13 @@ export function MeasurementTool({
 
       {/* Modal para salvar medida */}
       {editingMeasurement && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
-          onClick={() => setEditingMeasurement(null)}
+          onClick={() => {
+            setEditingMeasurement(null);
+            setLabelInput('');
+          }}
         >
           <div 
             className="rounded-lg p-4 max-w-sm w-full"
@@ -437,6 +441,8 @@ export function MeasurementTool({
               <input
                 type="text"
                 placeholder="Rótulo (opcional)"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
                 className="w-full px-3 py-2 rounded border text-sm"
                 style={{
                   backgroundColor: 'rgba(232, 220, 192, 0.1)',
@@ -453,7 +459,10 @@ export function MeasurementTool({
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setEditingMeasurement(null)}
+                onClick={() => {
+                  setEditingMeasurement(null);
+                  setLabelInput('');
+                }}
                 className="flex-1 px-3 py-2 rounded text-sm font-medium border"
                 style={{
                   backgroundColor: 'rgba(232, 220, 192, 0.05)',
