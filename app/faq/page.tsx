@@ -32,11 +32,10 @@ export default function FAQPage() {
             <div>
               <h2 className="font-medium mb-1">As fotos ficam na nuvem?</h2>
               <p>
-                Por padrão, não: as fotos ficam armazenadas apenas no seu dispositivo, sem envio automático
-                para servidores externos. Duas ações são sempre manuais, nunca automáticas: gerar um link
-                compartilhável de um caso específico para enviar ao paciente (disponível em todos os planos)
-                e, no plano Premium, sincronizar os projetos na nuvem para acessá-los em outro aparelho. Fora
-                dessas ações que você escolhe fazer, nada sai do seu dispositivo.
+                Não: as fotos ficam armazenadas apenas no seu dispositivo, sem envio automático para
+                servidores externos. No plano Premium existe a opção, sempre manual e nunca automática, de
+                sincronizar os projetos na nuvem para acessá-los em outro aparelho. Fora dessa ação que você
+                escolhe fazer, nada sai do seu dispositivo.
               </p>
             </div>
 

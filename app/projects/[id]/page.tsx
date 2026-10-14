@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2, Link2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
@@ -20,9 +20,7 @@ import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
-import { ShareCaseModal } from '@/components/share-case-modal';
 import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
-import { resolveEffectiveBranding } from '@/lib/branding';
 import { 
   trackViewProject, 
   trackUpdateProject, 
@@ -59,7 +57,6 @@ export default function ViewProjectPage() {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
-  const [showShareCaseModal, setShowShareCaseModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
   const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
@@ -1317,19 +1314,6 @@ export default function ViewProjectPage() {
                         Publicar
                       </button>
                       <button
-                        onClick={() => setShowShareCaseModal(true)}
-                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
-                        style={{
-                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
-                          color: '#E8DCC0',
-                          borderColor: 'rgba(232, 220, 192, 0.1)',
-                        }}
-                        title="Gerar link público para enviar ao paciente"
-                      >
-                        <Link2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Link</span>
-                      </button>
-                      <button
                         onClick={handleEnterPresentationMode}
                         className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
                         style={{ 
@@ -2266,23 +2250,6 @@ export default function ViewProjectPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setShowShareCaseModal(true);
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title="Gerar link público para enviar ao paciente"
-                  >
-                    <Link2 className="w-4 h-4" />
-                    <span>Link</span>
-                  </button>
-                  <button
-                    onClick={() => {
                       handleEnterPresentationMode();
                       setShowMobileMenu(false);
                     }}
@@ -2468,23 +2435,6 @@ export default function ViewProjectPage() {
                   >
                     <Share2 className="w-4 h-4" />
                     <span>Publicar</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowShareCaseModal(true);
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title="Gerar link público para enviar ao paciente"
-                  >
-                    <Link2 className="w-4 h-4" />
-                    <span>Link</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2692,23 +2642,6 @@ export default function ViewProjectPage() {
             }}
           />
         )}
-
-        {/* Modal de Link Compartilhável */}
-        {showShareCaseModal && project && user?.id && (() => {
-          const shareBranding = resolveEffectiveBranding({
-            ownerEmail: user.email,
-            hasProAccess: hasProAccess || hasPremiumAccess,
-          });
-          return (
-            <ShareCaseModal
-              project={project}
-              userId={user.id}
-              watermarkEnabled={shareBranding.watermarkEnabled}
-              watermarkLogoUrl={shareBranding.watermarkLogoDataUrl}
-              onClose={() => setShowShareCaseModal(false)}
-            />
-          );
-        })()}
 
         {/* Modal de Edição de Imagem */}
         {showImageEditor &&
