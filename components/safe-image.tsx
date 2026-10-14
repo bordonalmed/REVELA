@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { errorLogger } from '@/lib/error-logger';
@@ -139,6 +141,7 @@ export function SafeBase64Image({
   style,
   onError,
 }: SafeBase64ImageProps) {
+  const tr = useTr();
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 1;
@@ -190,7 +193,7 @@ export function SafeBase64Image({
           className="text-xs text-center px-2" 
           style={{ color: '#E8DCC0', opacity: 0.5 }}
         >
-          Imagem não disponível
+          {tr('Imagem não disponível', 'Image not available')}
         </span>
       </div>
     );

@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, LayoutTemplate, Loader2, Download, Sparkles } from 'lucide-react';
@@ -23,6 +25,8 @@ type TemplateOption = {
   id: ClinicTemplateId;
   label: string;
   description: string;
+  labelEn: string;
+  descriptionEn: string;
 };
 
 const TEMPLATE_OPTIONS: TemplateOption[] = [
@@ -30,26 +34,36 @@ const TEMPLATE_OPTIONS: TemplateOption[] = [
     id: 'before-after',
     label: 'Antes | Depois',
     description: 'Comparação horizontal clássica entre duas imagens.',
+    labelEn: 'Before | After',
+    descriptionEn: 'Classic side-by-side comparison of two images.',
   },
   {
     id: 'before-30-90',
     label: 'Antes | 30 dias | 90 dias',
     description: 'Três marcos de evolução lado a lado.',
+    labelEn: 'Before | 30 days | 90 days',
+    descriptionEn: 'Three evolution milestones side by side.',
   },
   {
     id: 'vertical-compare',
     label: 'Comparação vertical',
     description: 'Antes e depois empilhados verticalmente.',
+    labelEn: 'Vertical comparison',
+    descriptionEn: 'Before and after stacked vertically.',
   },
   {
     id: 'before-after-clinic-brand',
     label: 'Antes e Depois com nome/logo da clínica',
     description: 'Layout com branding da clínica em destaque.',
+    labelEn: 'Before and After with clinic name/logo',
+    descriptionEn: 'Layout highlighting the clinic branding.',
   },
   {
     id: 'timeline-summary',
     label: 'Timeline resumida',
     description: 'Sequência visual de até 5 marcos do tratamento.',
+    labelEn: 'Timeline summary',
+    descriptionEn: 'Visual sequence of up to 5 treatment milestones.',
   },
 ];
 
@@ -69,6 +83,7 @@ export function TemplateGeneratorModal({
   project,
   isPremiumUser,
 }: TemplateGeneratorModalProps) {
+  const tr = useTr();
   const router = useRouter();
   const [selectedTemplate, setSelectedTemplate] = useState<ClinicTemplateId>('before-after');
   const [slotA, setSlotA] = useState<string>('');
@@ -90,7 +105,7 @@ export function TemplateGeneratorModal({
     project.beforeImages.forEach((img, index) => {
       opts.push({
         id: `before-${index}`,
-        label: `Antes ${index + 1}`,
+        label: `${tr('Antes', 'Before')} ${index + 1}`,
         base64: img,
         kind: 'before',
       });
@@ -99,7 +114,7 @@ export function TemplateGeneratorModal({
     project.afterImages.forEach((img, index) => {
       opts.push({
         id: `after-${index}`,
-        label: `Depois ${index + 1}`,
+        label: `${tr('Depois', 'After')} ${index + 1}`,
         base64: img,
         kind: 'after',
       });
@@ -111,7 +126,7 @@ export function TemplateGeneratorModal({
         label:
           evo.label ||
           evo.momentType ||
-          `Sessão ${index + 1} (${formatLocalDate(evo.date, 'pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })})`,
+          `${tr('Sessão', 'Session')} ${index + 1} (${formatLocalDate(evo.date, tr('pt-BR', 'en-US'), { day: '2-digit', month: '2-digit', year: 'numeric' })})`,
         base64: evo.image,
         kind: 'evolution',
         meta: evo,
@@ -141,8 +156,8 @@ export function TemplateGeneratorModal({
   useEffect(() => {
     if (!isOpen) return;
     setErrorMessage(null);
-    setTitle(project.name || 'Comparação de resultado');
-    setSubtitle('Documentação clínica visual');
+    setTitle(project.name || tr('Comparação de resultado', 'Result comparison'));
+    setSubtitle(tr('Documentação clínica visual', 'Visual clinical documentation'));
     setClinicName(clinicName || '');
     setDate(project.date?.slice(0, 10) || new Date().toISOString().slice(0, 10));
 
@@ -177,44 +192,44 @@ export function TemplateGeneratorModal({
       const a = resolveImageById(slotA);
       const b = resolveImageById(slotB);
       if (!a || !b) {
-        setErrorMessage('Selecione as imagens de Antes e Depois.');
+        setErrorMessage(tr('Selecione as imagens de Antes e Depois.', 'Select the Before and After images.'));
         return null;
       }
       base.images = [a.base64, b.base64];
-      base.labels = ['Antes', 'Depois'];
+      base.labels = [tr('Antes', 'Before'), tr('Depois', 'After')];
     } else if (selectedTemplate === 'before-30-90') {
       const a = resolveImageById(slotA);
       const b = resolveImageById(slotB);
       const c = resolveImageById(slotC);
       if (!a || !b || !c) {
-        setErrorMessage('Selecione as três imagens (Antes, 30 dias, 90 dias).');
+        setErrorMessage(tr('Selecione as três imagens (Antes, 30 dias, 90 dias).', 'Select the three images (Before, 30 days, 90 days).'));
         return null;
       }
       base.images = [a.base64, b.base64, c.base64];
-      base.labels = ['Antes', '30 dias', '90 dias'];
+      base.labels = [tr('Antes', 'Before'), tr('30 dias', '30 days'), tr('90 dias', '90 days')];
     } else if (selectedTemplate === 'vertical-compare') {
       const a = resolveImageById(slotA);
       const b = resolveImageById(slotB);
       if (!a || !b) {
-        setErrorMessage('Selecione duas imagens para a comparação vertical.');
+        setErrorMessage(tr('Selecione duas imagens para a comparação vertical.', 'Select two images for the vertical comparison.'));
         return null;
       }
       base.images = [a.base64, b.base64];
-      base.labels = ['Antes', 'Depois'];
+      base.labels = [tr('Antes', 'Before'), tr('Depois', 'After')];
     } else if (selectedTemplate === 'timeline-summary') {
       const evoImages = (project.evolutionImages || []).slice(0, 5);
       if (evoImages.length === 0) {
-        setErrorMessage('Adicione ao menos um marco de evolução para usar a timeline resumida.');
+        setErrorMessage(tr('Adicione ao menos um marco de evolução para usar a timeline resumida.', 'Add at least one evolution milestone to use the timeline summary.'));
         return null;
       }
       base.images = evoImages.map((e) => e.image);
       base.labels = evoImages.map(
-        (e, i) => e.label || e.momentType || `Sessão ${i + 1}`
+        (e, i) => e.label || e.momentType || `${tr('Sessão', 'Session')} ${i + 1}`
       );
     }
 
     if (!base.images.length) {
-      setErrorMessage('Selecione as imagens para o template.');
+      setErrorMessage(tr('Selecione as imagens para o template.', 'Select the images for the template.'));
       return null;
     }
 
@@ -236,7 +251,7 @@ export function TemplateGeneratorModal({
       setPreviewUrl(dataUrl);
     } catch (error) {
       console.error('Erro ao gerar preview do template:', error);
-      setErrorMessage('Erro ao gerar o preview. Tente novamente.');
+      setErrorMessage(tr('Erro ao gerar o preview. Tente novamente.', 'Could not generate the preview. Please try again.'));
     } finally {
       setPreviewLoading(false);
     }
@@ -263,7 +278,7 @@ export function TemplateGeneratorModal({
       await exportClinicTemplate(params, format, safeName);
     } catch (error) {
       console.error('Erro ao exportar template clínico:', error);
-      setErrorMessage('Erro ao exportar a imagem. Tente novamente.');
+      setErrorMessage(tr('Erro ao exportar a imagem. Tente novamente.', 'Could not export the image. Please try again.'));
     } finally {
       setExportingFormat(null);
     }
@@ -306,10 +321,10 @@ export function TemplateGeneratorModal({
                 className="text-base sm:text-xl md:text-2xl font-medium truncate"
                 style={{ color: '#E5E7EB' }}
               >
-                Gerar template clínico
+                {tr('Gerar template clínico', 'Generate clinical template')}
               </h2>
               <p className="text-xs sm:text-sm" style={{ color: '#9CA3AF' }}>
-                Composições visuais profissionais para apresentações e documentação.
+                {tr('Composições visuais profissionais para apresentações e documentação.', 'Professional visual layouts for presentations and documentation.')}
               </p>
             </div>
           </div>
@@ -317,7 +332,7 @@ export function TemplateGeneratorModal({
             onClick={onClose}
             className="p-2 rounded-lg transition-colors hover:bg-white/10 flex-shrink-0"
             style={{ color: '#E5E7EB' }}
-            aria-label="Fechar"
+            aria-label={tr('Fechar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -355,7 +370,7 @@ export function TemplateGeneratorModal({
                         color: '#111827',
                       }}
                     >
-                      Ver planos Premium
+                      {tr('Ver planos Premium', 'View Premium plans')}
                     </button>
                   </div>
                 </div>
@@ -367,7 +382,7 @@ export function TemplateGeneratorModal({
                   className="text-sm sm:text-base font-medium"
                   style={{ color: '#E5E7EB' }}
                 >
-                  Modelo visual
+                  {tr('Modelo visual', 'Visual layout')}
                 </h3>
                 <div className="space-y-2">
                   {TEMPLATE_OPTIONS.map((opt) => (
@@ -393,15 +408,15 @@ export function TemplateGeneratorModal({
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm sm:text-base mb-0.5">
-                            {opt.label}
+                            {tr(opt.label, opt.labelEn)}
                           </div>
                           <div className="text-xs sm:text-sm opacity-80">
-                            {opt.description}
+                            {tr(opt.description, opt.descriptionEn)}
                           </div>
                         </div>
                         {selectedTemplate === opt.id && (
                           <span className="px-2 py-0.5 rounded-full text-[11px] bg-sky-500/20 text-sky-200 border border-sky-400/60">
-                            Selecionado
+                            {tr('Selecionado', 'Selected')}
                           </span>
                         )}
                       </div>
@@ -416,7 +431,7 @@ export function TemplateGeneratorModal({
                   className="text-sm sm:text-base font-medium"
                   style={{ color: '#E5E7EB' }}
                 >
-                  Imagens do template
+                  {tr('Imagens do template', 'Template images')}
                 </h3>
 
                 {(selectedTemplate === 'before-after' ||
@@ -429,14 +444,14 @@ export function TemplateGeneratorModal({
                         className="text-xs sm:text-sm"
                         style={{ color: '#E5E7EB' }}
                       >
-                        Imagem A (Antes)
+                        {tr('Imagem A (Antes)', 'Image A (Before)')}
                       </label>
                       <select
                         value={slotA}
                         onChange={(e) => setSlotA(e.target.value)}
                         className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100"
                       >
-                        <option value="">Selecione</option>
+                        <option value="">{tr('Selecione', 'Select')}</option>
                         {imageOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
                             {opt.label}
@@ -449,14 +464,14 @@ export function TemplateGeneratorModal({
                         className="text-xs sm:text-sm"
                         style={{ color: '#E5E7EB' }}
                       >
-                        Imagem B (Depois / sessão seguinte)
+                        {tr('Imagem B (Depois / sessão seguinte)', 'Image B (After / next session)')}
                       </label>
                       <select
                         value={slotB}
                         onChange={(e) => setSlotB(e.target.value)}
                         className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100"
                       >
-                        <option value="">Selecione</option>
+                        <option value="">{tr('Selecione', 'Select')}</option>
                         {imageOptions.map((opt) => (
                           <option key={opt.id} value={opt.id}>
                             {opt.label}
@@ -473,14 +488,14 @@ export function TemplateGeneratorModal({
                       className="text-xs sm:text-sm"
                       style={{ color: '#E5E7EB' }}
                     >
-                      Imagem C (90 dias)
+                      {tr('Imagem C (90 dias)', 'Image C (90 days)')}
                     </label>
                     <select
                       value={slotC}
                       onChange={(e) => setSlotC(e.target.value)}
                       className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100"
                     >
-                      <option value="">Selecione</option>
+                      <option value="">{tr('Selecione', 'Select')}</option>
                       {imageOptions.map((opt) => (
                         <option key={opt.id} value={opt.id}>
                           {opt.label}
@@ -492,8 +507,7 @@ export function TemplateGeneratorModal({
 
                 {selectedTemplate === 'timeline-summary' && (
                   <p className="text-xs sm:text-sm" style={{ color: '#9CA3AF' }}>
-                    A timeline resumida usará automaticamente até 5 marcos da evolução do
-                    tratamento deste projeto.
+                    {tr('A timeline resumida usará automaticamente até 5 marcos da evolução do tratamento deste projeto.', 'The timeline summary automatically uses up to 5 evolution milestones from this project\'s treatment.')}
                   </p>
                 )}
               </div>
@@ -504,48 +518,48 @@ export function TemplateGeneratorModal({
                   className="text-sm sm:text-base font-medium"
                   style={{ color: '#E5E7EB' }}
                 >
-                  Informações e branding
+                  {tr('Informações e branding', 'Information and branding')}
                 </h3>
                 <div className="space-y-2">
                   <div className="space-y-1">
                     <label className="text-xs sm:text-sm" style={{ color: '#E5E7EB' }}>
-                      Nome da clínica
+                      {tr('Nome da clínica', 'Clinic name')}
                     </label>
                     <input
                       type="text"
                       value={clinicName}
                       onChange={(e) => setClinicName(e.target.value)}
-                      placeholder="Ex.: Clínica Exemplo"
+                      placeholder={tr('Ex.: Clínica Exemplo', 'e.g. Example Clinic')}
                       className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs sm:text-sm" style={{ color: '#E5E7EB' }}>
-                      Título
+                      {tr('Título', 'Title')}
                     </label>
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ex.: Evolução do tratamento"
+                      placeholder={tr('Ex.: Evolução do tratamento', 'e.g. Treatment progress')}
                       className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs sm:text-sm" style={{ color: '#E5E7EB' }}>
-                      Subtítulo
+                      {tr('Subtítulo', 'Subtitle')}
                     </label>
                     <input
                       type="text"
                       value={subtitle}
                       onChange={(e) => setSubtitle(e.target.value)}
-                      placeholder="Ex.: Comparação clínica antes e depois"
+                      placeholder={tr('Ex.: Comparação clínica antes e depois', 'e.g. Clinical before and after comparison')}
                       className="w-full bg-slate-900/80 border border-slate-600 rounded-md px-2 py-1.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs sm:text-sm" style={{ color: '#E5E7EB' }}>
-                      Data
+                      {tr('Data', 'Date')}
                     </label>
                     <input
                       type="date"
@@ -556,8 +570,7 @@ export function TemplateGeneratorModal({
                   </div>
                   {clinicLogo && (
                     <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
-                      O logo da clínica salvo nas configurações será usado automaticamente no
-                      cabeçalho do template.
+                      {tr('O logo da clínica salvo nas configurações será usado automaticamente no cabeçalho do template.', 'The clinic logo saved in settings will be used automatically in the template header.')}
                     </p>
                   )}
                 </div>
@@ -583,7 +596,7 @@ export function TemplateGeneratorModal({
                 className="text-sm sm:text-base font-medium flex items-center justify-between gap-2"
                 style={{ color: '#E5E7EB' }}
               >
-                Preview em tempo real
+                {tr('Preview em tempo real', 'Live preview')}
                 {selectedTemplateInfo && (
                   <span className="text-[11px] sm:text-xs font-normal text-slate-400">
                     {selectedTemplateInfo.label}
@@ -604,27 +617,26 @@ export function TemplateGeneratorModal({
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-8 h-8 animate-spin text-sky-400" />
                     <p className="text-xs sm:text-sm" style={{ color: '#9CA3AF' }}>
-                      Gerando preview do template...
+                      {tr('Gerando preview do template...', 'Generating template preview...')}
                     </p>
                   </div>
                 ) : previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt="Preview do template clínico"
+                    alt={tr('Preview do template clínico', 'Clinical template preview')}
                     className="w-full h-full object-contain"
                   />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                     <p className="text-xs sm:text-sm" style={{ color: '#9CA3AF' }}>
-                      Configure o template e as imagens para visualizar o preview.
+                      {tr('Configure o template e as imagens para visualizar o preview.', 'Set up the template and images to see the preview.')}
                     </p>
                   </div>
                 )}
               </div>
 
               <p className="text-[11px] sm:text-xs" style={{ color: '#6B7280' }}>
-                * O preview é uma aproximação. A exportação final mantém a qualidade máxima das
-                imagens originais.
+                {tr('* O preview é uma aproximação. A exportação final mantém a qualidade máxima das imagens originais.', '* The preview is an approximation. The final export keeps the original images at full quality.')}
               </p>
             </div>
           </div>
@@ -639,8 +651,7 @@ export function TemplateGeneratorModal({
           }}
         >
           <div className="text-[11px] sm:text-xs" style={{ color: '#9CA3AF' }}>
-            Exporte composições clínicas elegantes em PNG ou JPG para apresentações, laudos e
-            materiais de divulgação.
+            {tr('Exporte composições clínicas elegantes em PNG ou JPG para apresentações, laudos e materiais de divulgação.', 'Export elegant clinical layouts as PNG or JPG for presentations, reports and marketing materials.')}
           </div>
           <div className="flex items-center gap-2 justify-end">
             <button
@@ -654,7 +665,7 @@ export function TemplateGeneratorModal({
               }}
             >
               <Download className="w-4 h-4" />
-              {exportingFormat === 'png' ? 'Exportando PNG...' : 'Baixar PNG'}
+              {exportingFormat === 'png' ? tr('Exportando PNG...', 'Exporting PNG...') : tr('Baixar PNG', 'Download PNG')}
             </button>
             <button
               type="button"
@@ -668,7 +679,7 @@ export function TemplateGeneratorModal({
               }}
             >
               <Download className="w-4 h-4" />
-              {exportingFormat === 'jpg' ? 'Exportando JPG...' : 'Baixar JPG'}
+              {exportingFormat === 'jpg' ? tr('Exportando JPG...', 'Exporting JPG...') : tr('Baixar JPG', 'Download JPG')}
             </button>
           </div>
         </div>

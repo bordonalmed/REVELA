@@ -1,3 +1,4 @@
+import { currentLanguage } from '@/lib/i18n/current';
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -22,7 +23,7 @@ export function parseLocalDate(dateStr: string): Date {
 
 export function formatLocalDate(
   dateStr: string,
-  locale: string = 'pt-BR',
+  locale: string = currentLanguage(),
   options?: Intl.DateTimeFormatOptions
 ): string {
   return parseLocalDate(dateStr).toLocaleDateString(locale, options);

@@ -19,7 +19,7 @@ export function WatermarkedContainer({
       {branding.watermarkEnabled && (
         <img
           src={branding.watermarkLogoDataUrl}
-          alt="Marca d'água Revela"
+          alt=""
           aria-hidden
           style={{
             position: 'absolute',

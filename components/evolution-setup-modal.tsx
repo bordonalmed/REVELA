@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import { notify } from '@/lib/notify';
 
 import React, { useEffect, useState } from 'react';
@@ -29,6 +31,7 @@ export function EvolutionSetupModal({
   initialEvolution,
   onSave,
 }: EvolutionSetupModalProps) {
+  const tr = useTr();
   const [milestones, setMilestones] = useState<EditableMilestone[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -117,7 +120,7 @@ export function EvolutionSetupModal({
         id: m.id,
         image: m.preview!,
         date: m.date,
-        label: m.label || `Marco ${index + 1}`,
+        label: m.label || `${tr('Marco', 'Milestone')} ${index + 1}`,
         momentType: m.label || undefined,
       }));
       onSave(evolution);
@@ -145,10 +148,10 @@ export function EvolutionSetupModal({
         >
           <div>
             <h2 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: '#e5e7eb' }}>
-              Configurar evolução do tratamento
+              {tr('Configurar evolução do tratamento', 'Set up treatment evolution')}
             </h2>
             <p className="text-[11px] sm:text-xs" style={{ color: '#94a3b8' }}>
-              Defina até 4 marcos (ex.: 0, 30, 60, 90 dias) e envie uma foto para cada momento.
+              {tr('Defina até 4 marcos (ex.: 0, 30, 60, 90 dias) e envie uma foto para cada momento.', 'Set up to 4 milestones (e.g. 0, 30, 60, 90 days) and upload one photo for each moment.')}
             </p>
           </div>
           <button
@@ -188,19 +191,19 @@ export function EvolutionSetupModal({
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] sm:text-xs" style={{ color: '#94a3b8' }}>
-                    Rótulo do marco
+                    {tr('Rótulo do marco', 'Milestone label')}
                   </label>
                   <input
                     type="text"
                     value={m.label}
                     onChange={(e) => handleChangeLabel(m.id, e.target.value)}
-                    placeholder="Ex.: 0 dias, 30 dias, 3 meses, sessão final"
+                    placeholder={tr('Ex.: 0 dias, 30 dias, 3 meses, sessão final', 'e.g. 0 days, 30 days, 3 months, final session')}
                     className="w-full px-3 py-2 rounded-lg text-xs sm:text-sm bg-slate-900 border border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-sky-400/70 focus:outline-none"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] sm:text-xs" style={{ color: '#94a3b8' }}>
-                    Data do marco
+                    {tr('Data do marco', 'Milestone date')}
                   </label>
                   <input
                     type="date"
@@ -217,10 +220,10 @@ export function EvolutionSetupModal({
                 >
                   {m.preview ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.preview} alt={m.label || 'Marco'} className="w-full h-full object-cover" />
+                    <img src={m.preview} alt={m.label || tr('Marco', 'Milestone')} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-[11px] sm:text-xs text-slate-500 text-center px-2">
-                      Nenhuma foto enviada
+                      {tr('Nenhuma foto enviada', 'No photo uploaded')}
                     </span>
                   )}
                 </div>
@@ -244,7 +247,7 @@ export function EvolutionSetupModal({
                       color: '#e5e7eb',
                     }}
                   >
-                    {m.preview ? 'Trocar foto' : 'Enviar foto'}
+                    {m.preview ? tr('Trocar foto', 'Change photo') : tr('Enviar foto', 'Upload photo')}
                   </span>
                 </label>
               </div>
@@ -263,7 +266,7 @@ export function EvolutionSetupModal({
             }}
           >
             <Plus className="w-3 h-3" />
-            Adicionar marco (máx. 4)
+            {tr('Adicionar marco (máx. 4)', 'Add milestone (max. 4)')}
           </button>
         </div>
 
@@ -277,7 +280,7 @@ export function EvolutionSetupModal({
             className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
             style={{ color: '#94a3b8', backgroundColor: 'transparent' }}
           >
-            Cancelar
+            {tr('Cancelar', 'Cancel')}
           </button>
           <button
             type="button"
@@ -286,7 +289,7 @@ export function EvolutionSetupModal({
             className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: '#0ea5e9', color: '#0b1120' }}
           >
-            {saving ? 'Salvando...' : 'Salvar evolução'}
+            {saving ? tr('Salvando...', 'Saving...') : tr('Salvar evolução', 'Save evolution')}
           </button>
         </div>
       </div>

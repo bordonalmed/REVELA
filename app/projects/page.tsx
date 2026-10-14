@@ -918,7 +918,7 @@ export default function ProjectsPage() {
                         className="absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                       >
-                        Antes ({project.beforeImages.length})
+                        {tr('Antes', 'Before')} ({project.beforeImages.length})
                       </div>
                     </div>
                   ) : (
@@ -938,7 +938,7 @@ export default function ProjectsPage() {
                         className="absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
                       >
-                        Depois ({project.afterImages.length})
+                        {tr('Depois', 'After')} ({project.afterImages.length})
                       </div>
                     </div>
                   ) : (
@@ -1214,7 +1214,7 @@ export default function ProjectsPage() {
                       <Upload className="w-8 h-8 mx-auto mb-2" style={{ color: '#E8DCC0', opacity: 0.7 }} />
                       <p style={{ color: '#E8DCC0' }}>{tr('Clique ou arraste o arquivo aqui', 'Click or drag the file here')}</p>
                       <p className="text-xs mt-1" style={{ color: '#E8DCC0', opacity: 0.5 }}>
-                        Arquivo JSON (.json)
+                        {tr('Arquivo JSON (.json)', 'JSON file (.json)')}
                       </p>
                     </>
                   )}

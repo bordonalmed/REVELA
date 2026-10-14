@@ -5,6 +5,8 @@
 
 'use client';
 
+import { trNow as tr } from '@/lib/i18n/current';
+
 import { resolveEffectiveBranding } from '@/lib/branding';
 import { fetchEntitlementPlanForEmail } from '@/lib/entitlements';
 import { isPro } from '@/lib/plans';
@@ -199,7 +201,7 @@ export async function exportComparisonImage(
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      throw new Error('Não foi possível criar contexto do canvas');
+      throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
     }
 
     // Fundo preto para maior nitidez
@@ -218,7 +220,7 @@ export async function exportComparisonImage(
       ctx.fillStyle = '#CCCCCC'; // Cor clara para contraste com fundo preto
       ctx.font = '20px Arial';
       const dateStr = formatLocalDate(projectDate);
-      ctx.fillText(`Data: ${dateStr}`, canvasWidth / 2, currentY + 60);
+      ctx.fillText(`${tr('Data', 'Date')}: ${dateStr}`, canvasWidth / 2, currentY + 60);
       
       currentY += infoHeight;
     }
@@ -309,7 +311,7 @@ export async function exportComparisonImage(
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          throw new Error('Erro ao gerar imagem');
+          throw new Error(tr('Erro ao gerar imagem', 'Could not generate image'));
         }
 
         const url = URL.createObjectURL(blob);
@@ -326,7 +328,7 @@ export async function exportComparisonImage(
     );
   } catch (error) {
     console.error('Erro ao exportar imagem:', error);
-    throw new Error('Não foi possível exportar a imagem. Verifique se as imagens estão carregadas.');
+    throw new Error(tr('Não foi possível exportar a imagem. Verifique se as imagens estão carregadas.', 'Could not export the image. Make sure the images are loaded.'));
   }
 }
 
@@ -338,7 +340,7 @@ export async function exportProjectAsZip(
 ): Promise<void> {
   // Para ZIP, precisaríamos de uma biblioteca como JSZip
   // Por enquanto, vamos fazer download individual ou implementar depois
-  throw new Error('Exportação ZIP ainda não implementada. Use a exportação individual.');
+  throw new Error(tr('Exportação ZIP ainda não implementada. Use a exportação individual.', 'ZIP export is not available yet. Use individual export.'));
 }
 
 /**
@@ -359,6 +361,7 @@ const SOCIAL_FORMATS = {
     height: 1080,
     name: 'Instagram Feed (1:1)',
     description: 'Formato quadrado ideal para feed do Instagram',
+    descriptionEn: 'Square format, ideal for the Instagram feed',
     layout: 'side-by-side' as const,
   },
   'instagram-feed-4x5': {
@@ -366,6 +369,7 @@ const SOCIAL_FORMATS = {
     height: 1350,
     name: 'Instagram Feed (4:5)',
     description: 'Formato retangular para feed do Instagram',
+    descriptionEn: 'Portrait format for the Instagram feed',
     layout: 'side-by-side' as const,
   },
   'instagram-stories': {
@@ -373,13 +377,16 @@ const SOCIAL_FORMATS = {
     height: 1920,
     name: 'Instagram Stories',
     description: 'Duas imagens separadas (antes e depois)',
+    descriptionEn: 'Two separate images (before and after)',
     layout: 'separate' as const,
   },
   'instagram-stories-single': {
     width: 1080,
     height: 1920,
     name: 'Instagram Stories (Única)',
+    nameEn: 'Instagram Stories (Single)',
     description: 'Uma imagem com antes e depois empilhados',
+    descriptionEn: 'One image with before and after stacked',
     layout: 'vertical' as const,
   },
 };
@@ -415,7 +422,7 @@ export async function exportForSocialMedia(
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
-      throw new Error('Não foi possível criar contexto do canvas');
+      throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
     }
 
     // Fundo preto
@@ -657,7 +664,7 @@ export async function exportForSocialMedia(
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          throw new Error('Erro ao gerar imagem');
+          throw new Error(tr('Erro ao gerar imagem', 'Could not generate image'));
         }
 
         const url = URL.createObjectURL(blob);
@@ -674,7 +681,7 @@ export async function exportForSocialMedia(
     );
   } catch (error) {
     console.error('Erro ao exportar para rede social:', error);
-    throw new Error('Não foi possível exportar a imagem. Verifique se as imagens estão carregadas.');
+    throw new Error(tr('Não foi possível exportar a imagem. Verifique se as imagens estão carregadas.', 'Could not export the image. Make sure the images are loaded.'));
   }
 }
 
@@ -702,7 +709,7 @@ export async function generateSocialMediaPreview(
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   // Fundo preto
@@ -857,6 +864,8 @@ export function getSocialMediaFormats() {
   return Object.entries(SOCIAL_FORMATS).map(([key, spec]) => ({
     id: key as SocialMediaFormat,
     ...spec,
+    name: 'nameEn' in spec ? tr(spec.name, spec.nameEn) : spec.name,
+    description: tr(spec.description, spec.descriptionEn),
   }));
 }
 
@@ -894,7 +903,7 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
   } = params;
 
   if (!images.length) {
-    throw new Error('Nenhuma imagem selecionada para o template.');
+    throw new Error(tr('Nenhuma imagem selecionada para o template.', 'No image selected for the template.'));
   }
 
   // Canvas padrão 1920x1080 (HD)
@@ -906,7 +915,7 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   // Fundo premium: gradiente suave
@@ -1073,8 +1082,8 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
     const leftX = contentLeft + marginX;
     const rightX = leftX + cardWidth + gap;
 
-    drawLabeledImage(beforeImg, leftX, contentTop, cardWidth, cardHeight, labels[0] || 'ANTES');
-    drawLabeledImage(afterImg, rightX, contentTop, cardWidth, cardHeight, labels[1] || 'DEPOIS');
+    drawLabeledImage(beforeImg, leftX, contentTop, cardWidth, cardHeight, labels[0] || tr('ANTES', 'BEFORE'));
+    drawLabeledImage(afterImg, rightX, contentTop, cardWidth, cardHeight, labels[1] || tr('DEPOIS', 'AFTER'));
   } else if (templateId === 'before-30-90') {
     const [img1, img2, img3] = loadedImages;
     const marginX = 24;
@@ -1085,7 +1094,7 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
     const secondX = firstX + cardWidth + gap;
     const thirdX = secondX + cardWidth + gap;
 
-    drawLabeledImage(img1, firstX, contentTop, cardWidth, cardHeight, labels[0] || 'ANTES');
+    drawLabeledImage(img1, firstX, contentTop, cardWidth, cardHeight, labels[0] || tr('ANTES', 'BEFORE'));
     drawLabeledImage(img2, secondX, contentTop, cardWidth, cardHeight, labels[1] || '30 dias');
     drawLabeledImage(img3, thirdX, contentTop, cardWidth, cardHeight, labels[2] || '90 dias');
   } else if (templateId === 'vertical-compare') {
@@ -1097,8 +1106,8 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
     const topY = contentTop + marginY;
     const bottomY = topY + cardHeight + gap;
 
-    drawLabeledImage(topImg, contentLeft, topY, cardWidth, cardHeight, labels[0] || 'ANTES');
-    drawLabeledImage(bottomImg, contentLeft, bottomY, cardWidth, cardHeight, labels[1] || 'DEPOIS');
+    drawLabeledImage(topImg, contentLeft, topY, cardWidth, cardHeight, labels[0] || tr('ANTES', 'BEFORE'));
+    drawLabeledImage(bottomImg, contentLeft, bottomY, cardWidth, cardHeight, labels[1] || tr('DEPOIS', 'AFTER'));
   } else if (templateId === 'timeline-summary') {
     const maxItems = Math.min(5, loadedImages.length);
     const itemWidth = contentWidth / maxItems - 16;
@@ -1107,7 +1116,7 @@ async function composeClinicTemplateCanvas(params: ClinicTemplateParams): Promis
 
     for (let i = 0; i < maxItems; i++) {
       const img = loadedImages[i];
-      const label = labels[i] || `Sessão ${i + 1}`;
+      const label = labels[i] || `${tr('Sessão', 'Session')} ${i + 1}`;
       const x = contentLeft + i * (itemWidth + 16);
       drawLabeledImage(img, x, baseY, itemWidth, itemHeight, label);
     }
@@ -1152,7 +1161,7 @@ export async function exportClinicTemplate(
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error('Erro ao gerar imagem do template'));
+        reject(new Error(tr('Erro ao gerar imagem do template', 'Could not generate the template image')));
         return;
       }
 

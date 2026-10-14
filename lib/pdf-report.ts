@@ -1,5 +1,7 @@
 'use client';
 
+import { trNow as tr } from '@/lib/i18n/current';
+
 import jsPDF from 'jspdf';
 import type { Project } from './storage';
 
@@ -212,7 +214,9 @@ function fitDimensions(
 /** Formata data ISO para DD/MM/AAAA */
 function formatDate(iso: string): string {
   const d = iso.slice(0, 10).split('-');
-  return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : iso;
+  if (d.length !== 3) return iso;
+  // PT: DD/MM/AAAA · EN: MM/DD/YYYY
+  return tr(`${d[2]}/${d[1]}/${d[0]}`, `${d[1]}/${d[2]}/${d[0]}`);
 }
 
 /**
@@ -298,19 +302,19 @@ export async function generateProjectReportPdf(
   y = 74;
 
   // ---- Identificação do paciente / projeto ----
-  y = drawSectionTitle(doc, y, 'Identificação');
+  y = drawSectionTitle(doc, y, tr('Identificação', 'Identification'));
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(BODY_FONT_SIZE);
   if (patientName) {
-    doc.text(`Paciente: ${patientName}`, MARGIN, y);
+    doc.text(`${tr('Paciente', 'Patient')}: ${patientName}`, MARGIN, y);
     y += LINE_HEIGHT;
   }
-  doc.text(`Projeto/Tratamento: ${projectName ?? project.name}`, MARGIN, y);
+  doc.text(`${tr('Projeto/Tratamento', 'Project/Treatment')}: ${projectName ?? project.name}`, MARGIN, y);
   y += LINE_HEIGHT;
-  doc.text(`Data inicial: ${formatDate(dateStart)}`, MARGIN, y);
+  doc.text(`${tr('Data inicial', 'Start date')}: ${formatDate(dateStart)}`, MARGIN, y);
   y += LINE_HEIGHT;
-  doc.text(`Data final: ${formatDate(dateEnd)}`, MARGIN, y);
+  doc.text(`${tr('Data final', 'End date')}: ${formatDate(dateEnd)}`, MARGIN, y);
   y += SECTION_GAP + LINE_HEIGHT;
 
   // ---- Comparação Antes / Depois ----
@@ -336,15 +340,15 @@ export async function generateProjectReportPdf(
       y = MARGIN;
     }
 
-    y = drawSectionTitle(doc, y, 'Comparação antes e depois');
+    y = drawSectionTitle(doc, y, tr('Comparação antes e depois', 'Before and after comparison'));
 
     const leftX = MARGIN;
     const rightX = MARGIN + availableW + halfGap;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(LABEL_FONT_SIZE);
-    doc.text('Antes', leftX + beforeFit.width / 2 - doc.getTextWidth('Antes') / 2, y);
-    doc.text('Depois', rightX + afterFit.width / 2 - doc.getTextWidth('Depois') / 2, y);
+    doc.text(tr('Antes', 'Before'), leftX + beforeFit.width / 2 - doc.getTextWidth(tr('Antes', 'Before')) / 2, y);
+    doc.text(tr('Depois', 'After'), rightX + afterFit.width / 2 - doc.getTextWidth(tr('Depois', 'After')) / 2, y);
     y += 12;
 
     doc.addImage(
@@ -375,8 +379,8 @@ export async function generateProjectReportPdf(
     if (!rawLabel) return `Revela ${indexFallback + 1}`;
 
     const lower = rawLabel.toLowerCase();
-    if (lower === 'antes') return 'Início (0)';
-    if (lower === 'final') return 'Resultado final';
+    if (lower === 'antes') return tr('Início (0)', 'Start (0)');
+    if (lower === 'final') return tr('Resultado final', 'Final result');
 
     const marcoMatch = /^marco\s*(\d+)$/i.exec(rawLabel);
     if (marcoMatch) return `Revela ${marcoMatch[1]}`;
@@ -389,11 +393,11 @@ export async function generateProjectReportPdf(
 
     if (includeTimeline) {
       if (evolutionImages.length === 0) {
-        y = drawSectionTitle(doc, y, 'Evolução do tratamento');
+        y = drawSectionTitle(doc, y, tr('Evolução do tratamento', 'Treatment progress'));
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(107, 114, 128);
-        doc.text('Nenhum registro de evolução disponível neste projeto.', MARGIN, y);
+        doc.text(tr('Nenhum registro de evolução disponível neste projeto.', 'No evolution records available in this project.'), MARGIN, y);
         doc.setTextColor(0, 0, 0);
         y += SECTION_GAP;
       } else {
@@ -409,7 +413,7 @@ export async function generateProjectReportPdf(
           y = MARGIN;
         }
 
-        y = drawSectionTitle(doc, y, 'Evolução do tratamento');
+        y = drawSectionTitle(doc, y, tr('Evolução do tratamento', 'Treatment progress'));
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(LABEL_FONT_SIZE);
 
@@ -441,7 +445,7 @@ export async function generateProjectReportPdf(
             );
           } catch {
             doc.setFontSize(10);
-            doc.text('(imagem não disponível)', x, rowY + labelBlockHeight + 12);
+            doc.text(tr('(imagem não disponível)', '(image not available)'), x, rowY + labelBlockHeight + 12);
           }
         }
 
@@ -465,8 +469,8 @@ export async function generateProjectReportPdf(
       if (!shouldRenderComparison) {
         const hasSomeSelection = !!leftId || !!rightId;
         const instruction = hasSomeSelection
-          ? 'Selecione também o outro marco (Revela A e Revela B) para comparar.'
-          : 'Selecione Revela A e Revela B na timeline para incluir comparação no PDF.';
+          ? tr('Selecione também o outro marco (Revela A e Revela B) para comparar.', 'Also select the other milestone (Revela A and Revela B) to compare.')
+          : tr('Selecione Revela A e Revela B na timeline para incluir comparação no PDF.', 'Select Revela A and Revela B on the timeline to include a comparison in the PDF.');
 
         const approxHeight = 60;
         if (y + approxHeight > A4_HEIGHT_PT - MARGIN) {
@@ -474,7 +478,7 @@ export async function generateProjectReportPdf(
           y = MARGIN;
         }
 
-        y = drawSectionTitle(doc, y, 'Comparação A/B');
+        y = drawSectionTitle(doc, y, tr('Comparação A/B', 'A/B comparison'));
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
         doc.setTextColor(107, 114, 128);
@@ -499,7 +503,7 @@ export async function generateProjectReportPdf(
           y = MARGIN;
         }
 
-        y = drawSectionTitle(doc, y, 'Comparação A/B');
+        y = drawSectionTitle(doc, y, tr('Comparação A/B', 'A/B comparison'));
 
         const leftX = MARGIN;
         const rightX = MARGIN + availableW + halfGap;
@@ -563,7 +567,7 @@ export async function generateProjectReportPdf(
           y = MARGIN;
         }
 
-        y = drawSectionTitle(doc, y, 'Evolução do tratamento');
+        y = drawSectionTitle(doc, y, tr('Evolução do tratamento', 'Treatment progress'));
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(LABEL_FONT_SIZE);
 
@@ -597,7 +601,7 @@ export async function generateProjectReportPdf(
             );
           } catch {
             doc.setFontSize(10);
-            doc.text('(imagem não disponível)', x, rowY + labelBlockHeight + 12);
+            doc.text(tr('(imagem não disponível)', '(image not available)'), x, rowY + labelBlockHeight + 12);
           }
         }
       y = rowY + labelBlockHeight + maxEvoHeight + SECTION_GAP;
@@ -611,7 +615,7 @@ export async function generateProjectReportPdf(
       y = MARGIN;
     }
 
-    y = drawSectionTitle(doc, y, 'Observações');
+    y = drawSectionTitle(doc, y, tr('Observações', 'Notes'));
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(BODY_FONT_SIZE);
@@ -665,13 +669,13 @@ export async function generateProjectReportPdf(
     doc.setFontSize(9);
     doc.setTextColor(107, 114, 128);
     doc.text(
-      `Página ${p} de ${totalPages}`,
-      A4_WIDTH_PT / 2 - doc.getTextWidth(`Página ${p} de ${totalPages}`) / 2,
+      tr(`Página ${p} de ${totalPages}`, `Page ${p} of ${totalPages}`),
+      A4_WIDTH_PT / 2 - doc.getTextWidth(tr(`Página ${p} de ${totalPages}`, `Page ${p} of ${totalPages}`)) / 2,
       A4_HEIGHT_PT - 18
     );
     doc.setFontSize(8);
     doc.setTextColor(0, 168, 143);
-    doc.text('Gerado por Revela Premium', MARGIN, A4_HEIGHT_PT - 18);
+    doc.text(tr('Gerado por Revela Premium', 'Generated by Revela Premium'), MARGIN, A4_HEIGHT_PT - 18);
     doc.setTextColor(0, 0, 0);
   }
 

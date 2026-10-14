@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useMemo, useState } from 'react';
 import { Image as ImageIcon, Columns2, SlidersHorizontal } from 'lucide-react';
 import type { EvolutionImage } from '@/lib/storage';
@@ -41,6 +43,7 @@ export function TreatmentTimeline({
   selectedRightId,
   onSelectionChange,
 }: TreatmentTimelineProps) {
+  const tr = useTr();
   const [viewMode, setViewMode] = useState<ViewMode>('side-by-side');
 
   const sorted = useMemo(() => {
@@ -69,7 +72,7 @@ export function TreatmentTimeline({
       >
         <ImageIcon className="w-4 h-4 shrink-0" style={{ opacity: 0.7 }} />
         <span className="text-xs sm:text-sm" style={{ opacity: 0.9 }}>
-          Revela Evolução — nenhum registro ainda. Adicione na edição do projeto.
+          {tr('Revela Evolução — nenhum registro ainda. Adicione na edição do projeto.', 'Revela Evolution — no records yet. Add them while editing the project.')}
         </span>
       </div>
     );
@@ -96,7 +99,7 @@ export function TreatmentTimeline({
             className="text-sm sm:text-base font-medium tracking-wide uppercase"
             style={{ color: '#E8DCC0', letterSpacing: '0.15em' }}
           >
-            Revela Evolução
+            {tr('Revela Evolução', 'Revela Evolution')}
           </h3>
           <span className="text-[11px] sm:text-xs" style={{ color: '#94a3b8' }}>
             {sorted.length} registro(s)
@@ -166,7 +169,7 @@ export function TreatmentTimeline({
             className="text-sm sm:text-base font-medium tracking-wide uppercase"
             style={{ color: '#E8DCC0', letterSpacing: '0.15em' }}
           >
-            Revela Comparação
+            {tr('Revela Comparação', 'Revela Comparison')}
           </h3>
 
           {bothSelected && (
@@ -185,7 +188,7 @@ export function TreatmentTimeline({
                 }}
               >
                 <Columns2 className="w-3.5 h-3.5" />
-                Lado a lado
+                {tr('Lado a lado', 'Side by side')}
               </button>
               <button
                 type="button"
@@ -226,7 +229,7 @@ export function TreatmentTimeline({
               className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
               style={selectStyles}
             >
-              <option value="">Selecione um registro...</option>
+              <option value="">{tr('Selecione um registro...', 'Select a record...')}</option>
               {sorted.map((m, idx) => {
                 const rawLabel = (m.label || m.momentType || '').trim();
                 const marcoMatch = /^marco\s*(\d+)$/i.exec(rawLabel);
@@ -265,7 +268,7 @@ export function TreatmentTimeline({
               className="w-full rounded-lg px-3 py-2 text-sm border outline-none"
               style={selectStyles}
             >
-              <option value="">Selecione um registro...</option>
+              <option value="">{tr('Selecione um registro...', 'Select a record...')}</option>
               {sorted.map((m, idx) => {
                 const rawLabel = (m.label || m.momentType || '').trim();
                 const marcoMatch = /^marco\s*(\d+)$/i.exec(rawLabel);
@@ -333,7 +336,7 @@ export function TreatmentTimeline({
                   <div className="flex flex-col items-center justify-center p-6 text-center">
                     <ImageIcon className="w-8 h-8 mb-2" style={{ color: '#4b5563' }} />
                     <p className="text-xs sm:text-sm" style={{ color: '#6b7280' }}>
-                      Escolha o Revela A acima
+                      {tr('Escolha o Revela A acima', 'Choose Revela A above')}
                     </p>
                   </div>
                 )}
@@ -371,7 +374,7 @@ export function TreatmentTimeline({
                   <div className="flex flex-col items-center justify-center p-6 text-center">
                     <ImageIcon className="w-8 h-8 mb-2" style={{ color: '#4b5563' }} />
                     <p className="text-xs sm:text-sm" style={{ color: '#6b7280' }}>
-                      Escolha o Revela B acima
+                      {tr('Escolha o Revela B acima', 'Choose Revela B above')}
                     </p>
                   </div>
                 )}

@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import { useState, useEffect } from 'react';
 import { X, Download } from 'lucide-react';
 
@@ -9,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PWAInstallPrompt() {
+  const tr = useTr();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -84,10 +87,10 @@ export function PWAInstallPrompt() {
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <h3 className="text-sm font-semibold mb-1" style={{ color: '#E8DCC0' }}>
-            Instalar Revela
+            {tr('Instalar Revela', 'Install Revela')}
           </h3>
           <p className="text-xs mb-3" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-            Instale o app para acesso rápido e uso offline
+            {tr('Instale o app para acesso rápido e uso offline', 'Install the app for quick access and offline use')}
           </p>
           <div className="flex gap-2">
             <button
@@ -96,7 +99,7 @@ export function PWAInstallPrompt() {
               style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
             >
               <Download className="w-3.5 h-3.5" />
-              Instalar
+              {tr('Instalar', 'Install')}
             </button>
             <button
               onClick={handleDismiss}
@@ -107,7 +110,7 @@ export function PWAInstallPrompt() {
                 borderColor: 'rgba(232, 220, 192, 0.2)',
               }}
             >
-              Depois
+              {tr('Depois', 'Later')}
             </button>
           </div>
         </div>
@@ -115,7 +118,7 @@ export function PWAInstallPrompt() {
           onClick={handleDismiss}
           className="p-1 rounded hover:bg-white/10 transition-colors"
           style={{ color: '#E8DCC0' }}
-          aria-label="Fechar"
+          aria-label={tr('Fechar', 'Close')}
         >
           <X className="w-4 h-4" />
         </button>

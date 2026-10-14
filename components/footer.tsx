@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useLanguage } from '@/contexts/language-context';
+import { useLanguage, useTr } from '@/contexts/language-context';
 
 export function Footer({ className = "" }: { className?: string }) {
   const { t } = useLanguage();
+  const tr = useTr();
 
   return (
     <footer
@@ -12,12 +13,12 @@ export function Footer({ className = "" }: { className?: string }) {
     >
       <div className="container mx-auto px-4">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-          <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-6" aria-label="Links do rodapé">
+          <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-6" aria-label={tr('Links do rodapé', 'Footer links')}>
             <Link
               href="/para-medicos"
               className="text-xs sm:text-sm text-revela-cream opacity-80 hover:opacity-100 transition-opacity"
             >
-              Para médicos
+              {tr('Para médicos', 'For doctors')}
             </Link>
             <span className="text-revela-cream opacity-50" aria-hidden>|</span>
             <Link
@@ -45,14 +46,14 @@ export function Footer({ className = "" }: { className?: string }) {
               href="/privacidade"
               className="text-xs sm:text-sm text-revela-cream opacity-80 hover:opacity-100 transition-opacity"
             >
-              Privacidade
+              {tr('Privacidade', 'Privacy')}
             </Link>
             <span className="text-revela-cream opacity-50" aria-hidden>|</span>
             <Link
               href="/termos"
               className="text-xs sm:text-sm text-revela-cream opacity-80 hover:opacity-100 transition-opacity"
             >
-              Termos
+              {tr('Termos', 'Terms')}
             </Link>
           </nav>
           <p className="text-xs sm:text-sm text-revela-cream opacity-70 text-center sm:text-right">

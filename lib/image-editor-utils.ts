@@ -1,3 +1,4 @@
+import { trNow as tr } from '@/lib/i18n/current';
 /**
  * Utilitários para edição de imagens
  * Rotação e corte usando Canvas API
@@ -39,7 +40,7 @@ export async function rotateImage(
   const ctx = canvas.getContext('2d');
   
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   // Calcular novo tamanho após rotação
@@ -80,7 +81,7 @@ export async function cropImage(
   const ctx = canvas.getContext('2d');
   
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   // Se houver rotação, precisamos ajustar
@@ -104,7 +105,7 @@ export async function cropImage(
     const croppedCtx = croppedCanvas.getContext('2d');
     
     if (!croppedCtx) {
-      throw new Error('Não foi possível criar contexto do canvas');
+      throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
     }
     
     croppedCanvas.width = pixelCrop.width;
@@ -166,7 +167,7 @@ export async function getCroppedImg(
   const croppedCtx = croppedCanvas.getContext('2d');
 
   if (!croppedCtx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   // Validar e ajustar coordenadas do crop
@@ -185,7 +186,7 @@ export async function getCroppedImg(
 
   if (cropWidth <= 0 || cropHeight <= 0 || cropX < 0 || cropY < 0) {
     console.error('Área de crop inválida:', { cropX, cropY, cropWidth, cropHeight, imageWidth: image.width, imageHeight: image.height });
-    throw new Error('Área de crop inválida');
+    throw new Error(tr('Área de crop inválida', 'Invalid crop area'));
   }
 
   croppedCanvas.width = cropWidth;
@@ -221,7 +222,7 @@ export async function getCroppedImg(
   const finalCtx = finalCanvas.getContext('2d');
 
   if (!finalCtx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   finalCanvas.width = rotatedWidth;
@@ -272,7 +273,7 @@ export async function applyImageTransformations(
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   canvas.width = img.width;
@@ -382,7 +383,7 @@ export async function rasterizeClinicalAnnotationsOnSource(
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    throw new Error('Não foi possível criar contexto do canvas');
+    throw new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context'));
   }
 
   canvas.width = img.width;

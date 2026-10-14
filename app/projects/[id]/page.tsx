@@ -1293,7 +1293,7 @@ export default function ViewProjectPage() {
                   className="text-[10px] sm:text-base" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
-                  Data: {formatLocalDate(project.date)}
+                  {tr('Data', 'Date')}: {formatLocalDate(project.date)}
                 </p>
                 {!isEditing && project.notes && (
                   <div 
@@ -1524,7 +1524,7 @@ export default function ViewProjectPage() {
                 {displayBeforeImages.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                      {displayBeforeImages.length} foto(s) antes
+                      {displayBeforeImages.length} {tr('foto(s) antes', 'before photo(s)')}
                     </p>
                     <div className="flex flex-wrap gap-2 pb-6">
                       {displayBeforeImages.map((img, index) => (
@@ -1643,7 +1643,7 @@ export default function ViewProjectPage() {
                 {displayAfterImages.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                      {displayAfterImages.length} foto(s) depois
+                      {displayAfterImages.length} {tr('foto(s) depois', 'after photo(s)')}
                     </p>
                     <div className="flex flex-wrap gap-2 pb-6">
                       {displayAfterImages.map((img, index) => (
@@ -1824,8 +1824,8 @@ export default function ViewProjectPage() {
                 <ComparisonSlider
                   beforeImage={displayBeforeImages[beforeCurrentIndex]}
                   afterImage={displayAfterImages[afterCurrentIndex]}
-                  beforeLabel="ANTES"
-                  afterLabel="DEPOIS"
+                  beforeLabel={tr('ANTES', 'BEFORE')}
+                  afterLabel={tr('DEPOIS', 'AFTER')}
                   className="w-full h-full"
                 />
                 {/* Navegação de imagens no modo slider */}
@@ -2884,7 +2884,7 @@ export default function ViewProjectPage() {
                   }
 
                   const dateText = evo.date
-                    ? formatLocalDate(evo.date, 'pt-BR', {
+                    ? formatLocalDate(evo.date, tr('pt-BR', 'en-US'), {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
@@ -2936,7 +2936,7 @@ export default function ViewProjectPage() {
                             }}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
-                            Editar foto (Premium)
+                            {tr('Editar foto (Premium)', 'Edit photo (Premium)')}
                           </button>
                         </div>
                       )}
