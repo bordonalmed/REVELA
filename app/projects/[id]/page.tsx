@@ -1270,8 +1270,10 @@ export default function ViewProjectPage() {
                   </div>
                 )}
               </div>
+              {/* Barra de botões inline escondida a pedido: as mesmas ações já ficam
+                  disponíveis no menu "☰" (showMobileMenu/showDesktopMenu mais abaixo). */}
               {!isEditing ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="hidden flex-wrap gap-2">
                   {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
                     <>
                       <button
