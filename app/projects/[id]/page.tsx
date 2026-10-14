@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2, Link2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
@@ -20,7 +20,9 @@ import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
+import { ShareCaseModal } from '@/components/share-case-modal';
 import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
+import { resolveEffectiveBranding } from '@/lib/branding';
 import { 
   trackViewProject, 
   trackUpdateProject, 
@@ -57,6 +59,7 @@ export default function ViewProjectPage() {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
+  const [showShareCaseModal, setShowShareCaseModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
   const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
@@ -135,8 +138,15 @@ export default function ViewProjectPage() {
       // Detectar se é tablet (768px - 1023px) ou mobile (< 768px)
       const isTablet = width >= 768 && width < 1024;
       const isMobile = width < 768;
-      
-      const landscape = width > height;
+
+      // "Paisagem" aqui significa especificamente celular/tablet deitado — não
+      // qualquer janela mais larga que alta (isso é praticamente todo desktop).
+      // Sem o filtro de largura + toque, a barra de ferramentas do projeto
+      // (Exportar, PDF, Publicar, Link, Apresentação) ficava escondida sempre
+      // que acessada num computador normal.
+      const isTouchDevice =
+        typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+      const landscape = width > height && width < 1024 && isTouchDevice;
       setIsLandscape(landscape);
 
       const header = document.querySelector('header');
@@ -1303,6 +1313,19 @@ export default function ViewProjectPage() {
                       >
                         <Share2 className="w-4 h-4" />
                         Publicar
+                      </button>
+                      <button
+                        onClick={() => setShowShareCaseModal(true)}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
+                          color: '#E8DCC0',
+                          borderColor: 'rgba(232, 220, 192, 0.1)',
+                        }}
+                        title="Gerar link público para enviar ao paciente"
+                      >
+                        <Link2 className="w-4 h-4" />
+                        <span className="hidden sm:inline">Link</span>
                       </button>
                       <button
                         onClick={handleEnterPresentationMode}
@@ -2633,6 +2656,23 @@ export default function ViewProjectPage() {
             }}
           />
         )}
+
+        {/* Modal de Link Compartilhável */}
+        {showShareCaseModal && project && user?.id && (() => {
+          const shareBranding = resolveEffectiveBranding({
+            ownerEmail: user.email,
+            hasProAccess: hasProAccess || hasPremiumAccess,
+          });
+          return (
+            <ShareCaseModal
+              project={project}
+              userId={user.id}
+              watermarkEnabled={shareBranding.watermarkEnabled}
+              watermarkLogoUrl={shareBranding.watermarkLogoDataUrl}
+              onClose={() => setShowShareCaseModal(false)}
+            />
+          );
+        })()}
 
         {/* Modal de Edição de Imagem */}
         {showImageEditor &&
