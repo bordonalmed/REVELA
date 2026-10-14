@@ -252,11 +252,8 @@ export function MeasurementTool({
       label: label || undefined,
     };
 
-    // Adicionar nova medida mantendo as outras
-    const otherMeasurements = measurements.filter(
-      m => !(m.imageType === imageType && m.imageIndex === imageIndex)
-    );
-    onMeasurementsChange([...otherMeasurements, updatedMeasurement]);
+    // Adicionar nova medida mantendo todas as outras (desta e de outras imagens)
+    onMeasurementsChange([...measurements, updatedMeasurement]);
     setEditingMeasurement(null);
   };
 
@@ -407,7 +404,7 @@ export function MeasurementTool({
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 pointer-events-none"
+          className={`absolute top-0 left-0 ${isMeasuring ? 'pointer-events-auto' : 'pointer-events-none'}`}
           style={{ cursor: isMeasuring ? 'crosshair' : 'default' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
