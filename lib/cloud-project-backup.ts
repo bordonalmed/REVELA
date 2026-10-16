@@ -178,6 +178,75 @@ function buildMeta(project: Project): CloudProjectMeta {
 
 export type CloudSyncFailure = { projectId: string; projectName?: string; error: string };
 
+/** Progresso de envio/restauração, contado em fotos. */
+export type CloudProgress = { done: number; total: number; projectName?: string };
+export type ProgressFn = (p: CloudProgress) => void;
+
+// ─── O que já está na nuvem (registro local, por aparelho) ─────────────
+// Guarda, para cada projeto, a data de alteração da versão que está na nuvem.
+// Serve para o selo "na nuvem ✓ / alterado depois do envio / só neste aparelho".
+
+const SYNCED_KEY = 'revela_cloud_synced';
+
+function readSynced(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(SYNCED_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function writeSynced(map: Record<string, string>) {
+  try {
+    localStorage.setItem(SYNCED_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+function markSynced(project: { id: string; updatedAt?: string; createdAt?: string }) {
+  const map = readSynced();
+  map[project.id] = project.updatedAt || project.createdAt || '';
+  writeSynced(map);
+}
+
+function unmarkSynced(projectId: string) {
+  const map = readSynced();
+  delete map[projectId];
+  writeSynced(map);
+}
+
+export type CloudSyncState = 'synced' | 'changed' | 'local';
+
+/** synced = igual à nuvem; changed = alterado depois do último envio; local = nunca enviado deste aparelho */
+export function getCloudSyncState(project: { id: string; updatedAt?: string; createdAt?: string }): CloudSyncState {
+  const sent = readSynced()[project.id];
+  if (sent === undefined) return 'local';
+  return sent === (project.updatedAt || project.createdAt || '') ? 'synced' : 'changed';
+}
+
+export function isInCloud(projectId: string): boolean {
+  return readSynced()[projectId] !== undefined;
+}
+
+// Último backup feito (arquivo exportado ou envio para a nuvem), para o lembrete
+export function markExported() {
+  try { localStorage.setItem('revela_last_export', new Date().toISOString()); } catch { /* ignore */ }
+}
+
+function markCloudSync() {
+  try { localStorage.setItem('revela_last_cloud_sync', new Date().toISOString()); } catch { /* ignore */ }
+}
+
+export function lastBackupAt(): string | null {
+  try {
+    const dates = [localStorage.getItem('revela_last_export'), localStorage.getItem('revela_last_cloud_sync')].filter(Boolean) as string[];
+    return dates.sort().pop() || null;
+  } catch {
+    return null;
+  }
+}
+
 export interface CloudSyncResult {
   uploaded: number;
   updated: number;
@@ -306,11 +375,15 @@ interface ImagePaths {
   evolution: Record<string, string>;
 }
 
+const photoCount = (p: Project) =>
+  (p.beforeImages?.length || 0) + (p.afterImages?.length || 0) + (p.evolutionImages?.length || 0);
+
 async function syncOneProject(
   userId: string,
   project: Project,
   cloudKey: CloudKey,
-  existingRowId: string | null
+  existingRowId: string | null,
+  tick: () => void = () => {}
 ): Promise<'inserted' | 'updated'> {
   const meta = buildMeta(project);
 
@@ -322,12 +395,15 @@ async function syncOneProject(
   try {
     for (let i = 0; i < (project.beforeImages || []).length; i++) {
       paths.before.push(await uploadEncryptedImage(folder, `before_${i}`, project.beforeImages[i], cloudKey.key));
+      tick();
     }
     for (let i = 0; i < (project.afterImages || []).length; i++) {
       paths.after.push(await uploadEncryptedImage(folder, `after_${i}`, project.afterImages[i], cloudKey.key));
+      tick();
     }
     for (const ev of project.evolutionImages || []) {
       paths.evolution[ev.id] = await uploadEncryptedImage(folder, `evo_${ev.id}`, ev.image, cloudKey.key);
+      tick();
     }
 
     // 2) Só então aponta o registro para a versão nova
@@ -371,7 +447,8 @@ async function syncOneProject(
 export async function syncSelectedProjectsToCloud(
   userId: string,
   selectedProjects: Project[],
-  password: string
+  password: string,
+  onProgress?: ProgressFn
 ): Promise<CloudSyncResult> {
   checkPassword(password);
   const rows = await listRows(userId);
@@ -382,10 +459,18 @@ export async function syncSelectedProjectsToCloud(
   const cloudKey = await deriveCloudKey(password);
   const result: CloudSyncResult = { uploaded: 0, updated: 0, skipped: 0, failures: [] };
 
+  const total = selectedProjects.reduce((n, p) => n + photoCount(p), 0);
+  let done = 0;
+  onProgress?.({ done, total });
+
   for (const project of selectedProjects) {
+    const startDone = done;
     try {
       const group = groups.get(project.id) || [];
-      const action = await syncOneProject(userId, project, cloudKey, group[0]?.row.id ?? null);
+      const tick = () => onProgress?.({ done: ++done, total, projectName: project.name });
+      const action = await syncOneProject(userId, project, cloudKey, group[0]?.row.id ?? null, tick);
+      markSynced(project);
+      markCloudSync();
       // Registros repetidos do mesmo projeto (formatos antigos) deixam de valer
       for (const dup of group.slice(1)) {
         await supabase.from('before_after_photos').delete().eq('id', dup.row.id);
@@ -393,6 +478,8 @@ export async function syncSelectedProjectsToCloud(
       if (action === 'inserted') result.uploaded += 1;
       else result.updated += 1;
     } catch (e: any) {
+      done = startDone + photoCount(project);
+      onProgress?.({ done, total, projectName: project.name });
       const msg = e?.message || 'Erro desconhecido';
       result.failures.push({
         projectId: project.id,
@@ -516,7 +603,8 @@ const lastChange = (p: { updatedAt?: string; createdAt?: string }) => p.updatedA
 export async function restoreProjectsFromCloud(
   userId: string,
   ownerEmail: string | null | undefined,
-  password: string
+  password: string,
+  options: { onlyIds?: string[]; onProgress?: ProgressFn } = {}
 ): Promise<CloudRestoreResult> {
   const rows = await listRows(userId);
   const hasEncrypted = rows.some((r) => parseRow(r)?.__type === ENCRYPTED_TYPE);
@@ -531,7 +619,12 @@ export async function restoreProjectsFromCloud(
   const groups = groupRowsByProject(rows);
   result.skipped += rows.filter((r) => !rowProjectId(parseRow(r))).length;
 
-  for (const [projectId, group] of Array.from(groups.entries())) {
+  const entries = Array.from(groups.entries()).filter(([id]) => !options.onlyIds || options.onlyIds.includes(id));
+  let done = 0;
+  options.onProgress?.({ done, total: entries.length });
+
+  for (const [projectId, group] of entries) {
+    options.onProgress?.({ done: done++, total: entries.length, projectName: localById.get(projectId)?.name });
     // Só o registro principal de cada projeto (evita que um registro antigo sobrescreva o novo)
     const { row, parsed } = group[0];
     const local = localById.get(projectId);
@@ -543,12 +636,14 @@ export async function restoreProjectsFromCloud(
         // Formatos antigos não têm data de alteração: na dúvida, o aparelho prevalece
         const cloudIsNewer = !!project.updatedAt && lastChange(project) > lastChange(local);
         if (!cloudIsNewer) {
+          if (lastChange(project) === lastChange(local)) markSynced(local);
           result.keptLocal += 1;
           continue;
         }
         result.alreadyExisted += 1;
       }
       await saveProjectToIndexedDB(project);
+      markSynced(project);
       result.restored += 1;
     } catch (e: any) {
       result.failures.push({
@@ -564,8 +659,66 @@ export async function restoreProjectsFromCloud(
       });
     }
   }
+  options.onProgress?.({ done: entries.length, total: entries.length });
 
   return result;
+}
+
+// ─── Lista e exclusão por projeto ─────────────────────────────────────
+
+export interface CloudProjectInfo {
+  projectId: string;
+  name: string;
+  updatedAt?: string;
+  photos: number;
+  encrypted: boolean;
+}
+
+/** Lista os projetos da nuvem (só os dados, sem baixar fotos). Precisa da senha para ler os nomes. */
+export async function listCloudProjects(userId: string, password: string): Promise<CloudProjectInfo[]> {
+  const rows = await listRows(userId);
+  if (rows.some((r) => parseRow(r)?.__type === ENCRYPTED_TYPE)) {
+    checkPassword(password);
+    await verifyPasswordAgainstCloud(password, rows);
+  }
+  const out: CloudProjectInfo[] = [];
+  for (const [projectId, group] of Array.from(groupRowsByProject(rows).entries())) {
+    const { parsed } = group[0];
+    try {
+      if (parsed?.__type === ENCRYPTED_TYPE) {
+        const env = parsed as EncryptedEnvelope;
+        const { key } = await keyFor(password, env.kdfSalt, env.kdfIterations);
+        const { meta } = await decryptJson<{ meta: CloudProjectMeta }>(key, env.payload);
+        out.push({
+          projectId,
+          name: meta.name,
+          updatedAt: meta.updatedAt || meta.createdAt,
+          photos: meta.beforeCount + meta.afterCount + (meta.evolutionMeta?.length || 0),
+          encrypted: true,
+        });
+      } else if (parsed?.__type === 'revela_storage_v2') {
+        const m = parsed.meta as CloudProjectMeta;
+        out.push({ projectId, name: m.name, updatedAt: m.createdAt, photos: m.beforeCount + m.afterCount + (m.evolutionMeta?.length || 0), encrypted: false });
+      } else if (parsed?.project) {
+        const pr = parsed.project as Project;
+        out.push({ projectId, name: pr.name, updatedAt: pr.updatedAt || pr.createdAt, photos: photoCount(pr), encrypted: false });
+      }
+    } catch {
+      out.push({ projectId, name: '?', photos: 0, encrypted: true });
+    }
+  }
+  return out.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+}
+
+/** Apaga um projeto da nuvem (registro e todas as fotos). O projeto no aparelho não muda. */
+export async function deleteProjectFromCloud(userId: string, projectId: string): Promise<void> {
+  const rows = await listRows(userId);
+  for (const { row } of groupRowsByProject(rows).get(projectId) || []) {
+    const { error } = await supabase.from('before_after_photos').delete().eq('id', row.id);
+    if (error) throw error;
+  }
+  await deleteProjectFiles(userId, projectId);
+  unmarkSynced(projectId);
 }
 
 // ─── Cópias antigas sem criptografia ──────────────────────────────────

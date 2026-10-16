@@ -4,6 +4,7 @@ import { useTr } from '@/contexts/language-context';
 
 import { notify, confirmDialog } from '@/lib/notify';
 import type { Translations } from '@/lib/i18n/translations';
+import { isInCloud, lastBackupAt, markExported } from '@/lib/cloud-project-backup';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,6 +21,8 @@ import { parseLocalDate, formatLocalDate } from '@/lib/utils';
 
 type SortOption = 'recent' | 'oldest' | 'name-asc' | 'name-desc';
 type DateFilter = 'all' | 'today' | 'week' | 'month' | 'year';
+
+const BACKUP_REMINDER_DAYS = 7;
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -42,6 +45,8 @@ export default function ProjectsPage() {
   const [autoBackup, setAutoBackup] = useState(false);
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
   const [autoBackupFailed, setAutoBackupFailed] = useState(false);
+  // Lembrete: dias desde o último backup (arquivo exportado ou envio para a nuvem); null = não mostrar
+  const [backupReminderDays, setBackupReminderDays] = useState<number | null>(null);
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   
   // Estados para pastas
@@ -159,6 +164,14 @@ export default function ProjectsPage() {
       // Verificar backup automático
       setAutoBackup(isAutoBackupEnabled());
       setAutoBackupFailed(isAutoBackupEnabled() && !!getAutoBackupFailure());
+      try {
+        const snoozedUntil = Number(localStorage.getItem('revela_backup_reminder_snooze') || 0);
+        if (Date.now() > snoozedUntil) {
+          const last = lastBackupAt();
+          const days = last ? Math.floor((Date.now() - new Date(last).getTime()) / 86_400_000) : -1;
+          if (days === -1 || days >= BACKUP_REMINDER_DAYS) setBackupReminderDays(days);
+        }
+      } catch { /* ignore */ }
       const lastBackup = getLastAutoBackup();
       if (lastBackup) {
         setLastBackupDate(lastBackup.exportDate);
@@ -208,6 +221,10 @@ export default function ProjectsPage() {
       }
       
       notify.success(t => t.msg.projectDeleted);
+      // Apagar no aparelho não apaga a cópia da nuvem
+      if (isInCloud(id)) {
+        notify.info(t => t.msg.stillInCloud, { label: t => t.msg.manageCloud, href: '/settings' });
+      }
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
       notify.error(t => t.msg.deleteProjectError);
@@ -218,6 +235,8 @@ export default function ProjectsPage() {
     try {
       setExporting(true);
       const backup = await exportBackup();
+      markExported();
+      setBackupReminderDays(null);
       
       // Criar arquivo JSON
       const jsonStr = JSON.stringify(backup, null, 2);
@@ -471,6 +490,49 @@ export default function ProjectsPage() {
           </div>
           
         </div>
+
+        {/* Lembrete de backup: as fotos ficam só neste aparelho */}
+        {backupReminderDays !== null && projects.length > 0 && (
+          <div
+            className="mb-6 rounded-lg border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+            style={{ backgroundColor: 'rgba(234, 179, 8, 0.08)', borderColor: 'rgba(234, 179, 8, 0.45)' }}
+            role="status"
+          >
+            <p className="text-xs sm:text-sm flex-1" style={{ color: '#fde68a' }}>
+              {backupReminderDays === -1
+                ? tr(
+                    'Você ainda não fez nenhum backup. Os projetos ficam só neste aparelho: se ele for perdido ou o navegador for limpo, as fotos se perdem.',
+                    'You have not made any backup yet. Projects live only on this device: if it is lost or the browser is cleared, the photos are lost.'
+                  )
+                : tr(
+                    `Faz ${backupReminderDays} dias desde o seu último backup. Os projetos ficam só neste aparelho.`,
+                    `It has been ${backupReminderDays} days since your last backup. Projects live only on this device.`
+                  )}
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleExportBackup}
+                disabled={exporting}
+                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50"
+                style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+              >
+                {tr('Exportar backup agora', 'Export backup now')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.setItem('revela_backup_reminder_snooze', String(Date.now() + 3 * 86_400_000)); } catch { /* ignore */ }
+                  setBackupReminderDays(null);
+                }}
+                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm border"
+                style={{ color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.2)' }}
+              >
+                {tr('Lembrar depois', 'Remind me later')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Seção de Pastas */}
         <div className="mb-6">

@@ -21,6 +21,8 @@ export interface AppMessages {
   // Lista de projetos / pastas / backup
   confirmDeleteProject: string;
   projectDeleted: string;
+  stillInCloud: string;
+  manageCloud: string;
   deleteProjectError: string;
   backupExported: (n: number) => string;
   exportBackupError: string;
@@ -121,6 +123,8 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     imageProcessError: 'Erro ao processar imagem. Tente novamente.',
     confirmDeleteProject: 'Tem certeza que deseja excluir este projeto? Essa ação não pode ser desfeita.',
     projectDeleted: 'Projeto excluído com sucesso!',
+    stillInCloud: 'Este projeto continua salvo na nuvem. Para apagá-lo de lá também, use Configurações › Sincronização na nuvem.',
+    manageCloud: 'Abrir Configurações',
     deleteProjectError: 'Erro ao excluir projeto. Tente novamente.',
     backupExported: (n) => `Backup exportado com sucesso! ${n} projeto(s) exportado(s).`,
     exportBackupError: 'Erro ao exportar backup. Tente novamente.',
@@ -208,6 +212,8 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     imageProcessError: 'Could not process the image. Please try again.',
     confirmDeleteProject: 'Are you sure you want to delete this project? This cannot be undone.',
     projectDeleted: 'Project deleted.',
+    stillInCloud: 'This project is still saved in the cloud. To delete it there too, go to Settings › Cloud sync.',
+    manageCloud: 'Open Settings',
     deleteProjectError: 'Could not delete the project. Please try again.',
     backupExported: (n) => `Backup exported! ${n} project(s) exported.`,
     exportBackupError: 'Could not export the backup. Please try again.',

@@ -3,6 +3,8 @@
 import { useTr } from '@/contexts/language-context';
 
 import { notify, confirmDialog } from '@/lib/notify';
+import { CloudSyncBadge, CloudProgressBar, CloudProjectsBrowser } from '@/components/cloud-sync-panels';
+import type { CloudProgress, CloudRestoreResult } from '@/lib/cloud-project-backup';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +25,6 @@ import {
 import type { Project } from '@/lib/storage';
 import {
   listLocalProjectsForCloud,
-  restoreProjectsFromCloud,
   syncSelectedProjectsToCloud,
   countCloudBackups,
   countUnencryptedCloudCopies,
@@ -61,7 +62,6 @@ export default function SettingsPage() {
   // Backup em nuvem (Premium)
   const [cloudBackupEnabled, setCloudBackupEnabled] = useState(false);
   const [cloudBackupRunning, setCloudBackupRunning] = useState(false);
-  const [cloudRestoreRunning, setCloudRestoreRunning] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<string | null>(null);
   const [localCloudProjects, setLocalCloudProjects] = useState<Project[]>([]);
   const [selectedCloudProjectIds, setSelectedCloudProjectIds] = useState<Record<string, boolean>>(
@@ -73,6 +73,7 @@ export default function SettingsPage() {
   const [cloudPassword, setCloudPassword] = useState('');
   const [unencryptedCount, setUnencryptedCount] = useState(0);
   const [cleaningUnencrypted, setCleaningUnencrypted] = useState(false);
+  const [cloudProgress, setCloudProgress] = useState<CloudProgress | null>(null);
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -325,7 +326,7 @@ export default function SettingsPage() {
     try {
       setCloudSyncStatus(null);
       setCloudBackupRunning(true);
-      const res = await syncSelectedProjectsToCloud(user.id, selected, cloudPassword);
+      const res = await syncSelectedProjectsToCloud(user.id, selected, cloudPassword, setCloudProgress);
 
       const parts: string[] = [];
       if (res.uploaded > 0) parts.push(`+${res.uploaded} ${tr('novo(s)', 'new')}`);
@@ -353,22 +354,15 @@ export default function SettingsPage() {
       setCloudSyncStatus(err?.message || tr('Erro ao sincronizar para nuvem.', 'Could not sync to the cloud.'));
     } finally {
       setCloudBackupRunning(false);
+      setCloudProgress(null);
+      // Atualiza os selos da lista
+      setLocalCloudProjects((prev) => [...prev]);
     }
   };
 
-  const handleRestoreProjectsFromCloud = async () => {
-    if (!isPremiumUser) {
-      router.push('/planos');
-      return;
-    }
-    if (!user?.id) {
-      notify.error(t => t.msg.userNotLoaded);
-      return;
-    }
-    try {
-      setCloudSyncStatus(null);
-      setCloudRestoreRunning(true);
-      const res = await restoreProjectsFromCloud(user.id, user.email, cloudPassword);
+  // Chamado pelo painel da nuvem depois de restaurar ou apagar
+  const handleCloudChanged = async (res?: CloudRestoreResult) => {
+    if (res) {
       const parts: string[] = [];
       if (res.restored > 0) parts.push(tr(`${res.restored} projeto(s) restaurado(s).`, `${res.restored} project(s) restored.`));
       if (res.alreadyExisted > 0) parts.push(tr(`${res.alreadyExisted} atualizado(s) com a versão mais nova da nuvem.`, `${res.alreadyExisted} updated with the newer cloud version.`));
@@ -379,19 +373,16 @@ export default function SettingsPage() {
         parts.push(tr(`${res.failures.length} não restaurado(s): ${names}.`, `${res.failures.length} not restored: ${names}.`));
         notify.error(res.failures[0].error);
       }
-      if (parts.length === 0) parts.push(tr('Nenhum projeto encontrado na nuvem.', 'No projects found in the cloud.'));
+      if (parts.length === 0) parts.push(tr('Nada a restaurar.', 'Nothing to restore.'));
       setCloudSyncStatus(parts.join(' '));
-
-      const refreshed = await listLocalProjectsForCloud();
-      setLocalCloudProjects(
-        (refreshed || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-      );
-    } catch (err: any) {
-      console.error('Erro ao restaurar da nuvem:', err);
-      if (err instanceof CloudPasswordError) notify.error(err.message);
-      setCloudSyncStatus(err?.message || tr('Erro ao restaurar da nuvem.', 'Could not restore from the cloud.'));
-    } finally {
-      setCloudRestoreRunning(false);
+    }
+    const refreshed = await listLocalProjectsForCloud();
+    setLocalCloudProjects(
+      (refreshed || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    );
+    if (user?.id) {
+      countCloudBackups(user.id).then(setCloudBackupCount).catch(() => {});
+      countUnencryptedCloudCopies(user.id).then(setUnencryptedCount).catch(() => {});
     }
   };
 
@@ -1081,31 +1072,16 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Restaurar da nuvem — SEMPRE visível para Premium */}
-              <div
-                className="rounded-lg border p-3"
-                style={{
-                  backgroundColor: 'rgba(2, 6, 23, 0.45)',
-                  borderColor: 'rgba(0, 168, 143, 0.2)',
-                }}
-              >
-                <p className="text-xs mb-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                  {tr('Usar em outro dispositivo? Restaure os projetos salvos na nuvem para este aparelho.', 'Using another device? Restore your cloud projects to this device.')}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleRestoreProjectsFromCloud}
-                  disabled={cloudRestoreRunning}
-                  className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: 'rgba(232, 220, 192, 0.1)',
-                    color: '#E8DCC0',
-                    border: '1px solid rgba(232, 220, 192, 0.2)',
-                  }}
-                >
-                  {cloudRestoreRunning ? tr('Restaurando...', 'Restoring...') : tr('Restaurar projetos da nuvem', 'Restore projects from the cloud')}
-                </button>
-              </div>
+              {/* Projetos na nuvem: restaurar os escolhidos ou apagar — SEMPRE visível para Premium */}
+              {user?.id && (
+                <CloudProjectsBrowser
+                  userId={user.id}
+                  ownerEmail={user.email}
+                  password={cloudPassword}
+                  localProjects={localCloudProjects}
+                  onChanged={handleCloudChanged}
+                />
+              )}
 
               {cloudBackupEnabled && (
                 <>
@@ -1185,6 +1161,9 @@ export default function SettingsPage() {
                                   ? formatLocalDate(p.date)
                                   : new Date(p.createdAt).toLocaleDateString(tr('pt-BR', 'en-US'))}
                               </div>
+                              <div className="mt-1">
+                                <CloudSyncBadge project={p} />
+                              </div>
                             </div>
                             <input
                               type="checkbox"
@@ -1209,6 +1188,7 @@ export default function SettingsPage() {
                   >
                     {cloudBackupRunning ? tr('Sincronizando...', 'Syncing...') : tr('Enviar para a nuvem', 'Send to the cloud')}
                   </button>
+                  <CloudProgressBar progress={cloudProgress} label={tr('Enviando fotos', 'Uploading photos')} />
                 </>
               )}
 
