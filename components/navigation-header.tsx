@@ -1,5 +1,7 @@
 'use client';
 
+import { notify } from '@/lib/notify';
+
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Home, LogOut, Settings } from 'lucide-react';
@@ -47,7 +49,7 @@ export function NavigationHeader() {
       router.push('/');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
-      alert(t.common.logoutError);
+      notify.error(t.common.logoutError);
     }
   };
 

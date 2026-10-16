@@ -51,8 +51,15 @@ export interface Measurement {
   endY: number; // Coordenada Y final (em pixels)
   length?: number; // Comprimento em pixels (calculado)
   label?: string; // Rótulo opcional para a medida
-  unit?: string; // Unidade de medida (cm, mm, etc.)
-  scale?: number; // Escala de conversão (pixels por unidade)
+  unit?: string; // Unidade de medida (cm, mm, etc.) — legado
+  scale?: number; // Escala de conversão (pixels por unidade) — legado
+  // 'normalized' = coordenadas de 0 a 1 em relação à largura/altura da foto
+  // (independe do tamanho da tela e sobrevive à recompressão do backup na nuvem).
+  // Ausente = medida antiga, salva em pixels da tela.
+  coordSpace?: 'normalized';
+  // Linha de calibração: um objeto de tamanho conhecido na foto (ex.: régua de papel)
+  isCalibration?: boolean;
+  calibrationCm?: number; // Tamanho real da linha de calibração, em cm
 }
 
 // Marco de evolução do tratamento (Revela Premium)
@@ -77,6 +84,9 @@ export interface Project {
   // Imagens de evolução ao longo do tempo (Premium)
   evolutionImages?: EvolutionImage[];
   createdAt: string;
+  // Última alteração (ISO). Usado pela nuvem para não sobrescrever uma versão mais nova.
+  // Projetos antigos não têm; nesse caso vale createdAt.
+  updatedAt?: string;
   ownerEmail?: string; // Email do usuário que criou o projeto (escopo por conta)
 }
 
@@ -88,12 +98,7 @@ export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
     // Criar backup automático após salvar (se habilitado)
     const createAutoBackupAfterSave = () => {
       if (isAutoBackupEnabled()) {
-        exportBackup().then(backup => {
-          setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
-          setLocalStorageItem('revela_backup_date', new Date().toISOString());
-        }).catch(error => {
-          console.warn('Erro ao criar backup automático após salvar:', error);
-        });
+        void runAutoBackup();
       }
     };
 
@@ -429,7 +434,8 @@ export const deleteProjectFromIndexedDB = async (id: string): Promise<void> => {
 };
 
 // Função para salvar projeto (tenta IndexedDB primeiro, depois localStorage)
-export const saveProject = async (project: Project): Promise<void> => {
+export const saveProject = async (input: Project): Promise<void> => {
+  const project: Project = { ...input, updatedAt: new Date().toISOString() };
   try {
     // Tentar IndexedDB primeiro
     await saveProjectToIndexedDB(project);
@@ -527,12 +533,7 @@ export const updateProjectInIndexedDB = (project: Project): Promise<void> => {
         
         // Criar backup automático
         if (isAutoBackupEnabled()) {
-          exportBackup().then(backup => {
-            setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
-            setLocalStorageItem('revela_backup_date', new Date().toISOString());
-          }).catch(error => {
-            console.warn('Erro ao criar backup automático após atualizar:', error);
-          });
+          void runAutoBackup();
         }
         
         resolve();
@@ -553,7 +554,8 @@ export const updateProjectInIndexedDB = (project: Project): Promise<void> => {
 };
 
 // Função para atualizar projeto (tenta IndexedDB primeiro, depois localStorage)
-export const updateProject = async (project: Project): Promise<void> => {
+export const updateProject = async (input: Project): Promise<void> => {
+  const project: Project = { ...input, updatedAt: new Date().toISOString() };
   try {
     // Tentar IndexedDB primeiro
     await updateProjectInIndexedDB(project);
@@ -715,20 +717,39 @@ export const importBackup = async (backupData: BackupData): Promise<{ success: n
 };
 
 // Backup automático (salva no localStorage como fallback)
-export const enableAutoBackup = (): void => {
-  if (typeof window === 'undefined') return;
+export const enableAutoBackup = async (): Promise<boolean> => {
+  if (typeof window === 'undefined') return false;
   
   // Salvar preferência
   setLocalStorageItem('revela_auto_backup', 'enabled');
   
   // Criar backup inicial
-  exportBackup().then(backup => {
-    setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
-    setLocalStorageItem('revela_backup_date', new Date().toISOString());
-  }).catch(error => {
-    console.error('Erro ao criar backup automático:', error);
-  });
+  return runAutoBackup();
 };
+
+/**
+ * Grava o backup automático no armazenamento do navegador.
+ * Retorna false se não couber (o limite costuma ser ~5 MB, poucas fotos) — antes isso
+ * falhava em silêncio e o app dava o backup como feito.
+ */
+export const runAutoBackup = async (): Promise<boolean> => {
+  try {
+    const backup = await exportBackup();
+    const ok = setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
+    if (ok) {
+      setLocalStorageItem('revela_backup_date', backup.exportDate);
+      try { localStorage.removeItem('revela_backup_failed'); } catch { /* ignore */ }
+      return true;
+    }
+  } catch (error) {
+    console.warn('Erro ao criar backup automático:', error);
+  }
+  setLocalStorageItem('revela_backup_failed', new Date().toISOString());
+  return false;
+};
+
+/** Data da última falha do backup automático (null se o último deu certo). */
+export const getAutoBackupFailure = (): string | null => getLocalStorageItem('revela_backup_failed');
 
 // Desabilitar backup automático
 export const disableAutoBackup = (): void => {

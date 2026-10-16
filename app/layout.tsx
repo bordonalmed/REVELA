@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { LanguageProvider } from "@/contexts/language-context";
+import { Notifier } from "@/components/notifier";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { ConversionPixels } from "@/components/conversion-pixels";
 
@@ -115,6 +116,7 @@ export default function RootLayout({
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
+          <Notifier />
           <ServiceWorkerRegistration />
           {process.env.NODE_ENV === 'production' && <PWAInstallPrompt />}
         </LanguageProvider>

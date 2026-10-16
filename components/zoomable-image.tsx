@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
@@ -11,6 +13,7 @@ interface ZoomableImageProps {
 }
 
 export function ZoomableImage({ src, alt, className = '', style = {} }: ZoomableImageProps) {
+  const tr = useTr();
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -289,8 +292,8 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
             onClick={handleReset}
             className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-all"
             style={{ color: '#FFFFFF' }}
-            title="Resetar zoom"
-            aria-label="Resetar zoom"
+            title={tr('Resetar zoom', 'Reset zoom')}
+            aria-label={tr('Resetar zoom', 'Reset zoom')}
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -303,8 +306,8 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
           disabled={scale >= maxScale}
           className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ color: '#FFFFFF' }}
-          title="Zoom in (+)"
-          aria-label="Aumentar zoom"
+          title={tr('Zoom in (+)', 'Zoom in (+)')}
+          aria-label={tr('Aumentar zoom', 'Zoom in')}
         >
           <ZoomIn className="w-4 h-4" />
         </button>
@@ -313,8 +316,8 @@ export function ZoomableImage({ src, alt, className = '', style = {} }: Zoomable
           disabled={scale <= minScale}
           className="p-2 rounded-lg bg-black/50 hover:bg-black/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ color: '#FFFFFF' }}
-          title="Zoom out (-)"
-          aria-label="Diminuir zoom"
+          title={tr('Zoom out (-)', 'Zoom out (-)')}
+          aria-label={tr('Diminuir zoom', 'Zoom out')}
         >
           <ZoomOut className="w-4 h-4" />
         </button>

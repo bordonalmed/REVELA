@@ -1,5 +1,9 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
+import { notify } from '@/lib/notify';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Instagram, Download, Loader2 } from 'lucide-react';
@@ -29,6 +33,7 @@ export function SocialMediaExportModal({
   hasExportAccess,
   isProUser = false,
 }: SocialMediaExportModalProps) {
+  const tr = useTr();
   const router = useRouter();
   const [selectedFormat, setSelectedFormat] = useState<SocialMediaFormat>('instagram-feed-1x1');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -91,7 +96,7 @@ export function SocialMediaExportModal({
       }, 500);
     } catch (error: any) {
       console.error('Erro ao exportar:', error);
-      alert(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      notify.error(t => error.message || t.msg.exportImageError);
       setExporting(false);
     }
   };
@@ -121,14 +126,14 @@ export function SocialMediaExportModal({
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <Instagram className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: '#E8DCC0' }} />
             <h2 className="text-base sm:text-xl md:text-2xl font-medium truncate" style={{ color: '#E8DCC0' }}>
-              Publicar nas Redes Sociais
+              {tr('Publicar nas Redes Sociais', 'Publish to Social Media')}
             </h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg transition-colors hover:bg-white/10 flex-shrink-0"
             style={{ color: '#E8DCC0' }}
-            aria-label="Fechar"
+            aria-label={tr('Fechar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -140,7 +145,7 @@ export function SocialMediaExportModal({
             {/* Seleção de Formato */}
             <div className="space-y-3 sm:space-y-4 order-2 lg:order-1">
               <h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4" style={{ color: '#E8DCC0' }}>
-                Escolha o formato:
+                {tr('Escolha o formato:', 'Choose the format:')}
               </h3>
               
               <div className="space-y-2">
@@ -189,8 +194,8 @@ export function SocialMediaExportModal({
                     disabled={!canExport}
                   />
                   <span className="text-sm sm:text-base" style={{ color: '#E8DCC0' }}>
-                    Incluir marca d&apos;água
-                    {!canExport && ' (obrigatório no plano Free)'}
+                    {tr('Incluir marca d’água', 'Include watermark')}
+                    {!canExport && tr(' (obrigatório no plano Free)', ' (required on the Free plan)')}
                   </span>
                 </label>
               </div>
@@ -198,7 +203,8 @@ export function SocialMediaExportModal({
               {selectedFormatInfo?.layout === 'separate' && (
                 <div className="mt-3 p-2 sm:p-3 rounded-lg" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <p className="text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.9 }}>
-                    <strong>Nota:</strong> Este formato gerará duas imagens separadas (uma para ANTES e outra para DEPOIS), ideais para Stories consecutivos.
+                    <strong>{tr('Nota:', 'Note:')}</strong>{' '}
+                    {tr('Este formato gerará duas imagens separadas (uma para ANTES e outra para DEPOIS), ideais para Stories consecutivos.', 'This format generates two separate images (one BEFORE and one AFTER), ideal for consecutive Stories.')}
                   </p>
                 </div>
               )}
@@ -233,13 +239,13 @@ export function SocialMediaExportModal({
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <p style={{ color: '#E8DCC0', opacity: 0.5 }}>Carregando preview...</p>
+                    <p style={{ color: '#E8DCC0', opacity: 0.5 }}>{tr('Carregando preview...', 'Loading preview...')}</p>
                   </div>
                 )}
               </div>
 
               <div className="text-xs opacity-60" style={{ color: '#E8DCC0' }}>
-                * Preview aproximado. A imagem final terá qualidade máxima.
+                {tr('* Preview aproximado. A imagem final terá qualidade máxima.', '* Approximate preview. The final image will be full quality.')}
               </div>
             </div>
           </div>
@@ -250,7 +256,7 @@ export function SocialMediaExportModal({
           {!canExport && (
             <div className="flex items-center gap-2">
               <p className="text-[11px] sm:text-xs" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                Para gerar a arte final e baixar a imagem, faça upgrade para os planos Revela Pro ou Revela Premium.
+                {tr('Para gerar a arte final e baixar a imagem, faça upgrade para os planos Revela Pro ou Revela Premium.', 'To generate the final artwork and download the image, upgrade to Revela Pro or Revela Premium.')}
               </p>
               <button
                 type="button"
@@ -261,7 +267,7 @@ export function SocialMediaExportModal({
                   color: '#E8DCC0',
                 }}
               >
-                Ver planos
+                {tr('Ver planos', 'View plans')}
               </button>
             </div>
           )}
@@ -274,7 +280,7 @@ export function SocialMediaExportModal({
                 color: '#E8DCC0',
               }}
             >
-              Cancelar
+              {tr('Cancelar', 'Cancel')}
             </button>
             <button
               onClick={handleExport}
@@ -288,12 +294,12 @@ export function SocialMediaExportModal({
               {exporting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Gerando...</span>
+                  <span>{tr('Gerando...', 'Generating...')}</span>
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>{canExport ? 'Gerar e Baixar' : 'Ver planos Pro'}</span>
+                  <span>{canExport ? tr('Gerar e Baixar', 'Generate and Download') : tr('Ver planos Pro', 'View Pro plans')}</span>
                 </>
               )}
             </button>

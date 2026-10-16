@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, FileBarChart, Loader2, Sparkles } from 'lucide-react';
@@ -33,6 +35,7 @@ export function PdfReportModal({
   evolutionMode = false,
   evolutionSelection,
 }: PdfReportModalProps) {
+  const tr = useTr();
   const router = useRouter();
   const [reportTitle, setReportTitle] = useState('');
   const [patientName, setPatientName] = useState('');
@@ -67,7 +70,7 @@ export function PdfReportModal({
 
   useEffect(() => {
     if (!isOpen || !project) return;
-    setReportTitle(project.name || 'Relatório de evolução');
+    setReportTitle(project.name || tr('Relatório de evolução', 'Progress report'));
     setPatientName('');
     setDateStart(project.date ? formatDateInput(project.date) : formatDateInput(new Date().toISOString()));
     const evo = (project.evolutionImages || []);
@@ -123,7 +126,7 @@ export function PdfReportModal({
     setGenerating(true);
     try {
       const blob = await generateProjectReportPdf(project, {
-        reportTitle: reportTitle || project.name || 'Relatório',
+        reportTitle: reportTitle || project.name || tr('Relatório', 'Report'),
         patientName: patientName || undefined,
         projectName: project.name,
         dateStart: dateStart || project.date || new Date().toISOString(),
@@ -154,7 +157,7 @@ export function PdfReportModal({
       onClose();
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
-      setError('Não foi possível gerar o PDF. Tente novamente.');
+      setError(tr('Não foi possível gerar o PDF. Tente novamente.', 'Could not generate the PDF. Please try again.'));
     } finally {
       setGenerating(false);
     }
@@ -189,10 +192,10 @@ export function PdfReportModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold" style={{ color: '#f1f5f9' }}>
-                Gerar relatório PDF
+                {tr('Gerar relatório PDF', 'Generate PDF report')}
               </h2>
               <p className="text-xs" style={{ color: '#94a3b8' }}>
-                Relatório clínico visual do paciente/projeto
+                {tr('Relatório clínico visual do paciente/projeto', 'Visual clinical report for the patient/project')}
               </p>
             </div>
           </div>
@@ -201,7 +204,7 @@ export function PdfReportModal({
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
             style={{ color: '#e2e8f0' }}
-            aria-label="Fechar"
+            aria-label={tr('Fechar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -219,7 +222,7 @@ export function PdfReportModal({
               <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: '#facc15' }} />
               <div>
                 <p className="text-sm" style={{ color: '#e2e8f0' }}>
-                  Relatório em PDF é exclusivo do plano <strong>Revela Premium</strong>.
+                  {tr('Relatório em PDF é exclusivo do plano ', 'PDF reports are available on the ')}<strong>Revela Premium</strong>{tr('.', ' plan only.')}
                 </p>
                 <button
                   type="button"
@@ -227,7 +230,7 @@ export function PdfReportModal({
                   className="mt-2 px-3 py-1.5 rounded-md text-sm font-medium"
                   style={{ backgroundColor: '#facc15', color: '#0f172a' }}
                 >
-                  Ver planos Premium
+                  {tr('Ver planos Premium', 'View Premium plans')}
                 </button>
               </div>
             </div>
@@ -237,26 +240,26 @@ export function PdfReportModal({
             <>
               <div className="space-y-2">
                 <label className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                  Título do relatório
+                  {tr('Título do relatório', 'Report title')}
                 </label>
                 <input
                   type="text"
                   value={reportTitle}
                   onChange={(e) => setReportTitle(e.target.value)}
-                  placeholder="Ex.: Relatório de evolução"
+                  placeholder={tr('Ex.: Relatório de evolução', 'e.g. Progress report')}
                   className="w-full px-3 py-2 rounded-lg text-sm bg-slate-800/80 border border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                  Nome do paciente
+                  {tr('Nome do paciente', 'Patient name')}
                 </label>
                 <input
                   type="text"
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="Opcional"
+                  placeholder={tr('Opcional', 'Optional')}
                   className="w-full px-3 py-2 rounded-lg text-sm bg-slate-800/80 border border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
                 />
               </div>
@@ -264,7 +267,7 @@ export function PdfReportModal({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <label className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                    Data inicial
+                    {tr('Data inicial', 'Start date')}
                   </label>
                   <input
                     type="date"
@@ -275,7 +278,7 @@ export function PdfReportModal({
                 </div>
                 <div className="space-y-2">
                   <label className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                    Data final
+                    {tr('Data final', 'End date')}
                   </label>
                   <input
                     type="date"
@@ -288,30 +291,30 @@ export function PdfReportModal({
 
               <div className="space-y-2">
                 <label className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                  Nome da clínica
+                  {tr('Nome da clínica', 'Clinic name')}
                 </label>
                 <input
                   type="text"
                   value={clinicName}
                   onChange={(e) => setClinicName(e.target.value)}
-                  placeholder="Opcional"
+                  placeholder={tr('Opcional', 'Optional')}
                   className="w-full px-3 py-2 rounded-lg text-sm bg-slate-800/80 border border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
                 />
                 {clinicLogo && (
                   <p className="text-[11px]" style={{ color: '#64748b' }}>
-                    O logo salvo nas configurações será usado no cabeçalho do PDF.
+                    {tr('O logo salvo nas configurações será usado no cabeçalho do PDF.', 'The logo saved in settings will be used in the PDF header.')}
                   </p>
                 )}
                 {(clinicAddress || clinicPhone) && (
                   <p className="text-[11px]" style={{ color: '#64748b' }}>
-                    Endereço e telefone serão incluídos automaticamente com os dados da clínica.
+                    {tr('Endereço e telefone serão incluídos automaticamente com os dados da clínica.', 'Address and phone will be included automatically from the clinic details.')}
                   </p>
                 )}
               </div>
 
               <div className="pt-2 space-y-2 border-t" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
                 <span className="block text-xs font-medium" style={{ color: '#94a3b8' }}>
-                  Incluir no relatório
+                  {tr('Incluir no relatório', 'Include in report')}
                 </span>
                 {!evolutionMode && (
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -322,7 +325,7 @@ export function PdfReportModal({
                       className="w-4 h-4 rounded"
                       style={{ accentColor: '#f59e0b' }}
                     />
-                    <span className="text-sm" style={{ color: '#e2e8f0' }}>Comparação antes e depois</span>
+                    <span className="text-sm" style={{ color: '#e2e8f0' }}>{tr('Comparação antes e depois', 'Before and after comparison')}</span>
                   </label>
                 )}
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -333,7 +336,7 @@ export function PdfReportModal({
                     className="w-4 h-4 rounded"
                     style={{ accentColor: '#f59e0b' }}
                   />
-                  <span className="text-sm" style={{ color: '#e2e8f0' }}>Timeline de evolução</span>
+                  <span className="text-sm" style={{ color: '#e2e8f0' }}>{tr('Timeline de evolução', 'Evolution timeline')}</span>
                 </label>
                 {evolutionMode && (
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -345,7 +348,7 @@ export function PdfReportModal({
                       style={{ accentColor: '#f59e0b' }}
                     />
                     <span className="text-sm" style={{ color: '#e2e8f0' }}>
-                      Comparação A/B das revelas selecionadas
+                      {tr('Comparação A/B das revelas selecionadas', 'A/B comparison of the selected Revelas')}
                     </span>
                   </label>
                 )}
@@ -357,7 +360,7 @@ export function PdfReportModal({
                     className="w-4 h-4 rounded"
                     style={{ accentColor: '#f59e0b' }}
                   />
-                  <span className="text-sm" style={{ color: '#e2e8f0' }}>Observações</span>
+                  <span className="text-sm" style={{ color: '#e2e8f0' }}>{tr('Observações', 'Notes')}</span>
                 </label>
               </div>
 
@@ -384,7 +387,7 @@ export function PdfReportModal({
                         borderColor: 'rgba(56, 189, 248, 0.35)',
                       }}
                     >
-                      Para habilitar a <strong>comparação</strong> no PDF, selecione também <strong>Revela B</strong>.
+                      {tr('Para habilitar a ', 'To enable the ')}<strong>{tr('comparação', 'comparison')}</strong>{tr(' no PDF, selecione também ', ' in the PDF, also select ')}<strong>Revela B</strong>.
                     </div>
                   )}
                 </>
@@ -399,7 +402,7 @@ export function PdfReportModal({
                     borderColor: 'rgba(245, 158, 11, 0.35)',
                   }}
                 >
-                  Você marcou Observações, mas este projeto não possui notas salvas.
+                  {tr('Você marcou Observações, mas este projeto não possui notas salvas.', 'You selected Notes, but this project has no saved notes.')}
                 </div>
               )}
 
@@ -425,7 +428,7 @@ export function PdfReportModal({
             className="px-4 py-2 rounded-lg text-sm font-medium"
             style={{ color: '#94a3b8', backgroundColor: 'transparent' }}
           >
-            Cancelar
+            {tr('Cancelar', 'Cancel')}
           </button>
           {isPremiumUser && (
             <button
@@ -438,12 +441,12 @@ export function PdfReportModal({
               {generating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Gerando PDF...
+                  {tr('Gerando PDF...', 'Generating PDF...')}
                 </>
               ) : (
                 <>
                   <FileBarChart className="w-4 h-4" />
-                  Gerar relatório PDF
+                  {tr('Gerar relatório PDF', 'Generate PDF report')}
                 </>
               )}
             </button>

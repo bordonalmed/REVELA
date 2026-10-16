@@ -1,11 +1,16 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
+import { notify, PLANS_ACTION } from '@/lib/notify';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2, Ruler } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
+import { getProjectFromIndexedDB, updateProject, type Project, type Measurement } from '@/lib/storage';
+import { formatLocalDate } from '@/lib/utils';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,7 +24,8 @@ import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
-import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
+import { MeasurementTool } from '@/components/measurement-tool';
+import { remapMeasurements, measurementsAfterImageEdit } from '@/lib/measurements';
 import { 
   trackViewProject, 
   trackUpdateProject, 
@@ -33,6 +39,7 @@ import { usePlan } from '@/hooks/usePlan';
 
 export default function ViewProjectPage() {
   const router = useRouter();
+  const tr = useTr();
   const params = useParams();
   const projectId = params.id as string;
   const searchParams = useSearchParams();
@@ -57,6 +64,8 @@ export default function ViewProjectPage() {
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
+  const [showMeasurementTool, setShowMeasurementTool] = useState(false);
+  const [measuringImageType, setMeasuringImageType] = useState<'before' | 'after'>('before');
   const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
   const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
@@ -78,50 +87,6 @@ export default function ViewProjectPage() {
 
   const { hasProAccess, hasPremiumAccess, canUsePremiumFeature } = usePlan();
 
-  // Sync automática da nuvem Premium (background)
-  const cloudAutoSyncInFlightRef = React.useRef(false);
-  const cloudAutoSyncPendingRef = React.useRef(false);
-
-  const triggerAutoCloudSync = useCallback(async () => {
-    if (!hasPremiumAccess) return;
-    if (!user?.id) return;
-    if (typeof window === 'undefined') return;
-
-    const enabled = window.localStorage.getItem('revela_cloud_backup_enabled') === 'true';
-    if (!enabled) return;
-
-    if (cloudAutoSyncInFlightRef.current) {
-      cloudAutoSyncPendingRef.current = true;
-      return;
-    }
-
-    cloudAutoSyncInFlightRef.current = true;
-    try {
-      const projects = await listLocalProjectsForCloud();
-      if (!projects.length) return;
-
-      const res = await syncSelectedProjectsToCloud(user.id, projects);
-      window.localStorage.setItem(
-        'revela_cloud_last_auto_sync',
-        JSON.stringify({
-          at: new Date().toISOString(),
-          uploaded: res.uploaded,
-          updated: res.updated,
-          skipped: res.skipped,
-          failures: res.failures.length,
-        })
-      );
-    } catch (e) {
-      console.error('Auto cloud sync error:', e);
-    } finally {
-      cloudAutoSyncInFlightRef.current = false;
-      if (cloudAutoSyncPendingRef.current) {
-        cloudAutoSyncPendingRef.current = false;
-        // Rodar mais uma vez para pegar mudanças pendentes.
-        void triggerAutoCloudSync();
-      }
-    }
-  }, [hasPremiumAccess, user?.id]);
 
   // Detectar orientação e calcular dimensões responsivas
   useEffect(() => {
@@ -134,8 +99,15 @@ export default function ViewProjectPage() {
       // Detectar se é tablet (768px - 1023px) ou mobile (< 768px)
       const isTablet = width >= 768 && width < 1024;
       const isMobile = width < 768;
-      
-      const landscape = width > height;
+
+      // "Paisagem" aqui significa especificamente celular/tablet deitado — não
+      // qualquer janela mais larga que alta (isso é praticamente todo desktop).
+      // Sem o filtro de largura + toque, a barra de ferramentas do projeto
+      // (Exportar, PDF, Publicar, Link, Apresentação) ficava escondida sempre
+      // que acessada num computador normal.
+      const isTouchDevice =
+        typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+      const landscape = width > height && width < 1024 && isTouchDevice;
       setIsLandscape(landscape);
 
       const header = document.querySelector('header');
@@ -424,7 +396,7 @@ export default function ViewProjectPage() {
 
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            reject(new Error('Não foi possível criar contexto do canvas'));
+            reject(new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context')));
             return;
           }
 
@@ -474,8 +446,6 @@ export default function ViewProjectPage() {
 
       await updateProject(updatedProject);
       setProject(updatedProject);
-      // Sync automática (Premium) após salvar notas/foto
-      void triggerAutoCloudSync();
       setShowNotesModal(false);
       
       // Trackear salvamento de notas
@@ -483,12 +453,38 @@ export default function ViewProjectPage() {
         trackSaveNotes(updatedProject.id, updatedProject.name, tempNotes.trim().length);
       }
       
-      alert('Notas salvas com sucesso!');
+      notify.success(t => t.msg.notesSaved);
     } catch (error: any) {
       console.error('Erro ao salvar notas:', error);
-      alert('Erro ao salvar notas. Tente novamente.');
+      notify.error(t => t.msg.notesSaveError);
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleOpenMeasurementTool = () => {
+    if (isEditing) {
+      notify.info(t => t.msg.saveBeforeMeasuring);
+      return;
+    }
+    setMeasuringImageType(displayBeforeImages.length > 0 ? 'before' : 'after');
+    setShowMeasurementTool(true);
+  };
+
+  const handleMeasurementsChange = async (newMeasurements: Measurement[]) => {
+    if (!project) return;
+
+    try {
+      const updatedProject: Project = {
+        ...project,
+        measurements: newMeasurements,
+      };
+
+      await updateProject(updatedProject);
+      setProject(updatedProject);
+    } catch (error) {
+      console.error('Erro ao salvar medidas:', error);
+      notify.error(t => t.msg.measurementsSaveError);
     }
   };
 
@@ -496,10 +492,10 @@ export default function ViewProjectPage() {
     // Em Revela Evolução Premium não exibimos a tela fullscreen ANTES/DEPOIS.
     if (project?.evolutionImages?.length) {
       if (!isEvolutionPremiumProject) {
-        alert('O modo Revela Evolução é exclusivo do plano Premium.');
+        notify.info(t => t.msg.evolutionPremiumOnly, PLANS_ACTION);
         return;
       }
-      alert('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      notify.info(t => t.msg.evolutionUseTimeline);
       return;
     }
 
@@ -522,10 +518,10 @@ export default function ViewProjectPage() {
     // Em Revela Evolução Premium não exibimos o slider clássico ANTES/DEPOIS.
     if (project?.evolutionImages?.length) {
       if (!isEvolutionPremiumProject) {
-        alert('O modo Revela Evolução é exclusivo do plano Premium.');
+        notify.info(t => t.msg.evolutionPremiumOnly, PLANS_ACTION);
         return;
       }
-      alert('No modo Revela Evolução, use a timeline para selecionar Revela A/B.');
+      notify.info(t => t.msg.evolutionUseTimeline);
       return;
     }
 
@@ -615,7 +611,7 @@ export default function ViewProjectPage() {
       setEditingBeforeImages(prev => [...prev, ...compressedUrls]);
     } catch (error) {
       console.error('Erro ao processar imagens antes:', error);
-      alert('Não foi possível adicionar algumas imagens. Tente novamente.');
+      notify.error(t => t.msg.addImagesError);
     }
   };
 
@@ -632,7 +628,7 @@ export default function ViewProjectPage() {
       setEditingAfterImages(prev => [...prev, ...compressedUrls]);
     } catch (error) {
       console.error('Erro ao processar imagens depois:', error);
-      alert('Não foi possível adicionar algumas imagens. Tente novamente.');
+      notify.error(t => t.msg.addImagesError);
     }
   };
 
@@ -785,13 +781,15 @@ export default function ViewProjectPage() {
         const updatedProject: Project = {
           ...project,
           beforeImages: newImages,
+          // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
+          measurements: await measurementsAfterImageEdit(
+            project.measurements, 'before', editingImageIndex, project.beforeImages[editingImageIndex], editedImage
+          ),
         };
         
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto
-        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -812,13 +810,15 @@ export default function ViewProjectPage() {
         const updatedProject: Project = {
           ...project,
           afterImages: newImages,
+          // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
+          measurements: await measurementsAfterImageEdit(
+            project.measurements, 'after', editingImageIndex, project.afterImages[editingImageIndex], editedImage
+          ),
         };
         
         // Salvar permanentemente no IndexedDB
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto
-        void triggerAutoCloudSync();
         
         // Trackear edição de imagem
         if (user) {
@@ -841,8 +841,6 @@ export default function ViewProjectPage() {
         };
         await updateProject(updatedProject);
         setProject(updatedProject);
-        // Sync automática (Premium) após editar foto (evolução)
-        void triggerAutoCloudSync();
       }
       
       setShowImageEditor(false);
@@ -851,7 +849,7 @@ export default function ViewProjectPage() {
       setEditingImageType(null);
     } catch (error) {
       console.error('Erro ao salvar foto editada:', error);
-      alert('Erro ao salvar foto editada. Tente novamente.');
+      notify.error(t => t.msg.editedPhotoSaveError);
     }
   };
 
@@ -864,7 +862,7 @@ export default function ViewProjectPage() {
 
   const handleExportImage = async () => {
     if (!project || displayBeforeImages.length === 0 || displayAfterImages.length === 0) {
-      alert('É necessário ter pelo menos uma imagem antes e uma depois para exportar.');
+      notify.info(t => t.msg.exportNeedsBothImages);
       return;
     }
 
@@ -899,7 +897,7 @@ export default function ViewProjectPage() {
       }, 500);
     } catch (error: any) {
       console.error('Erro ao exportar imagem:', error);
-      alert(error.message || 'Erro ao exportar imagem. Tente novamente.');
+      notify.error(t => error.message || t.msg.exportImageError);
       setExporting(false);
     }
   };
@@ -941,12 +939,16 @@ export default function ViewProjectPage() {
         beforeImages: beforeToSave,
         afterImages: afterToSave,
         notes: editingNotes.trim() || undefined,
+        // Medidas acompanham a foto quando ela é reordenada; fotos excluídas levam suas medidas junto
+        measurements: remapMeasurements(
+          project.measurements,
+          { before: project.beforeImages, after: project.afterImages },
+          { before: beforeToSave, after: afterToSave }
+        ),
       };
 
       await updateProject(updatedProject);
       setProject(updatedProject);
-      // Sync automática (Premium) após atualizar projeto
-      void triggerAutoCloudSync();
       setIsEditing(false);
       setNewBeforeFiles([]);
       setNewAfterFiles([]);
@@ -961,10 +963,10 @@ export default function ViewProjectPage() {
         });
       }
       
-      alert('Projeto atualizado com sucesso!');
+      notify.success(t => t.msg.projectUpdated);
     } catch (error: any) {
       console.error('Erro ao salvar edição:', error);
-      alert(error.message || 'Erro ao salvar alterações. Tente novamente.');
+      notify.error(t => error.message || t.msg.saveChangesError);
     } finally {
       setSaving(false);
     }
@@ -981,7 +983,7 @@ export default function ViewProjectPage() {
             className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
             style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
           ></div>
-          <p style={{ color: '#E8DCC0' }}>Carregando...</p>
+          <p style={{ color: '#E8DCC0' }}>{tr('Carregando...', 'Loading...')}</p>
         </div>
       </div>
     );
@@ -994,13 +996,13 @@ export default function ViewProjectPage() {
         style={{ backgroundColor: '#1A2B32' }}
       >
         <div className="text-center">
-          <p style={{ color: '#E8DCC0' }}>Projeto não encontrado</p>
+          <p style={{ color: '#E8DCC0' }}>{tr('Projeto não encontrado', 'Project not found')}</p>
           <Link href="/projects">
             <button
               className="mt-4 px-6 py-3 rounded-lg text-sm sm:text-base font-medium"
               style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
             >
-              Voltar para Projetos
+              {tr('Voltar para Projetos', 'Back to Projects')}
             </button>
           </Link>
         </div>
@@ -1027,7 +1029,7 @@ export default function ViewProjectPage() {
             onClick={handleExitPresentationMode}
             className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100"
             style={{ color: '#FFFFFF' }}
-            title="Sair (ESC)"
+            title={tr('Sair (ESC)', 'Exit (ESC)')}
           >
             <X className="w-6 h-6" />
           </button>
@@ -1039,7 +1041,7 @@ export default function ViewProjectPage() {
                 onClick={prevBeforeImage}
                 className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
                 style={{ color: '#FFFFFF' }}
-                title="Anterior ANTES (←)"
+                title={tr('Anterior ANTES (←)', 'Previous BEFORE (←)')}
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -1049,7 +1051,7 @@ export default function ViewProjectPage() {
                 onClick={nextBeforeImage}
                 className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
                 style={{ color: '#FFFFFF' }}
-                title="Próximo ANTES (→)"
+                title={tr('Próximo ANTES (→)', 'Next BEFORE (→)')}
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
@@ -1063,7 +1065,7 @@ export default function ViewProjectPage() {
                 onClick={prevAfterImage}
                 className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
                 style={{ color: '#FFFFFF' }}
-                title="Anterior DEPOIS (Shift + ←)"
+                title={tr('Anterior DEPOIS (Shift + ←)', 'Previous AFTER (Shift + ←)')}
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -1073,7 +1075,7 @@ export default function ViewProjectPage() {
                 onClick={nextAfterImage}
                 className="p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all"
                 style={{ color: '#FFFFFF' }}
-                title="Próximo DEPOIS (Shift + →)"
+                title={tr('Próximo DEPOIS (Shift + →)', 'Next AFTER (Shift + →)')}
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
@@ -1086,7 +1088,7 @@ export default function ViewProjectPage() {
             <div className="flex-1 h-full flex items-center justify-center relative">
               <ZoomableImage
                 src={displayBeforeImages[beforeCurrentIndex]}
-                alt={`Antes ${beforeCurrentIndex + 1}`}
+                alt={`${tr('Antes', 'Before')} ${beforeCurrentIndex + 1}`}
                 className="w-full h-full"
                 style={{ maxWidth: '100%', maxHeight: '100%' }}
               />
@@ -1105,7 +1107,7 @@ export default function ViewProjectPage() {
             <div className="flex-1 h-full flex items-center justify-center relative">
               <ZoomableImage
                 src={displayAfterImages[afterCurrentIndex]}
-                alt={`Depois ${afterCurrentIndex + 1}`}
+                alt={`${tr('Depois', 'After')} ${afterCurrentIndex + 1}`}
                 className="w-full h-full"
                 style={{ maxWidth: '100%', maxHeight: '100%' }}
               />
@@ -1123,7 +1125,7 @@ export default function ViewProjectPage() {
             className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
             style={{ color: '#FFFFFF' }}
           >
-            <div>← → ANTES | Shift+← → DEPOIS | ESC Sair | F Fullscreen</div>
+            <div>{tr('← → ANTES | Shift+← → DEPOIS | ESC Sair | F Fullscreen', '← → BEFORE | Shift+← → AFTER | ESC Exit | F Fullscreen')}</div>
           </div>
         </div>
       </div>
@@ -1157,8 +1159,8 @@ export default function ViewProjectPage() {
                 }}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
                 style={{ color: '#E8DCC0' }}
-                title="Fechar"
-                aria-label="Fechar"
+                title={tr('Fechar', 'Close')}
+                aria-label={tr('Fechar', 'Close')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1171,10 +1173,10 @@ export default function ViewProjectPage() {
                   color: '#E8DCC0', 
                   borderColor: 'rgba(232, 220, 192, 0.1)' 
                 }}
-                title="Voltar para página anterior"
+                title={tr('Voltar para página anterior', 'Back to previous page')}
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Voltar</span>
+                <span>{tr('Voltar', 'Back')}</span>
               </button>
             )}
           </div>
@@ -1190,8 +1192,8 @@ export default function ViewProjectPage() {
                 }}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
                 style={{ color: '#E8DCC0' }}
-                title="Fechar"
-                aria-label="Fechar"
+                title={tr('Fechar', 'Close')}
+                aria-label={tr('Fechar', 'Close')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1204,10 +1206,10 @@ export default function ViewProjectPage() {
                   color: '#E8DCC0', 
                   borderColor: 'rgba(232, 220, 192, 0.1)' 
                 }}
-                title="Voltar para página anterior"
+                title={tr('Voltar para página anterior', 'Back to previous page')}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Voltar</span>
+                <span>{tr('Voltar', 'Back')}</span>
               </button>
             )}
           </div>
@@ -1234,7 +1236,7 @@ export default function ViewProjectPage() {
                   className="text-[10px] sm:text-base" 
                   style={{ color: '#E8DCC0', opacity: 0.8 }}
                 >
-                  Data: {new Date(project.date).toLocaleDateString('pt-BR')}
+                  {tr('Data', 'Date')}: {formatLocalDate(project.date)}
                 </p>
                 {!isEditing && project.notes && (
                   <div 
@@ -1248,7 +1250,7 @@ export default function ViewProjectPage() {
                       className="text-xs font-medium mb-1" 
                       style={{ color: '#E8DCC0', opacity: 0.9 }}
                     >
-                      Notas / Observações:
+                      {tr('Notas / Observações:', 'Notes:')}
                     </p>
                     <p 
                       className="text-xs sm:text-sm whitespace-pre-wrap" 
@@ -1259,8 +1261,10 @@ export default function ViewProjectPage() {
                   </div>
                 )}
               </div>
+              {/* Barra de botões inline escondida a pedido: as mesmas ações já ficam
+                  disponíveis no menu "☰" (showMobileMenu/showDesktopMenu mais abaixo). */}
               {!isEditing ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="hidden flex-wrap gap-2">
                   {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
                     <>
                       <button
@@ -1272,10 +1276,10 @@ export default function ViewProjectPage() {
                           color: '#E8DCC0', 
                           borderColor: 'rgba(232, 220, 192, 0.1)' 
                         }}
-                        title="Exportar comparação atual como imagem"
+                        title={tr('Exportar comparação atual como imagem', 'Export current comparison as image')}
                       >
                         <ImageIcon className="w-4 h-4" />
-                        {exporting ? 'Exportando...' : 'Exportar'}
+                        {exporting ? tr('Exportando...', 'Exporting...') : tr('Exportar', 'Export')}
                       </button>
                       <button
                         onClick={() => setShowPdfReportModal(true)}
@@ -1285,7 +1289,7 @@ export default function ViewProjectPage() {
                           color: '#E8DCC0',
                           borderColor: 'rgba(232, 220, 192, 0.1)'
                         }}
-                        title="Gerar relatório PDF"
+                        title={tr('Gerar relatório PDF', 'Generate PDF report')}
                       >
                         <Download className="w-4 h-4" />
                         <span className="hidden sm:inline">PDF</span>
@@ -1298,10 +1302,10 @@ export default function ViewProjectPage() {
                           color: '#E8DCC0',
                           borderColor: 'rgba(232, 220, 192, 0.1)',
                         }}
-                        title="Publicar nas redes sociais"
+                        title={tr('Publicar nas redes sociais', 'Publish to social media')}
                       >
                         <Share2 className="w-4 h-4" />
-                        Publicar
+                        {tr('Publicar', 'Publish')}
                       </button>
                       <button
                         onClick={handleEnterPresentationMode}
@@ -1311,10 +1315,10 @@ export default function ViewProjectPage() {
                           color: '#E8DCC0', 
                           borderColor: 'rgba(232, 220, 192, 0.1)' 
                         }}
-                        title="Modo Apresentação (F11 ou F para fullscreen)"
+                        title={tr('Modo Apresentação (F11 ou F para fullscreen)', 'Presentation Mode (F11 or F for fullscreen)')}
                       >
                         <Maximize2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Apresentação</span>
+                        <span className="hidden sm:inline">{tr('Apresentação', 'Presentation')}</span>
                       </button>
                       <button
                         onClick={handleToggleSliderMode}
@@ -1331,10 +1335,23 @@ export default function ViewProjectPage() {
                             : 'rgba(232, 220, 192, 0.1)',
                           ...(isSliderMode && { boxShadow: '0 0 0 2px #00A88F' })
                         }}
-                        title="Modo Comparação com Slider"
+                        title={tr('Modo Comparação com Slider', 'Slider Comparison Mode')}
                       >
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="hidden sm:inline">Slider</span>
+                      </button>
+                      <button
+                        onClick={handleOpenMeasurementTool}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                        style={{
+                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
+                          color: '#E8DCC0',
+                          borderColor: 'rgba(232, 220, 192, 0.1)'
+                        }}
+                        title={tr('Medir distâncias na imagem', 'Measure distances on the image')}
+                      >
+                        <Ruler className="w-4 h-4" />
+                        <span className="hidden sm:inline">{tr('Medir', 'Measure')}</span>
                       </button>
                     </>
                   )}
@@ -1346,10 +1363,10 @@ export default function ViewProjectPage() {
                       color: '#E8DCC0', 
                       borderColor: 'rgba(232, 220, 192, 0.1)' 
                     }}
-                    title="Ver/Editar anotações do projeto"
+                    title={tr('Ver/Editar anotações do projeto', 'View/Edit project notes')}
                   >
                     <FileText className="w-4 h-4" />
-                    <span className="hidden sm:inline">Notas</span>
+                    <span className="hidden sm:inline">{tr('Notas', 'Notes')}</span>
                     {project.notes && (
                       <span 
                         className="ml-1 px-1.5 py-0.5 rounded-full text-xs"
@@ -1372,7 +1389,7 @@ export default function ViewProjectPage() {
                   }}
                 >
                   <Edit2 className="w-4 h-4" />
-                  Editar
+                  {tr('Editar', 'Edit')}
                 </button>
                 </div>
               ) : (
@@ -1388,7 +1405,7 @@ export default function ViewProjectPage() {
                     }}
                   >
                     <X className="w-4 h-4" />
-                    Cancelar
+                    {tr('Cancelar', 'Cancel')}
                   </button>
                   <button
                     onClick={handleSaveEdit}
@@ -1397,7 +1414,7 @@ export default function ViewProjectPage() {
                     style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
                   >
                     <Save className="w-4 h-4" />
-                    {saving ? 'Salvando...' : 'Salvar alterações'}
+                    {saving ? tr('Salvando...', 'Saving...') : tr('Salvar alterações', 'Save changes')}
                   </button>
                 </div>
               )}
@@ -1418,14 +1435,14 @@ export default function ViewProjectPage() {
               className="text-lg sm:text-xl font-light mb-4" 
               style={{ color: '#E8DCC0' }}
             >
-              Editar Fotos
+              {tr('Editar Fotos', 'Edit Photos')}
             </h2>
             
             <div className="grid sm:grid-cols-2 gap-4">
               {/* Upload Fotos Antes */}
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#E8DCC0' }}>
-                  Adicionar Fotos Antes
+                  {tr('Adicionar Fotos Antes', 'Add Before Photos')}
                 </label>
                 <input
                   ref={beforeInputRef}
@@ -1445,12 +1462,12 @@ export default function ViewProjectPage() {
                   }}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Adicionar fotos</span>
+                  <span>{tr('Adicionar fotos', 'Add photos')}</span>
                 </label>
                 {displayBeforeImages.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                      {displayBeforeImages.length} foto(s) antes
+                      {displayBeforeImages.length} {tr('foto(s) antes', 'before photo(s)')}
                     </p>
                     <div className="flex flex-wrap gap-2 pb-6">
                       {displayBeforeImages.map((img, index) => (
@@ -1468,11 +1485,11 @@ export default function ViewProjectPage() {
                             onDragOver={(e) => isEditing && handleBeforeDragOver(e, index)}
                             onDragEnd={handleBeforeDragEnd}
                             className={isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
-                            title={isEditing ? 'Arrastar para reordenar' : undefined}
+                            title={isEditing ? tr('Arrastar para reordenar', 'Drag to reorder') : undefined}
                           >
                             <SafeBase64Image
                               src={img}
-                              alt={`Antes ${index + 1}`}
+                              alt={`${tr('Antes', 'Before')} ${index + 1}`}
                               className="w-16 h-16 object-cover rounded-lg pointer-events-none select-none"
                             />
                           </div>
@@ -1484,8 +1501,8 @@ export default function ViewProjectPage() {
                                 onClick={() => moveEditingBeforeImage(index, -1)}
                                 className="p-0.5 rounded disabled:opacity-30"
                                 style={{ color: '#E8DCC0' }}
-                                title="Mover para trás"
-                                aria-label={`Mover foto antes ${index + 1} para trás`}
+                                title={tr('Mover para trás', 'Move back')}
+                                aria-label={tr(`Mover foto antes ${index + 1} para trás`, `Move before photo ${index + 1} back`)}
                               >
                                 <ChevronLeft className="w-4 h-4" />
                               </button>
@@ -1495,8 +1512,8 @@ export default function ViewProjectPage() {
                                 onClick={() => moveEditingBeforeImage(index, 1)}
                                 className="p-0.5 rounded disabled:opacity-30"
                                 style={{ color: '#E8DCC0' }}
-                                title="Mover para frente"
-                                aria-label={`Mover foto antes ${index + 1} para frente`}
+                                title={tr('Mover para frente', 'Move forward')}
+                                aria-label={tr(`Mover foto antes ${index + 1} para frente`, `Move before photo ${index + 1} forward`)}
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
@@ -1507,7 +1524,7 @@ export default function ViewProjectPage() {
                               onClick={() => handleEditImage('before', index)}
                               className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#00A88F' }}
-                              title="Editar imagem"
+                              title={tr('Editar imagem', 'Edit image')}
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
@@ -1515,7 +1532,7 @@ export default function ViewProjectPage() {
                               onClick={() => handleRemoveBeforeImage(index)}
                               className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#ef4444' }}
-                              title="Remover imagem"
+                              title={tr('Remover imagem', 'Remove image')}
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1534,7 +1551,7 @@ export default function ViewProjectPage() {
                     </div>
                     {isEditing && displayBeforeImages.length > 1 && (
                       <p className="text-[10px] mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        Arraste ou use as setas ao passar o mouse para reordenar
+                        {tr('Arraste ou use as setas ao passar o mouse para reordenar', 'Drag, or hover and use the arrows, to reorder')}
                       </p>
                     )}
                   </div>
@@ -1544,7 +1561,7 @@ export default function ViewProjectPage() {
               {/* Upload Fotos Depois */}
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#E8DCC0' }}>
-                  Adicionar Fotos Depois
+                  {tr('Adicionar Fotos Depois', 'Add After Photos')}
                 </label>
                 <input
                   ref={afterInputRef}
@@ -1564,12 +1581,12 @@ export default function ViewProjectPage() {
                   }}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Adicionar fotos</span>
+                  <span>{tr('Adicionar fotos', 'Add photos')}</span>
                 </label>
                 {displayAfterImages.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs mb-2" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                      {displayAfterImages.length} foto(s) depois
+                      {displayAfterImages.length} {tr('foto(s) depois', 'after photo(s)')}
                     </p>
                     <div className="flex flex-wrap gap-2 pb-6">
                       {displayAfterImages.map((img, index) => (
@@ -1587,11 +1604,11 @@ export default function ViewProjectPage() {
                             onDragOver={(e) => isEditing && handleAfterDragOver(e, index)}
                             onDragEnd={handleAfterDragEnd}
                             className={isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
-                            title={isEditing ? 'Arrastar para reordenar' : undefined}
+                            title={isEditing ? tr('Arrastar para reordenar', 'Drag to reorder') : undefined}
                           >
                             <SafeBase64Image
                               src={img}
-                              alt={`Depois ${index + 1}`}
+                              alt={`${tr('Depois', 'After')} ${index + 1}`}
                               className="w-16 h-16 object-cover rounded-lg pointer-events-none select-none"
                             />
                           </div>
@@ -1603,8 +1620,8 @@ export default function ViewProjectPage() {
                                 onClick={() => moveEditingAfterImage(index, -1)}
                                 className="p-0.5 rounded disabled:opacity-30"
                                 style={{ color: '#E8DCC0' }}
-                                title="Mover para trás"
-                                aria-label={`Mover foto depois ${index + 1} para trás`}
+                                title={tr('Mover para trás', 'Move back')}
+                                aria-label={tr(`Mover foto depois ${index + 1} para trás`, `Move after photo ${index + 1} back`)}
                               >
                                 <ChevronLeft className="w-4 h-4" />
                               </button>
@@ -1614,8 +1631,8 @@ export default function ViewProjectPage() {
                                 onClick={() => moveEditingAfterImage(index, 1)}
                                 className="p-0.5 rounded disabled:opacity-30"
                                 style={{ color: '#E8DCC0' }}
-                                title="Mover para frente"
-                                aria-label={`Mover foto depois ${index + 1} para frente`}
+                                title={tr('Mover para frente', 'Move forward')}
+                                aria-label={tr(`Mover foto depois ${index + 1} para frente`, `Move after photo ${index + 1} forward`)}
                               >
                                 <ChevronRight className="w-4 h-4" />
                               </button>
@@ -1626,7 +1643,7 @@ export default function ViewProjectPage() {
                               onClick={() => handleEditImage('after', index)}
                               className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#00A88F' }}
-                              title="Editar imagem"
+                              title={tr('Editar imagem', 'Edit image')}
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
@@ -1634,7 +1651,7 @@ export default function ViewProjectPage() {
                               onClick={() => handleRemoveAfterImage(index)}
                               className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#ef4444' }}
-                              title="Remover imagem"
+                              title={tr('Remover imagem', 'Remove image')}
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -1653,7 +1670,7 @@ export default function ViewProjectPage() {
                     </div>
                     {isEditing && displayAfterImages.length > 1 && (
                       <p className="text-[10px] mt-2" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        Arraste ou use as setas ao passar o mouse para reordenar
+                        {tr('Arraste ou use as setas ao passar o mouse para reordenar', 'Drag, or hover and use the arrows, to reorder')}
                       </p>
                     )}
                   </div>
@@ -1668,13 +1685,13 @@ export default function ViewProjectPage() {
                 className="block text-sm font-medium mb-2"
                 style={{ color: '#E8DCC0' }}
               >
-                Notas / Observações <span className="text-xs opacity-70">(opcional)</span>
+                {tr('Notas / Observações', 'Notes')} <span className="text-xs opacity-70">{tr('(opcional)', '(optional)')}</span>
               </label>
               <textarea
                 id="edit-notes"
                 value={editingNotes}
                 onChange={(e) => setEditingNotes(e.target.value)}
-                placeholder="Adicione observações sobre o tratamento, procedimento, resultados, etc..."
+                placeholder={tr('Adicione observações sobre o tratamento, procedimento, resultados, etc...', 'Add notes about the treatment, procedure, results, etc...')}
                 rows={4}
                 className="w-full px-4 py-2 rounded-lg text-sm bg-transparent border border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F] resize-y"
                 style={{ 
@@ -1693,7 +1710,7 @@ export default function ViewProjectPage() {
                   style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? 'Salvando...' : 'Salvar alterações'}
+                  {saving ? tr('Salvando...', 'Saving...') : tr('Salvar alterações', 'Save changes')}
                 </button>
               </div>
             </div>
@@ -1719,7 +1736,7 @@ export default function ViewProjectPage() {
                 className="hidden lg:block text-sm sm:text-xl font-semibold text-center flex-1" 
               style={{ color: '#FFFFFF', opacity: 0.9 }}
             >
-              Visualização Antes e Depois
+              {tr('Visualização Antes e Depois', 'Before and After View')}
             </h2>
               {/* Botão de Notas para Mobile (quando header está escondido) */}
               {!isEditing && isLandscape && (
@@ -1731,7 +1748,7 @@ export default function ViewProjectPage() {
                     color: '#E8DCC0', 
                     borderColor: 'rgba(232, 220, 192, 0.1)' 
                   }}
-                  title="Ver/Editar anotações"
+                  title={tr('Ver/Editar anotações', 'View/Edit notes')}
                 >
                   <FileText className="w-5 h-5" />
                   {project.notes && (
@@ -1750,8 +1767,8 @@ export default function ViewProjectPage() {
                 <ComparisonSlider
                   beforeImage={displayBeforeImages[beforeCurrentIndex]}
                   afterImage={displayAfterImages[afterCurrentIndex]}
-                  beforeLabel="ANTES"
-                  afterLabel="DEPOIS"
+                  beforeLabel={tr('ANTES', 'BEFORE')}
+                  afterLabel={tr('DEPOIS', 'AFTER')}
                   className="w-full h-full"
                 />
                 {/* Navegação de imagens no modo slider */}
@@ -1763,7 +1780,7 @@ export default function ViewProjectPage() {
                         onClick={prevBeforeImage}
                         className="p-1 rounded hover:bg-white/20 transition-colors"
                         style={{ color: '#E8DCC0' }}
-                        aria-label="Imagem anterior (Antes)"
+                        aria-label={tr('Imagem anterior (Antes)', 'Previous image (Before)')}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -1774,7 +1791,7 @@ export default function ViewProjectPage() {
                         onClick={nextBeforeImage}
                         className="p-1 rounded hover:bg-white/20 transition-colors"
                         style={{ color: '#E8DCC0' }}
-                        aria-label="Próxima imagem (Antes)"
+                        aria-label={tr('Próxima imagem (Antes)', 'Next image (Before)')}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -1787,7 +1804,7 @@ export default function ViewProjectPage() {
                         onClick={prevAfterImage}
                         className="p-1 rounded hover:bg-white/20 transition-colors"
                         style={{ color: '#E8DCC0' }}
-                        aria-label="Imagem anterior (Depois)"
+                        aria-label={tr('Imagem anterior (Depois)', 'Previous image (After)')}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -1798,7 +1815,7 @@ export default function ViewProjectPage() {
                         onClick={nextAfterImage}
                         className="p-1 rounded hover:bg-white/20 transition-colors"
                         style={{ color: '#E8DCC0' }}
-                        aria-label="Próxima imagem (Depois)"
+                        aria-label={tr('Próxima imagem (Depois)', 'Next image (After)')}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -1817,14 +1834,14 @@ export default function ViewProjectPage() {
                     className="text-sm font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
-                    ANTES
+                    {tr('ANTES', 'BEFORE')}
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <WatermarkedContainer className="w-full h-full">
                     <ZoomableImage
                       src={displayBeforeImages[beforeCurrentIndex]}
-                      alt={`Antes ${beforeCurrentIndex + 1}`}
+                      alt={`${tr('Antes', 'Before')} ${beforeCurrentIndex + 1}`}
                       className="w-full h-full max-w-full max-h-full"
                       style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
                     />
@@ -1835,7 +1852,7 @@ export default function ViewProjectPage() {
                         onClick={prevBeforeImage}
                         className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
+                        aria-label={tr('Imagem anterior', 'Previous image')}
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
@@ -1843,7 +1860,7 @@ export default function ViewProjectPage() {
                         onClick={nextBeforeImage}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
+                        aria-label={tr('Próxima imagem', 'Next image')}
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
@@ -1867,14 +1884,14 @@ export default function ViewProjectPage() {
                     className="text-sm font-medium" 
                     style={{ color: '#E8DCC0' }}
                   >
-                    DEPOIS
+                    {tr('DEPOIS', 'AFTER')}
                   </span>
                 </div>
                 <div className="relative rounded-lg overflow-hidden flex-1 flex items-center justify-center min-h-0" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }}>
                   <WatermarkedContainer className="w-full h-full">
                     <ZoomableImage
                       src={displayAfterImages[afterCurrentIndex]}
-                      alt={`Depois ${afterCurrentIndex + 1}`}
+                      alt={`${tr('Depois', 'After')} ${afterCurrentIndex + 1}`}
                       className="w-full h-full max-w-full max-h-full"
                       style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)', objectFit: 'contain' }}
                     />
@@ -1885,7 +1902,7 @@ export default function ViewProjectPage() {
                         onClick={prevAfterImage}
                         className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Imagem anterior"
+                        aria-label={tr('Imagem anterior', 'Previous image')}
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
@@ -1893,7 +1910,7 @@ export default function ViewProjectPage() {
                         onClick={nextAfterImage}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-white/20 transition-colors"
                         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#E8DCC0' }}
-                        aria-label="Próxima imagem"
+                        aria-label={tr('Próxima imagem', 'Next image')}
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
@@ -1927,7 +1944,7 @@ export default function ViewProjectPage() {
                         className="text-[10px] sm:text-xs font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
-                        ANTES
+                        {tr('ANTES', 'BEFORE')}
                       </span>
                     </div>
                     <div 
@@ -1939,7 +1956,7 @@ export default function ViewProjectPage() {
               <WatermarkedContainer>
                 <ZoomableImage
                   src={displayBeforeImages[beforeCurrentIndex]}
-                  alt={`Antes ${beforeCurrentIndex + 1}`}
+                  alt={`${tr('Antes', 'Before')} ${beforeCurrentIndex + 1}`}
                   className="w-full h-full"
                   style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
                 />
@@ -1951,7 +1968,7 @@ export default function ViewProjectPage() {
                           onClick={prevBeforeImage}
                           className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
                           style={{ color: '#E8DCC0' }}
-                          aria-label="Imagem anterior antes"
+                          aria-label={tr('Imagem anterior antes', 'Previous before image')}
                         >
                           <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -1963,7 +1980,7 @@ export default function ViewProjectPage() {
                           onClick={nextBeforeImage}
                           className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
                           style={{ color: '#E8DCC0' }}
-                          aria-label="Próxima imagem antes"
+                          aria-label={tr('Próxima imagem antes', 'Next before image')}
                         >
                           <ChevronRight className="w-4 h-4" />
                         </button>
@@ -1979,7 +1996,7 @@ export default function ViewProjectPage() {
                         className="text-[10px] sm:text-xs font-medium tracking-wide" 
                         style={{ color: '#E8DCC0' }}
                       >
-                        DEPOIS
+                        {tr('DEPOIS', 'AFTER')}
                       </span>
                     </div>
                     <div 
@@ -1991,7 +2008,7 @@ export default function ViewProjectPage() {
               <WatermarkedContainer>
                 <ZoomableImage
                   src={displayAfterImages[afterCurrentIndex]}
-                  alt={`Depois ${afterCurrentIndex + 1}`}
+                  alt={`${tr('Depois', 'After')} ${afterCurrentIndex + 1}`}
                   className="w-full h-full"
                   style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
                 />
@@ -2003,7 +2020,7 @@ export default function ViewProjectPage() {
                           onClick={prevAfterImage}
                           className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
                           style={{ color: '#E8DCC0' }}
-                          aria-label="Imagem anterior depois"
+                          aria-label={tr('Imagem anterior depois', 'Previous after image')}
                         >
                           <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -2015,7 +2032,7 @@ export default function ViewProjectPage() {
                           onClick={nextAfterImage}
                           className="flex items-center justify-center w-8 h-8 rounded-full border border-white/20 hover:bg-white/10 transition-colors"
                           style={{ color: '#E8DCC0' }}
-                          aria-label="Próxima imagem depois"
+                          aria-label={tr('Próxima imagem depois', 'Next after image')}
                         >
                           <ChevronRight className="w-4 h-4" />
                         </button>
@@ -2034,13 +2051,13 @@ export default function ViewProjectPage() {
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
                       >
-                        ANTES
+                        {tr('ANTES', 'BEFORE')}
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
                       <ZoomableImage
                         src={displayBeforeImages[beforeCurrentIndex]}
-                        alt={`Antes ${beforeCurrentIndex + 1}`}
+                        alt={`${tr('Antes', 'Before')} ${beforeCurrentIndex + 1}`}
                         className="w-full h-full"
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -2050,7 +2067,7 @@ export default function ViewProjectPage() {
                             onClick={prevBeforeImage}
                             className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Imagem anterior"
+                            aria-label={tr('Imagem anterior', 'Previous image')}
                           >
                             <ChevronLeft className="w-5 h-5" />
                           </button>
@@ -2058,7 +2075,7 @@ export default function ViewProjectPage() {
                             onClick={nextBeforeImage}
                             className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Próxima imagem"
+                            aria-label={tr('Próxima imagem', 'Next image')}
                           >
                             <ChevronRight className="w-5 h-5" />
                           </button>
@@ -2084,13 +2101,13 @@ export default function ViewProjectPage() {
                         className="text-[9px] sm:text-xs font-medium" 
                         style={{ color: '#E8DCC0' }}
                       >
-                        DEPOIS
+                        {tr('DEPOIS', 'AFTER')}
                       </span>
                     </div>
                     <div className="relative rounded overflow-hidden flex-1 min-h-0">
                       <ZoomableImage
                         src={displayAfterImages[afterCurrentIndex]}
-                        alt={`Depois ${afterCurrentIndex + 1}`}
+                        alt={`${tr('Depois', 'After')} ${afterCurrentIndex + 1}`}
                         className="w-full h-full"
                         style={{ width: '100%', height: '100%' }}
                       />
@@ -2100,7 +2117,7 @@ export default function ViewProjectPage() {
                             onClick={prevAfterImage}
                             className="absolute left-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Imagem anterior"
+                            aria-label={tr('Imagem anterior', 'Previous image')}
                           >
                             <ChevronLeft className="w-5 h-5" />
                           </button>
@@ -2108,7 +2125,7 @@ export default function ViewProjectPage() {
                             onClick={nextAfterImage}
                             className="absolute right-1 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-white/20 transition-colors"
                             style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', color: '#E8DCC0' }}
-                            aria-label="Próxima imagem"
+                            aria-label={tr('Próxima imagem', 'Next image')}
                           >
                             <ChevronRight className="w-5 h-5" />
                           </button>
@@ -2175,10 +2192,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Voltar"
+                    title={tr('Voltar', 'Back')}
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span>Voltar</span>
+                    <span>{tr('Voltar', 'Back')}</span>
                   </button>
               {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
                 <>
@@ -2195,14 +2212,14 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Exportar"
+                    title={tr('Exportar', 'Export')}
                   >
                     {exporting ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <ImageIcon className="w-4 h-4" />
                     )}
-                    <span>Exportar</span>
+                    <span>{tr('Exportar', 'Export')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2216,7 +2233,7 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Gerar relatório PDF"
+                    title={tr('Gerar relatório PDF', 'Generate PDF report')}
                   >
                     <Download className="w-4 h-4" />
                     <span>PDF</span>
@@ -2233,10 +2250,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Publicar nas redes sociais"
+                    title={tr('Publicar nas redes sociais', 'Publish to social media')}
                   >
                     <Share2 className="w-4 h-4" />
-                    <span>Publicar</span>
+                    <span>{tr('Publicar', 'Publish')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2250,10 +2267,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Apresentação"
+                    title={tr('Apresentação', 'Presentation')}
                   >
                     <Maximize2 className="w-4 h-4" />
-                    <span>Apresentação</span>
+                    <span>{tr('Apresentação', 'Presentation')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2276,6 +2293,23 @@ export default function ViewProjectPage() {
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>Slider</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      handleOpenMeasurementTool();
+                      setShowMobileMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title={tr('Medir', 'Measure')}
+                  >
+                    <Ruler className="w-4 h-4" />
+                    <span>{tr('Medir', 'Measure')}</span>
+                  </button>
                 </>
               )}
               <button
@@ -2292,10 +2326,10 @@ export default function ViewProjectPage() {
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                   backdropFilter: 'blur(10px)'
                 }}
-                title="Notas"
+                title={tr('Notas', 'Notes')}
               >
                 <FileText className="w-4 h-4" />
-                <span>Notas</span>
+                <span>{tr('Notas', 'Notes')}</span>
               </button>
               <button
                 onClick={() => {
@@ -2309,10 +2343,10 @@ export default function ViewProjectPage() {
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                   backdropFilter: 'blur(10px)'
                 }}
-                title="Editar"
+                title={tr('Editar', 'Edit')}
               >
                 <Edit2 className="w-4 h-4" />
-                <span>Editar</span>
+                <span>{tr('Editar', 'Edit')}</span>
               </button>
                 </div>
               </>
@@ -2363,10 +2397,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Voltar"
+                    title={tr('Voltar', 'Back')}
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span>Voltar</span>
+                    <span>{tr('Voltar', 'Back')}</span>
                   </button>
             {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
               <>
@@ -2383,14 +2417,14 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Exportar"
+                    title={tr('Exportar', 'Export')}
                   >
                     {exporting ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <ImageIcon className="w-4 h-4" />
                     )}
-                    <span>Exportar</span>
+                    <span>{tr('Exportar', 'Export')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2404,7 +2438,7 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Gerar relatório PDF"
+                    title={tr('Gerar relatório PDF', 'Generate PDF report')}
                   >
                     <Download className="w-4 h-4" />
                     <span>PDF</span>
@@ -2421,10 +2455,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Publicar nas redes sociais"
+                    title={tr('Publicar nas redes sociais', 'Publish to social media')}
                   >
                     <Share2 className="w-4 h-4" />
-                    <span>Publicar</span>
+                    <span>{tr('Publicar', 'Publish')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2438,10 +2472,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Apresentação"
+                    title={tr('Apresentação', 'Presentation')}
                   >
                     <Maximize2 className="w-4 h-4" />
-                    <span>Apresentação</span>
+                    <span>{tr('Apresentação', 'Presentation')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2464,6 +2498,23 @@ export default function ViewProjectPage() {
                     <SlidersHorizontal className="w-4 h-4" />
                     <span>Slider</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      handleOpenMeasurementTool();
+                      setShowDesktopMenu(false);
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                    style={{
+                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
+                      color: '#E8DCC0',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    title={tr('Medir', 'Measure')}
+                  >
+                    <Ruler className="w-4 h-4" />
+                    <span>{tr('Medir', 'Measure')}</span>
+                  </button>
               </>
             )}
                   <button
@@ -2482,10 +2533,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Notas"
+                    title={tr('Notas', 'Notes')}
                   >
                     <FileText className="w-4 h-4" />
-                    <span>Notas</span>
+                    <span>{tr('Notas', 'Notes')}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -2499,10 +2550,10 @@ export default function ViewProjectPage() {
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
                       backdropFilter: 'blur(10px)'
                     }}
-                    title="Editar"
+                    title={tr('Editar', 'Edit')}
                   >
                     <Edit2 className="w-4 h-4" />
-                    <span>Editar</span>
+                    <span>{tr('Editar', 'Edit')}</span>
                   </button>
                 </div>
               </>
@@ -2534,13 +2585,13 @@ export default function ViewProjectPage() {
                   className="text-lg sm:text-xl font-medium"
                   style={{ color: '#E8DCC0' }}
                 >
-                  Anotações do Projeto
+                  {tr('Anotações do Projeto', 'Project Notes')}
                 </h2>
                 <button
                   onClick={handleCloseNotes}
                   className="p-1 rounded-lg hover:bg-white/10 transition-colors"
                   style={{ color: '#E8DCC0' }}
-                  aria-label="Fechar"
+                  aria-label={tr('Fechar', 'Close')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2551,7 +2602,10 @@ export default function ViewProjectPage() {
                 <textarea
                   value={tempNotes}
                   onChange={(e) => setTempNotes(e.target.value)}
-                  placeholder="Digite suas anotações sobre este projeto...&#10;&#10;Exemplo:&#10;- Detalhes do procedimento&#10;- Observações importantes&#10;- Resultados esperados&#10;- Próximos passos"
+                  placeholder={tr(
+                    'Digite suas anotações sobre este projeto...\n\nExemplo:\n- Detalhes do procedimento\n- Observações importantes\n- Resultados esperados\n- Próximos passos',
+                    'Write your notes about this project...\n\nExample:\n- Procedure details\n- Important observations\n- Expected results\n- Next steps'
+                  )}
                   rows={12}
                   className="w-full px-4 py-3 rounded-lg text-sm bg-transparent border resize-y"
                   style={{ 
@@ -2580,7 +2634,7 @@ export default function ViewProjectPage() {
                     borderColor: 'rgba(232, 220, 192, 0.1)' 
                   }}
                 >
-                  Cancelar
+                  {tr('Cancelar', 'Cancel')}
                 </button>
                 <button
                   onClick={handleSaveNotes}
@@ -2591,12 +2645,12 @@ export default function ViewProjectPage() {
                   {savingNotes ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Salvando...
+                      {tr('Salvando...', 'Saving...')}
                     </>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      Salvar
+                      {tr('Salvar', 'Save')}
                     </>
                   )}
                 </button>
@@ -2633,6 +2687,59 @@ export default function ViewProjectPage() {
           />
         )}
 
+        {/* Modal de Ferramenta de Medição */}
+        {showMeasurementTool && project && (
+          <div
+            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
+          >
+            <div className="w-full max-w-4xl my-8">
+              {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <button
+                    onClick={() => setMeasuringImageType('before')}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
+                    style={{
+                      backgroundColor: measuringImageType === 'before' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
+                      color: '#E8DCC0',
+                      borderColor: measuringImageType === 'before' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
+                      ...(measuringImageType === 'before' && { boxShadow: '0 0 0 2px #00A88F' })
+                    }}
+                  >
+                    {tr('Antes', 'Before')}
+                  </button>
+                  <button
+                    onClick={() => setMeasuringImageType('after')}
+                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
+                    style={{
+                      backgroundColor: measuringImageType === 'after' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
+                      color: '#E8DCC0',
+                      borderColor: measuringImageType === 'after' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
+                      ...(measuringImageType === 'after' && { boxShadow: '0 0 0 2px #00A88F' })
+                    }}
+                  >
+                    {tr('Depois', 'After')}
+                  </button>
+                </div>
+              )}
+              {(measuringImageType === 'before' ? displayBeforeImages : displayAfterImages).length > 0 && (
+                <MeasurementTool
+                  imageSrc={
+                    measuringImageType === 'before'
+                      ? displayBeforeImages[beforeCurrentIndex]
+                      : displayAfterImages[afterCurrentIndex]
+                  }
+                  imageType={measuringImageType}
+                  imageIndex={measuringImageType === 'before' ? beforeCurrentIndex : afterCurrentIndex}
+                  measurements={project.measurements || []}
+                  onMeasurementsChange={handleMeasurementsChange}
+                  onClose={() => setShowMeasurementTool(false)}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Modal de Edição de Imagem */}
         {showImageEditor &&
           editingImageType &&
@@ -2658,13 +2765,13 @@ export default function ViewProjectPage() {
                 ? (() => {
                     const ev = (project.evolutionImages || []).find((e) => e.id === editingEvolutionId);
                     const rl = (ev?.label || ev?.momentType || '').trim().toLowerCase();
-                    if (rl === 'antes') return 'Revela — Início (0)';
-                    if (rl === 'final') return 'Revela — Resultado final';
+                    if (rl === 'antes') return tr('Revela — Início (0)', 'Revela — Start (0)');
+                    if (rl === 'final') return tr('Revela — Resultado final', 'Revela — Final result');
                     const m = /^marco\s*(\d+)$/i.exec((ev?.label || '').trim());
                     if (m) return `Revela ${m[1]}`;
                     return ev?.label?.trim() ? `Revela — ${ev.label}` : 'Revela';
                   })()
-                : `${editingImageType === 'before' ? 'ANTES' : 'DEPOIS'} #${(editingImageIndex ?? 0) + 1}`
+                : `${editingImageType === 'before' ? tr('ANTES', 'BEFORE') : tr('DEPOIS', 'AFTER')} #${(editingImageIndex ?? 0) + 1}`
             }
           />
         )}
@@ -2676,14 +2783,16 @@ export default function ViewProjectPage() {
               className="text-lg sm:text-xl font-light mb-2"
               style={{ color: '#E8DCC0' }}
             >
-              Revela Evolução
+              {tr('Revela Evolução', 'Revela Evolution')}
             </h2>
             <p
               className="text-xs sm:text-sm mb-4"
               style={{ color: '#E8DCC0', opacity: 0.8 }}
             >
-              Veja rapidamente todos os momentos salvos deste tratamento. Estes registros alimentam
-              o Revela Evolução e a comparação entre registros.
+              {tr(
+                'Veja rapidamente todos os momentos salvos deste tratamento. Estes registros alimentam o Revela Evolução e a comparação entre registros.',
+                'Quickly see every saved moment of this treatment. These records feed Revela Evolution and the comparison between records.'
+              )}
             </p>
 
             <div
@@ -2704,9 +2813,9 @@ export default function ViewProjectPage() {
                   const lower = rawLabel.toLowerCase();
 
                   if (lower === 'antes') {
-                    label = 'Início (0)';
+                    label = tr('Início (0)', 'Start (0)');
                   } else if (lower === 'final') {
-                    label = 'Resultado final';
+                    label = tr('Resultado final', 'Final result');
                   } else {
                     // Converter labels antigos do tipo "MARCO 1", "Marco 2" em "Revela 1", "Revela 2"
                     const marcoMatch = /^marco\s*(\d+)$/i.exec(rawLabel);
@@ -2718,7 +2827,7 @@ export default function ViewProjectPage() {
                   }
 
                   const dateText = evo.date
-                    ? new Date(evo.date).toLocaleDateString('pt-BR', {
+                    ? formatLocalDate(evo.date, tr('pt-BR', 'en-US'), {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
@@ -2770,7 +2879,7 @@ export default function ViewProjectPage() {
                             }}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
-                            Editar foto (Premium)
+                            {tr('Editar foto (Premium)', 'Edit photo (Premium)')}
                           </button>
                         </div>
                       )}
@@ -2792,7 +2901,7 @@ export default function ViewProjectPage() {
                 className="text-xs sm:text-sm font-medium mb-2"
                 style={{ color: '#E8DCC0', opacity: 0.85 }}
               >
-                Revela Evolução — Comparação
+                {tr('Revela Evolução — Comparação', 'Revela Evolution — Comparison')}
               </p>
               <TreatmentTimeline
                 evolutionImages={project.evolutionImages || []}

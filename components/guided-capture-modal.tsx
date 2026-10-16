@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Camera, Loader2 } from 'lucide-react';
 
@@ -18,6 +20,7 @@ export function GuidedCaptureModal({
   onCapture,
   isPremiumUser,
 }: GuidedCaptureModalProps) {
+  const tr = useTr();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [overlayOpacity, setOverlayOpacity] = useState(0.4);
@@ -28,7 +31,7 @@ export function GuidedCaptureModal({
     const startCamera = async () => {
       if (!isOpen || !isPremiumUser) return;
       if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraError('Câmera não suportada neste dispositivo/navegador.');
+        setCameraError(tr('Câmera não suportada neste dispositivo/navegador.', 'Camera not supported on this device/browser.'));
         return;
       }
 
@@ -46,7 +49,7 @@ export function GuidedCaptureModal({
         }
       } catch (err) {
         console.error('Erro ao acessar câmera:', err);
-        setCameraError('Não foi possível acessar a câmera. Verifique permissões e tente novamente.');
+        setCameraError(tr('Não foi possível acessar a câmera. Verifique permissões e tente novamente.', 'Could not access the camera. Check permissions and try again.'));
       } finally {
         setLoadingCamera(false);
       }
@@ -103,10 +106,10 @@ export function GuidedCaptureModal({
             </div>
             <div>
               <h2 className="text-sm sm:text-base md:text-lg font-semibold" style={{ color: '#e5e7eb' }}>
-                Captura guiada
+                {tr('Captura guiada', 'Guided capture')}
               </h2>
               <p className="text-[11px] sm:text-xs" style={{ color: '#9ca3af' }}>
-                Alinhe a nova foto com o contorno anterior para padronizar o enquadramento.
+                {tr('Alinhe a nova foto com o contorno anterior para padronizar o enquadramento.', 'Align the new photo with the previous outline to keep the framing consistent.')}
               </p>
             </div>
           </div>
@@ -115,7 +118,7 @@ export function GuidedCaptureModal({
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-slate-800/80"
             style={{ color: '#e5e7eb' }}
-            aria-label="Fechar"
+            aria-label={tr('Fechar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -125,7 +128,7 @@ export function GuidedCaptureModal({
         <div className="p-4 space-y-3">
           {!isPremiumUser && (
             <p className="text-sm" style={{ color: '#f87171' }}>
-              Captura guiada é exclusiva do plano Revela Premium.
+              {tr('Captura guiada é exclusiva do plano Revela Premium.', 'Guided capture is available on the Revela Premium plan only.')}
             </p>
           )}
 
@@ -175,9 +178,9 @@ export function GuidedCaptureModal({
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] sm:text-xs" style={{ color: '#9ca3af' }}>
-            <span>Alinhe a nova foto com o contorno anterior.</span>
+            <span>{tr('Alinhe a nova foto com o contorno anterior.', 'Align the new photo with the previous outline.')}</span>
             <div className="flex items-center gap-2">
-              <span>Opacidade do overlay</span>
+              <span>{tr('Opacidade do overlay', 'Overlay opacity')}</span>
               <input
                 type="range"
                 min={0}
@@ -198,7 +201,7 @@ export function GuidedCaptureModal({
             className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
             style={{ color: '#9ca3af', backgroundColor: 'transparent' }}
           >
-            Cancelar
+            {tr('Cancelar', 'Cancel')}
           </button>
           <button
             type="button"
@@ -208,7 +211,7 @@ export function GuidedCaptureModal({
             style={{ backgroundColor: '#0ea5e9', color: '#0b1120' }}
           >
             <Camera className="w-4 h-4" />
-            Capturar
+            {tr('Capturar', 'Capture')}
           </button>
         </div>
       </div>

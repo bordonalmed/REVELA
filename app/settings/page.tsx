@@ -1,5 +1,11 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
+import { notify, confirmDialog } from '@/lib/notify';
+import { CloudSyncBadge, CloudProgressBar, CloudProjectsBrowser } from '@/components/cloud-sync-panels';
+import type { CloudProgress, CloudRestoreResult } from '@/lib/cloud-project-backup';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -11,19 +17,27 @@ import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/contexts/language-context';
 import { trackChangePassword } from '@/lib/analytics';
 import { usePlan } from '@/hooks/usePlan';
-import { createEncryptedBackup, sendEncryptedBackupToServer } from '@/lib/secure-backup';
+import {
+  createEncryptedBackup,
+  sendEncryptedBackupToServer,
+  restoreEncryptedBackupFromServer,
+} from '@/lib/secure-backup';
 import type { Project } from '@/lib/storage';
 import {
   listLocalProjectsForCloud,
-  restoreProjectsFromCloud,
   syncSelectedProjectsToCloud,
   countCloudBackups,
+  countUnencryptedCloudCopies,
+  deleteUnencryptedCloudCopies,
+  CloudPasswordError,
 } from '@/lib/cloud-project-backup';
 import { readBrandingSettings, writeBrandingSettings, type BrandingSelectedLogo } from '@/lib/branding';
 import { readClinicProfileSettings, writeClinicProfileSettings } from '@/lib/clinic-profile';
+import { formatLocalDate } from '@/lib/utils';
 
 export default function SettingsPage() {
   const { t } = useLanguage();
+  const tr = useTr();
   const router = useRouter();
   const { hasProAccess: isProUser, hasPremiumAccess: isPremiumUser } = usePlan();
   const [user, setUser] = useState<User | null>(null);
@@ -43,11 +57,11 @@ export default function SettingsPage() {
   const [secureBackupStatus, setSecureBackupStatus] = useState<string | null>(null);
   const [secureBackupPassword, setSecureBackupPassword] = useState('');
   const [secureBackupRunning, setSecureBackupRunning] = useState(false);
+  const [secureBackupRestoring, setSecureBackupRestoring] = useState(false);
 
   // Backup em nuvem (Premium)
   const [cloudBackupEnabled, setCloudBackupEnabled] = useState(false);
   const [cloudBackupRunning, setCloudBackupRunning] = useState(false);
-  const [cloudRestoreRunning, setCloudRestoreRunning] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<string | null>(null);
   const [localCloudProjects, setLocalCloudProjects] = useState<Project[]>([]);
   const [selectedCloudProjectIds, setSelectedCloudProjectIds] = useState<Record<string, boolean>>(
@@ -55,6 +69,11 @@ export default function SettingsPage() {
   );
   const [cloudSyncScope, setCloudSyncScope] = useState<'all' | 'selected'>('selected');
   const [cloudBackupCount, setCloudBackupCount] = useState<number | null>(null);
+  // Senha da nuvem: fica só na memória desta tela, nunca é salva nem enviada
+  const [cloudPassword, setCloudPassword] = useState('');
+  const [unencryptedCount, setUnencryptedCount] = useState(0);
+  const [cleaningUnencrypted, setCleaningUnencrypted] = useState(false);
+  const [cloudProgress, setCloudProgress] = useState<CloudProgress | null>(null);
   const [clinicName, setClinicName] = useState('');
   const [clinicAddress, setClinicAddress] = useState('');
   const [clinicPhone, setClinicPhone] = useState('');
@@ -106,7 +125,7 @@ export default function SettingsPage() {
     if (last) {
       const d = new Date(last);
       setSecureBackupStatus(
-        `Último backup seguro: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
+        `${tr('Último backup seguro', 'Last secure backup')}: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
       );
     }
   }, []);
@@ -116,21 +135,6 @@ export default function SettingsPage() {
     if (typeof window === 'undefined') return;
     const enabled = window.localStorage.getItem('revela_cloud_backup_enabled');
     setCloudBackupEnabled(enabled === 'true');
-
-    const lastAuto = window.localStorage.getItem('revela_cloud_last_auto_sync');
-    if (lastAuto) {
-      try {
-        const parsed = JSON.parse(lastAuto) as { at?: string; uploaded?: number; updated?: number; skipped?: number; failures?: number };
-        if (parsed?.at) {
-          const d = new Date(parsed.at);
-          setCloudSyncStatus(
-            `Última sincronização automática: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`
-          );
-        }
-      } catch {
-        // ignore
-      }
-    }
 
     const stored = window.localStorage.getItem('revela_cloud_selected_project_ids');
     if (stored) {
@@ -168,6 +172,9 @@ export default function SettingsPage() {
       countCloudBackups(user.id)
         .then((n) => { if (!cancelled) setCloudBackupCount(n); })
         .catch(() => {});
+      countUnencryptedCloudCopies(user.id)
+        .then((n) => { if (!cancelled) setUnencryptedCount(n); })
+        .catch(() => {});
     }
 
     return () => {
@@ -188,31 +195,84 @@ export default function SettingsPage() {
       return;
     }
     if (!secureBackupEnabled) {
-      alert('Ative o backup seguro antes de criar um backup.');
+      notify.info(t => t.msg.enableSecureBackupFirst);
       return;
     }
     if (!secureBackupPassword || secureBackupPassword.length < 8) {
-      alert('Defina uma senha de backup com pelo menos 8 caracteres.');
+      notify.info(t => t.msg.backupPasswordMin);
+      return;
+    }
+    if (!user?.id) {
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
     try {
       setSecureBackupRunning(true);
       const { payload } = await createEncryptedBackup(secureBackupPassword);
-      await sendEncryptedBackupToServer(payload);
+      await sendEncryptedBackupToServer(user.id, payload);
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('revela_secure_backup_last_cloud', payload.createdAt);
       }
       setSecureBackupStatus(
-        `Último backup seguro: ${new Date(payload.createdAt).toLocaleDateString()} ${new Date(
+        `${tr('Último backup seguro', 'Last secure backup')}: ${new Date(payload.createdAt).toLocaleDateString()} ${new Date(
           payload.createdAt
         ).toLocaleTimeString()}`
       );
-      alert('Backup seguro criado com sucesso. Armazenamento local continua sendo o padrão.');
+      notify.success(t => t.msg.secureBackupCreated);
     } catch (err: any) {
       console.error('Erro ao criar backup seguro:', err);
-      alert(err.message || 'Erro ao criar backup seguro. Tente novamente.');
+      notify.error(t => err.message || t.msg.secureBackupError);
     } finally {
       setSecureBackupRunning(false);
+    }
+  };
+
+  const handleRestoreSecureBackup = async () => {
+    if (!isPremiumUser) {
+      router.push('/planos');
+      return;
+    }
+    if (!user?.id) {
+      notify.error(t => t.msg.userNotLoaded);
+      return;
+    }
+    if (!secureBackupPassword) {
+      notify.info(t => t.msg.enterBackupPassword);
+      return;
+    }
+    if (!(await confirmDialog(t => t.msg.confirmRestore, { confirmLabel: t => t.msg.restoreLabel }))) {
+      return;
+    }
+    try {
+      setSecureBackupRestoring(true);
+      const result = await restoreEncryptedBackupFromServer(user.id, secureBackupPassword);
+      notify.success(t => t.msg.restoreDone(result.success, result.failed));
+    } catch (err: any) {
+      console.error('Erro ao restaurar backup seguro:', err);
+      notify.error(t => err.message || t.msg.restoreError);
+    } finally {
+      setSecureBackupRestoring(false);
+    }
+  };
+
+  const handleDeleteUnencryptedCopies = async () => {
+    if (!user?.id) return;
+    const ok = await confirmDialog(
+      (t) => t.msg.confirmDeleteUnencrypted(unencryptedCount),
+      { confirmLabel: (t) => t.common.delete, danger: true }
+    );
+    if (!ok) return;
+    try {
+      setCleaningUnencrypted(true);
+      const n = await deleteUnencryptedCloudCopies(user.id);
+      setUnencryptedCount(0);
+      notify.success((t) => t.msg.unencryptedDeleted(n));
+      countCloudBackups(user.id).then(setCloudBackupCount).catch(() => {});
+    } catch (err: any) {
+      console.error('Erro ao apagar cópias antigas da nuvem:', err);
+      notify.error((t) => err?.message || t.msg.unencryptedDeleteError);
+    } finally {
+      setCleaningUnencrypted(false);
     }
   };
 
@@ -244,11 +304,11 @@ export default function SettingsPage() {
       return;
     }
     if (!cloudBackupEnabled) {
-      alert('Ative o backup em nuvem antes de sincronizar.');
+      notify.info(t => t.msg.enableCloudFirst);
       return;
     }
     if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
+      notify.error(t => t.msg.userNotLoaded);
       return;
     }
 
@@ -257,10 +317,8 @@ export default function SettingsPage() {
         ? localCloudProjects
         : localCloudProjects.filter((p) => selectedCloudProjectIds[p.id]);
     if (!selected.length) {
-      alert(
-        cloudSyncScope === 'all'
-          ? 'Não há projetos locais para sincronizar.'
-          : 'Selecione ao menos 1 projeto para sincronizar.'
+      notify.info(
+        t => (cloudSyncScope === 'all' ? t.msg.noLocalProjects : t.msg.selectAtLeastOneProject)
       );
       return;
     }
@@ -268,63 +326,63 @@ export default function SettingsPage() {
     try {
       setCloudSyncStatus(null);
       setCloudBackupRunning(true);
-      const res = await syncSelectedProjectsToCloud(user.id, selected);
+      const res = await syncSelectedProjectsToCloud(user.id, selected, cloudPassword, setCloudProgress);
 
       const parts: string[] = [];
-      if (res.uploaded > 0) parts.push(`+${res.uploaded} novo(s)`);
-      if (res.updated > 0) parts.push(`${res.updated} atualizado(s)`);
-      if (res.skipped > 0) parts.push(`${res.skipped} pulado(s)`);
+      if (res.uploaded > 0) parts.push(`+${res.uploaded} ${tr('novo(s)', 'new')}`);
+      if (res.updated > 0) parts.push(`${res.updated} ${tr('atualizado(s)', 'updated')}`);
+      if (res.skipped > 0) parts.push(`${res.skipped} ${tr('pulado(s)', 'skipped')}`);
       if (res.failures.length > 0) {
         const failNames = res.failures
           .map((f) => f.projectName ? `"${f.projectName}": ${f.error}` : f.error)
           .join('; ');
-        parts.push(`${res.failures.length} falha(s): ${failNames}`);
+        parts.push(`${res.failures.length} ${tr('falha(s)', 'failed')}: ${failNames}`);
       }
-      setCloudSyncStatus(parts.length ? parts.join(' · ') : 'Nenhum projeto para sincronizar.');
+      setCloudSyncStatus(parts.length ? parts.join(' · ') : tr('Nenhum projeto para sincronizar.', 'No projects to sync.'));
 
       if (user?.id) {
         countCloudBackups(user.id)
           .then((n) => setCloudBackupCount(n))
           .catch(() => {});
+        countUnencryptedCloudCopies(user.id)
+          .then((n) => setUnencryptedCount(n))
+          .catch(() => {});
       }
     } catch (err: any) {
       console.error('Erro ao sincronizar para nuvem:', err);
-      setCloudSyncStatus(err?.message || 'Erro ao sincronizar para nuvem.');
+      if (err instanceof CloudPasswordError) notify.error(err.message);
+      setCloudSyncStatus(err?.message || tr('Erro ao sincronizar para nuvem.', 'Could not sync to the cloud.'));
     } finally {
       setCloudBackupRunning(false);
+      setCloudProgress(null);
+      // Atualiza os selos da lista
+      setLocalCloudProjects((prev) => [...prev]);
     }
   };
 
-  const handleRestoreProjectsFromCloud = async () => {
-    if (!isPremiumUser) {
-      router.push('/planos');
-      return;
-    }
-    if (!user?.id) {
-      alert('Usuário não carregado. Tente novamente.');
-      return;
-    }
-    try {
-      setCloudSyncStatus(null);
-      setCloudRestoreRunning(true);
-      const res = await restoreProjectsFromCloud(user.id, user.email);
+  // Chamado pelo painel da nuvem depois de restaurar ou apagar
+  const handleCloudChanged = async (res?: CloudRestoreResult) => {
+    if (res) {
       const parts: string[] = [];
-      if (res.restored > 0) parts.push(`${res.restored} projeto(s) restaurado(s).`);
-      if (res.alreadyExisted > 0) parts.push(`${res.alreadyExisted} já existia(m) localmente (atualizado(s)).`);
-      if (res.skipped > 0) parts.push(`${res.skipped} ignorado(s) (backup inválido).`);
-      if (res.failures.length > 0) parts.push(`${res.failures.length} falha(s).`);
-      if (parts.length === 0) parts.push('Nenhum projeto encontrado na nuvem.');
+      if (res.restored > 0) parts.push(tr(`${res.restored} projeto(s) restaurado(s).`, `${res.restored} project(s) restored.`));
+      if (res.alreadyExisted > 0) parts.push(tr(`${res.alreadyExisted} atualizado(s) com a versão mais nova da nuvem.`, `${res.alreadyExisted} updated with the newer cloud version.`));
+      if (res.keptLocal > 0) parts.push(tr(`${res.keptLocal} mantido(s) como estão (a versão deste aparelho é igual ou mais nova).`, `${res.keptLocal} kept as they are (this device's version is the same or newer).`));
+      if (res.skipped > 0) parts.push(tr(`${res.skipped} ignorado(s) (backup inválido).`, `${res.skipped} skipped (invalid backup).`));
+      if (res.failures.length > 0) {
+        const names = res.failures.map((f) => f.projectName || f.projectId).join(', ');
+        parts.push(tr(`${res.failures.length} não restaurado(s): ${names}.`, `${res.failures.length} not restored: ${names}.`));
+        notify.error(res.failures[0].error);
+      }
+      if (parts.length === 0) parts.push(tr('Nada a restaurar.', 'Nothing to restore.'));
       setCloudSyncStatus(parts.join(' '));
-
-      const refreshed = await listLocalProjectsForCloud();
-      setLocalCloudProjects(
-        (refreshed || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-      );
-    } catch (err: any) {
-      console.error('Erro ao restaurar da nuvem:', err);
-      setCloudSyncStatus(err?.message || 'Erro ao restaurar da nuvem.');
-    } finally {
-      setCloudRestoreRunning(false);
+    }
+    const refreshed = await listLocalProjectsForCloud();
+    setLocalCloudProjects(
+      (refreshed || []).slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    );
+    if (user?.id) {
+      countCloudBackups(user.id).then(setCloudBackupCount).catch(() => {});
+      countUnencryptedCloudCopies(user.id).then(setUnencryptedCount).catch(() => {});
     }
   };
 
@@ -332,7 +390,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setLogoMessage('Selecione um arquivo de imagem (PNG ou JPG).');
+      setLogoMessage(tr('Selecione um arquivo de imagem (PNG ou JPG).', 'Select an image file (PNG or JPG).'));
       return;
     }
     const reader = new FileReader();
@@ -340,7 +398,7 @@ export default function SettingsPage() {
       const result = reader.result as string;
       setClinicLogo(result);
       setSelectedLogo('custom');
-      setLogoMessage('Logo salvo. Ele será usado como marca d’água quando selecionado.');
+      setLogoMessage(tr('Logo salvo. Ele será usado como marca d’água quando selecionado.', 'Logo saved. It will be used as the watermark when selected.'));
       if (typeof window !== 'undefined') {
         writeBrandingSettings(
           {
@@ -416,7 +474,7 @@ export default function SettingsPage() {
     setClinicName(saved.clinicName);
     setClinicAddress(saved.clinicAddress);
     setClinicPhone(saved.clinicPhone);
-    setClinicDataMessage('Dados da clínica salvos com sucesso.');
+    setClinicDataMessage(tr('Dados da clínica salvos com sucesso.', 'Clinic details saved.'));
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -527,11 +585,13 @@ export default function SettingsPage() {
           }}
         >
           <h2 className="text-lg sm:text-xl font-light mb-2" style={{ color: '#E8DCC0' }}>
-            Marca d&apos;água e Logo
+            {tr('Marca d’água e Logo', 'Watermark and Logo')}
           </h2>
           <p className="text-xs sm:text-sm mb-4" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-            A marca d&apos;água aparece no canto inferior direito em visualização e exportações. No Pro/Premium,
-            você pode desativar e escolher seu logo.
+            {tr(
+              'A marca d’água aparece no canto inferior direito em visualização e exportações. No Pro/Premium, você pode desativar e escolher seu logo.',
+              'The watermark appears in the bottom-right corner when viewing and exporting. On Pro/Premium you can turn it off and choose your own logo.'
+            )}
           </p>
 
           <div className="space-y-4">
@@ -545,14 +605,14 @@ export default function SettingsPage() {
                 disabled={!isProUser}
               />
               <span className="text-xs sm:text-sm" style={{ color: '#E8DCC0' }}>
-                Ativar marca d&apos;água
-                {!isProUser && ' (obrigatório no plano Free)'}
+                {tr('Ativar marca d’água', 'Enable watermark')}
+                {!isProUser && tr(' (obrigatório no plano Free)', ' (required on the Free plan)')}
               </span>
             </label>
 
             <div className="space-y-2">
               <p className="text-xs font-medium uppercase tracking-wide" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Logo usado na marca d&apos;água
+                {tr('Logo usado na marca d’água', 'Logo used in the watermark')}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -567,7 +627,7 @@ export default function SettingsPage() {
                   }}
                   disabled={!isProUser}
                 >
-                  Logo Revela
+                  {tr('Logo Revela', 'Revela logo')}
                 </button>
                 <button
                   type="button"
@@ -581,7 +641,7 @@ export default function SettingsPage() {
                   }}
                   disabled={!isProUser}
                 >
-                  Meu logo
+                  {tr('Meu logo', 'My logo')}
                 </button>
               </div>
             </div>
@@ -590,7 +650,7 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="clinicLogo" style={{ color: '#E8DCC0' }}>
-                    Enviar meu logo
+                    {tr('Enviar meu logo', 'Upload my logo')}
                   </Label>
                   <input
                     id="clinicLogo"
@@ -610,7 +670,7 @@ export default function SettingsPage() {
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={clinicLogo}
-                        alt="Logo do usuário"
+                        alt={tr('Logo do usuário', 'User logo')}
                         className="w-full h-full object-contain bg-black/20"
                       />
                     </div>
@@ -623,7 +683,7 @@ export default function SettingsPage() {
                         borderColor: 'rgba(232, 220, 192, 0.3)',
                       }}
                     >
-                      Remover logo
+                      {tr('Remover logo', 'Remove logo')}
                     </button>
                   </div>
                 )}
@@ -644,7 +704,7 @@ export default function SettingsPage() {
                   color: '#FFFFFF',
                 }}
               >
-                Conhecer planos Pro/Premium
+                {tr('Conhecer planos Pro/Premium', 'See Pro/Premium plans')}
               </button>
             )}
           </div>
@@ -659,43 +719,43 @@ export default function SettingsPage() {
           }}
         >
           <h2 className="text-lg sm:text-xl font-light mb-2" style={{ color: '#E8DCC0' }}>
-            Dados da clínica (PDF)
+            {tr('Dados da clínica (PDF)', 'Clinic details (PDF)')}
           </h2>
           <p className="text-xs sm:text-sm mb-4" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-            Esses dados aparecem no relatório PDF para identificar a clínica.
+            {tr('Esses dados aparecem no relatório PDF para identificar a clínica.', 'These details appear in the PDF report to identify the clinic.')}
           </p>
 
           {isPremiumUser ? (
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="clinicNamePdf" style={{ color: '#E8DCC0' }}>
-                  Nome da clínica
+                  {tr('Nome da clínica', 'Clinic name')}
                 </Label>
                 <Input
                   id="clinicNamePdf"
                   type="text"
                   value={clinicName}
                   onChange={(e) => setClinicName(e.target.value)}
-                  placeholder="Ex.: Clínica Exemplo"
+                  placeholder={tr('Ex.: Clínica Exemplo', 'e.g. Example Clinic')}
                   className="bg-transparent border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinicAddressPdf" style={{ color: '#E8DCC0' }}>
-                  Endereço da clínica
+                  {tr('Endereço da clínica', 'Clinic address')}
                 </Label>
                 <Input
                   id="clinicAddressPdf"
                   type="text"
                   value={clinicAddress}
                   onChange={(e) => setClinicAddress(e.target.value)}
-                  placeholder="Rua, número, cidade/UF"
+                  placeholder={tr('Rua, número, cidade/UF', 'Street, number, city/state')}
                   className="bg-transparent border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clinicPhonePdf" style={{ color: '#E8DCC0' }}>
-                  Telefone da clínica
+                  {tr('Telefone da clínica', 'Clinic phone')}
                 </Label>
                 <Input
                   id="clinicPhonePdf"
@@ -723,14 +783,14 @@ export default function SettingsPage() {
                     color: '#FFFFFF',
                   }}
                 >
-                  Salvar dados da clínica
+                  {tr('Salvar dados da clínica', 'Save clinic details')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Nome, endereço e telefone no PDF são exclusivos do plano Revela Premium.
+                {tr('Nome, endereço e telefone no PDF são exclusivos do plano Revela Premium.', 'Name, address and phone in the PDF are available on the Revela Premium plan only.')}
               </p>
               <button
                 type="button"
@@ -741,7 +801,7 @@ export default function SettingsPage() {
                   color: '#FFFFFF',
                 }}
               >
-                Conhecer Revela Premium
+                {tr('Conhecer Revela Premium', 'See Revela Premium')}
               </button>
             </div>
           )}
@@ -771,7 +831,7 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="clinicLogo" style={{ color: '#E8DCC0' }}>
-                  Logo da clínica
+                  {tr('Logo da clínica', 'Clinic logo')}
                 </Label>
                 <input
                   id="clinicLogo"
@@ -791,7 +851,7 @@ export default function SettingsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={clinicLogo || undefined}
-                      alt="Logo da clínica"
+                      alt={tr('Logo da clínica', 'Clinic logo')}
                       className="w-full h-full object-contain bg-black/20"
                     />
                   </div>
@@ -804,7 +864,7 @@ export default function SettingsPage() {
                       borderColor: 'rgba(232, 220, 192, 0.3)',
                     }}
                   >
-                    {t.settings.clinicLogoRemove || 'Remover logo'}
+                    {t.settings.clinicLogoRemove || tr('Remover logo', 'Remove logo')}
                   </button>
                 </div>
               )}
@@ -830,11 +890,10 @@ export default function SettingsPage() {
             className="text-lg sm:text-xl font-light mb-2"
             style={{ color: '#E8DCC0' }}
           >
-            Backup seguro (Revela Premium)
+            {tr('Backup seguro (Revela Premium)', 'Secure backup (Revela Premium)')}
           </h2>
           <p className="text-xs sm:text-sm mb-3" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-            Armazenamento local continua sendo o padrão. O backup seguro é opcional e é
-            criptografado antes do envio.
+            {tr('Armazenamento local continua sendo o padrão. O backup seguro é opcional e é criptografado antes do envio.', 'Local storage remains the default. Secure backup is optional and encrypted before upload.')}
           </p>
 
           {isPremiumUser ? (
@@ -848,7 +907,7 @@ export default function SettingsPage() {
                   style={{ accentColor: '#facc15' }}
                 />
                 <span className="text-xs sm:text-sm" style={{ color: '#E8DCC0' }}>
-                  Ativar backup criptografado opcional (beta)
+                  {tr('Ativar backup criptografado opcional (beta)', 'Enable optional encrypted backup (beta)')}
                 </span>
               </label>
 
@@ -856,34 +915,44 @@ export default function SettingsPage() {
                 <>
                   <div className="space-y-2">
                     <label className="text-xs sm:text-sm" style={{ color: '#E8DCC0' }}>
-                      Senha do backup (não será enviada ao servidor)
+                      {tr('Senha do backup (não será enviada ao servidor)', 'Backup password (never sent to the server)')}
                     </label>
                     <input
                       type="password"
                       value={secureBackupPassword}
                       onChange={(e) => setSecureBackupPassword(e.target.value)}
-                      placeholder="Mínimo de 8 caracteres"
+                      placeholder={tr('Mínimo de 8 caracteres', 'At least 8 characters')}
                       className="w-full px-3 py-2 rounded-lg text-sm bg-slate-900 border border-slate-600 text-slate-100 placeholder:text-slate-500 focus:border-amber-400/70 focus:outline-none"
                     />
                     <p className="text-[11px]" style={{ color: '#9ca3af' }}>
-                      Guarde esta senha em local seguro. Ela será usada para criptografar seus
-                      dados. Não conseguimos recuperá-la se você esquecer.
+                      {tr('Guarde esta senha em local seguro. Ela será usada para criptografar seus dados. Não conseguimos recuperá-la se você esquecer.', 'Keep this password somewhere safe. It is used to encrypt your data. We cannot recover it if you forget it.')}
                     </p>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
                     <div className="text-[11px] sm:text-xs" style={{ color: '#9ca3af' }}>
-                      {secureBackupStatus || 'Nenhum backup seguro criado ainda.'}
+                      {secureBackupStatus || tr('Nenhum backup seguro criado ainda.', 'No secure backup created yet.')}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleRunSecureBackup}
-                      disabled={secureBackupRunning}
-                      className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: '#facc15', color: '#0f172a' }}
-                    >
-                      {secureBackupRunning ? 'Gerando backup...' : 'Criar backup seguro agora'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRunSecureBackup}
+                        disabled={secureBackupRunning || secureBackupRestoring}
+                        className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: '#facc15', color: '#0f172a' }}
+                      >
+                        {secureBackupRunning ? tr('Gerando backup...', 'Creating backup...') : tr('Criar backup seguro agora', 'Create secure backup now')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRestoreSecureBackup}
+                        disabled={secureBackupRunning || secureBackupRestoring}
+                        className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: '#facc15', color: '#facc15', backgroundColor: 'transparent' }}
+                      >
+                        {secureBackupRestoring ? tr('Restaurando...', 'Restoring...') : tr('Restaurar deste dispositivo', 'Restore to this device')}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -891,8 +960,7 @@ export default function SettingsPage() {
           ) : (
             <>
               <p className="text-xs sm:text-sm mb-4" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                Faça backup dos seus projetos com criptografia opcional, mantendo o armazenamento
-                local como padrão. Disponível no Revela Premium.
+                {tr('Faça backup dos seus projetos com criptografia opcional, mantendo o armazenamento local como padrão. Disponível no Revela Premium.', 'Back up your projects with optional encryption, keeping local storage as the default. Available on Revela Premium.')}
               </p>
               <button
                 type="button"
@@ -905,7 +973,7 @@ export default function SettingsPage() {
                   borderColor: 'rgba(234, 179, 8, 0.4)',
                 }}
               >
-                Conhecer Revela Premium
+                {tr('Conhecer Revela Premium', 'See Revela Premium')}
               </button>
             </>
           )}
@@ -923,11 +991,10 @@ export default function SettingsPage() {
             className="text-lg sm:text-xl font-light mb-2"
             style={{ color: '#E8DCC0' }}
           >
-            Sincronização na nuvem (Revela Premium)
+            {tr('Sincronização na nuvem (Revela Premium)', 'Cloud sync (Revela Premium)')}
           </h2>
           <p className="text-xs sm:text-sm mb-3" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-            Ative para enviar projetos para a nuvem e restaurá-los em qualquer dispositivo
-            logado na mesma conta.
+            {tr('Ative para enviar projetos para a nuvem e restaurá-los em qualquer dispositivo logado na mesma conta.', 'Turn on to send projects to the cloud and restore them on any device signed in to the same account.')}
           </p>
 
           {isPremiumUser ? (
@@ -941,43 +1008,80 @@ export default function SettingsPage() {
                   style={{ accentColor: '#00A88F' }}
                 />
                 <span className="text-xs sm:text-sm" style={{ color: '#E8DCC0' }}>
-                  Ativar sincronização na nuvem
+                  {tr('Ativar sincronização na nuvem', 'Enable cloud sync')}
                 </span>
               </label>
 
               {cloudBackupCount !== null && (
                 <p className="text-[11px]" style={{ color: '#94a3b8' }}>
                   {cloudBackupCount > 0
-                    ? `${cloudBackupCount} projeto(s) salvos na nuvem nesta conta.`
-                    : 'Nenhum projeto salvo na nuvem ainda.'}
+                    ? tr(`${cloudBackupCount} projeto(s) salvos na nuvem nesta conta.`, `${cloudBackupCount} project(s) saved in the cloud on this account.`)
+                    : tr('Nenhum projeto salvo na nuvem ainda.', 'No projects saved in the cloud yet.')}
                 </p>
               )}
 
-              {/* Restaurar da nuvem — SEMPRE visível para Premium */}
-              <div
-                className="rounded-lg border p-3"
-                style={{
-                  backgroundColor: 'rgba(2, 6, 23, 0.45)',
-                  borderColor: 'rgba(0, 168, 143, 0.2)',
-                }}
-              >
-                <p className="text-xs mb-2" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                  Usar em outro dispositivo? Restaure os projetos salvos na nuvem para este aparelho.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleRestoreProjectsFromCloud}
-                  disabled={cloudRestoreRunning}
-                  className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              {/* Senha da nuvem: criptografa as fotos e os dados antes do envio */}
+              <div className="space-y-1">
+                <label className="block text-xs sm:text-sm" style={{ color: '#E8DCC0' }} htmlFor="cloud-password">
+                  {tr('Senha da nuvem', 'Cloud password')}
+                </label>
+                <input
+                  id="cloud-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={cloudPassword}
+                  onChange={(e) => setCloudPassword(e.target.value)}
+                  placeholder={tr('Mínimo de 8 caracteres', 'At least 8 characters')}
+                  className="w-full sm:w-80 px-3 py-2 rounded-lg text-sm border"
                   style={{
-                    backgroundColor: 'rgba(232, 220, 192, 0.1)',
+                    backgroundColor: 'rgba(2, 6, 23, 0.6)',
+                    borderColor: 'rgba(232, 220, 192, 0.2)',
                     color: '#E8DCC0',
-                    border: '1px solid rgba(232, 220, 192, 0.2)',
                   }}
-                >
-                  {cloudRestoreRunning ? 'Restaurando...' : 'Restaurar projetos da nuvem'}
-                </button>
+                />
+                <p className="text-[11px]" style={{ color: '#94a3b8' }}>
+                  {tr(
+                    'Fotos e dados são criptografados neste aparelho antes de ir para a nuvem. Use a mesma senha em todos os aparelhos. A senha não é salva nem enviada: se você esquecer, não é possível recuperar os projetos da nuvem.',
+                    'Photos and data are encrypted on this device before going to the cloud. Use the same password on all your devices. The password is never saved or sent: if you forget it, the cloud projects cannot be recovered.'
+                  )}
+                </p>
               </div>
+
+              {unencryptedCount > 0 && (
+                <div
+                  className="rounded-lg border p-3"
+                  style={{ backgroundColor: 'rgba(234, 179, 8, 0.08)', borderColor: 'rgba(234, 179, 8, 0.45)' }}
+                >
+                  <p className="text-xs mb-2" style={{ color: '#fde68a' }}>
+                    {tr(
+                      `Há ${unencryptedCount} projeto(s) enviados antes da criptografia, ainda guardados na nuvem sem proteção. Envie-os de novo (ficam criptografados) ou apague as cópias antigas.`,
+                      `${unencryptedCount} project(s) were sent before encryption and are still stored in the cloud unprotected. Send them again (they will be encrypted) or delete the old copies.`
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteUnencryptedCopies}
+                    disabled={cleaningUnencrypted}
+                    className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50"
+                    style={{ backgroundColor: 'rgba(192, 57, 43, 0.85)', color: '#FFFFFF' }}
+                  >
+                    {cleaningUnencrypted
+                      ? tr('Apagando...', 'Deleting...')
+                      : tr('Apagar cópias antigas sem criptografia', 'Delete old unencrypted copies')}
+                  </button>
+                </div>
+              )}
+
+              {/* Projetos na nuvem: restaurar os escolhidos ou apagar — SEMPRE visível para Premium */}
+              {user?.id && (
+                <CloudProjectsBrowser
+                  userId={user.id}
+                  ownerEmail={user.email}
+                  password={cloudPassword}
+                  localProjects={localCloudProjects}
+                  onChanged={handleCloudChanged}
+                />
+              )}
 
               {cloudBackupEnabled && (
                 <>
@@ -991,7 +1095,7 @@ export default function SettingsPage() {
                     }}
                   >
                     <p className="text-[11px] mb-2" style={{ color: '#94a3b8' }}>
-                      Selecione quais projetos deste aparelho enviar para a nuvem:
+                      {tr('Selecione quais projetos deste aparelho enviar para a nuvem:', 'Choose which projects on this device to send to the cloud:')}
                     </p>
                     <div className="flex items-center gap-4 mb-3">
                       <label className="flex items-center gap-2 cursor-pointer" style={{ color: '#E8DCC0' }}>
@@ -1008,7 +1112,7 @@ export default function SettingsPage() {
                           className="w-4 h-4 rounded"
                           style={{ accentColor: '#00A88F' }}
                         />
-                        Todos
+                        {tr('Todos', 'All')}
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer" style={{ color: '#E8DCC0' }}>
                         <input
@@ -1024,13 +1128,13 @@ export default function SettingsPage() {
                           className="w-4 h-4 rounded"
                           style={{ accentColor: '#00A88F' }}
                         />
-                        Selecionados
+                        {tr('Selecionados', 'Selected')}
                       </label>
                     </div>
 
                     {localCloudProjects.length === 0 ? (
                       <p className="text-xs" style={{ color: '#94a3b8' }}>
-                        Nenhum projeto local encontrado para sincronizar.
+                        {tr('Nenhum projeto local encontrado para sincronizar.', 'No local projects found to sync.')}
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1054,8 +1158,11 @@ export default function SettingsPage() {
                               </div>
                               <div className="text-[11px] mt-0.5" style={{ color: '#94a3b8' }}>
                                 {p.date
-                                  ? new Date(p.date).toLocaleDateString('pt-BR')
-                                  : new Date(p.createdAt).toLocaleDateString('pt-BR')}
+                                  ? formatLocalDate(p.date)
+                                  : new Date(p.createdAt).toLocaleDateString(tr('pt-BR', 'en-US'))}
+                              </div>
+                              <div className="mt-1">
+                                <CloudSyncBadge project={p} />
                               </div>
                             </div>
                             <input
@@ -1079,8 +1186,9 @@ export default function SettingsPage() {
                     className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#00A88F', color: '#0f172a' }}
                   >
-                    {cloudBackupRunning ? 'Sincronizando...' : 'Enviar para a nuvem'}
+                    {cloudBackupRunning ? tr('Sincronizando...', 'Syncing...') : tr('Enviar para a nuvem', 'Send to the cloud')}
                   </button>
+                  <CloudProgressBar progress={cloudProgress} label={tr('Enviando fotos', 'Uploading photos')} />
                 </>
               )}
 
@@ -1100,8 +1208,8 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                Sincronização na nuvem é exclusiva do plano <strong>Revela Premium</strong>.
-                Envie projetos para a nuvem e restaure em qualquer dispositivo.
+                {tr('Sincronização na nuvem é exclusiva do plano ', 'Cloud sync is available on the ')}<strong>Revela Premium</strong>{tr('. ', ' plan only. ')}
+                {tr('Envie projetos para a nuvem e restaure em qualquer dispositivo.', 'Send projects to the cloud and restore them on any device.')}
               </p>
               <button
                 type="button"
@@ -1113,7 +1221,7 @@ export default function SettingsPage() {
                   border: '1px solid rgba(0, 168, 143, 0.4)',
                 }}
               >
-                Ver planos Premium
+                {tr('Ver planos Premium', 'View Premium plans')}
               </button>
             </div>
           )}

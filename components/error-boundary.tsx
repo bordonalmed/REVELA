@@ -1,5 +1,6 @@
 'use client';
 
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
@@ -49,6 +50,10 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      // Componente de classe: lê o idioma que o LanguageProvider grava em <html lang>
+      const isEn = typeof document !== 'undefined' && document.documentElement.lang === 'en-US';
+      const tr = (pt: string, en: string) => (isEn ? en : pt);
+
       return (
         <div 
           className="min-h-screen flex items-center justify-center p-4" 
@@ -56,10 +61,10 @@ export class ErrorBoundary extends Component<Props, State> {
         >
           <div className="text-center max-w-md">
             <h2 className="text-2xl font-bold mb-4" style={{ color: '#E8DCC0' }}>
-              Ops! Algo deu errado
+              {tr('Ops! Algo deu errado', 'Oops! Something went wrong')}
             </h2>
             <p className="mb-6" style={{ color: '#E8DCC0' }}>
-              Ocorreu um erro inesperado. Por favor, recarregue a página.
+              {tr('Ocorreu um erro inesperado. Por favor, recarregue a página.', 'An unexpected error occurred. Please reload the page.')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
@@ -73,7 +78,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   color: '#FFFFFF' 
                 }}
               >
-                Recarregar Página
+                {tr('Recarregar Página', 'Reload Page')}
               </button>
               <button
                 onClick={() => {
@@ -87,7 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   backgroundColor: 'transparent'
                 }}
               >
-                Ir para Início
+                {tr('Ir para Início', 'Go to Home')}
               </button>
             </div>
             {process.env.NODE_ENV === 'development' && this.state.error && (

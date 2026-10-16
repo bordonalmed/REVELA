@@ -1,5 +1,9 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
+import { notify } from '@/lib/notify';
+
 import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { X, RotateCw, RotateCcw, Crop, Check, Loader2, Square, Circle, Trash2, Pencil, Type } from 'lucide-react';
 import ReactCrop, { Crop as ReactCropType, PixelCrop, makeAspectCrop, centerCrop } from 'react-image-crop';
@@ -79,6 +83,7 @@ export function ImageEditorModal({
   imageLabel = 'Imagem',
   allowClinicalAnnotations = false,
 }: ImageEditorModalProps) {
+  const tr = useTr();
   const [crop, setCrop] = useState<ReactCropType>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [rotation, setRotation] = useState(0);
@@ -215,7 +220,7 @@ export function ImageEditorModal({
       setProcessing(true);
 
       if (!imgRef.current) {
-        throw new Error('Imagem não carregada');
+        throw new Error(tr('Imagem não carregada', 'Image not loaded'));
       }
 
       const img = imgRef.current;
@@ -259,7 +264,7 @@ export function ImageEditorModal({
       onClose();
     } catch (error) {
       console.error('Erro ao processar imagem:', error);
-      alert('Erro ao processar imagem. Tente novamente.');
+      notify.error(t => t.msg.imageProcessError);
     } finally {
       setProcessing(false);
     }
@@ -500,7 +505,7 @@ export function ImageEditorModal({
         y: Math.max(0, Math.min(p.y, 1 - defaultH)),
         width: defaultW,
         height: defaultH,
-        text: 'Texto',
+        text: tr('Texto', 'Text'),
       },
     ]);
     setPendingTextPlacement(false);
@@ -552,14 +557,14 @@ export function ImageEditorModal({
           <div className="flex items-center gap-3">
             <Crop className="w-5 h-5" style={{ color: '#E8DCC0' }} />
             <h2 className="text-lg sm:text-xl font-medium" style={{ color: '#E8DCC0' }}>
-              Editar {imageLabel}
+              {tr('Editar', 'Edit')} {imageLabel}
             </h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg transition-colors hover:bg-white/10"
             style={{ color: '#E8DCC0' }}
-            aria-label="Fechar"
+            aria-label={tr('Fechar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -711,7 +716,7 @@ export function ImageEditorModal({
                             }}
                             onMouseDown={(e) => handleTextDragMouseDown(e, tb)}
                           >
-                            <span>Arrastar</span>
+                            <span>{tr('Arrastar', 'Drag')}</span>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -719,7 +724,7 @@ export function ImageEditorModal({
                                 handleRemoveTextBox(tb.id);
                               }}
                               className="p-0.5 rounded hover:bg-white/10"
-                              aria-label="Remover caixa de texto"
+                              aria-label={tr('Remover caixa de texto', 'Remove text box')}
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -745,7 +750,7 @@ export function ImageEditorModal({
                   </div>
                 </div>
                 <p className="text-xs text-center" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                  💡 Crop: arraste para mover / redimensionar • Tarja: clique no botão para criar, depois arraste a tarja ou o círculo para ajustar
+                  {tr('💡 Crop: arraste para mover / redimensionar • Tarja: clique no botão para criar, depois arraste a tarja ou o círculo para ajustar', '💡 Crop: drag to move / resize • Mask: click the button to create it, then drag the mask or the circle to adjust')}
                 </p>
               </div>
             </div>
@@ -755,7 +760,7 @@ export function ImageEditorModal({
               {/* Rotação */}
               <div className="space-y-2">
                 <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                  Rotação:
+                  {tr('Rotação:', 'Rotation:')}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -765,7 +770,7 @@ export function ImageEditorModal({
                       backgroundColor: 'rgba(232, 220, 192, 0.1)',
                       color: '#E8DCC0',
                     }}
-                    title="Rotacionar 90° anti-horário"
+                    title={tr('Rotacionar 90° anti-horário', 'Rotate 90° counterclockwise')}
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>90°</span>
@@ -777,7 +782,7 @@ export function ImageEditorModal({
                       backgroundColor: 'rgba(232, 220, 192, 0.1)',
                       color: '#E8DCC0',
                     }}
-                    title="Rotacionar 90° horário"
+                    title={tr('Rotacionar 90° horário', 'Rotate 90° clockwise')}
                   >
                     <RotateCw className="w-4 h-4" />
                     <span>90°</span>
@@ -789,14 +794,14 @@ export function ImageEditorModal({
                       backgroundColor: 'rgba(232, 220, 192, 0.1)',
                       color: '#E8DCC0',
                     }}
-                    title="Rotacionar 180°"
+                    title={tr('Rotacionar 180°', 'Rotate 180°')}
                   >
                     180°
                   </button>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                    Rotação Livre: {rotation}°
+                    {tr('Rotação Livre', 'Free Rotation')}: {rotation}°
                   </label>
                   <input
                     type="range"
@@ -813,7 +818,7 @@ export function ImageEditorModal({
               {/* Privacidade - Tarjas */}
               <div className="space-y-2">
                 <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                  Privacidade (tarjas):
+                  {tr('Privacidade (tarjas):', 'Privacy (masks):')}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -826,7 +831,7 @@ export function ImageEditorModal({
                     }`}
                   >
                     <Square className="w-4 h-4" />
-                    Tarja retangular
+                    {tr('Tarja retangular', 'Rectangular mask')}
                   </button>
                   <button
                     type="button"
@@ -838,13 +843,13 @@ export function ImageEditorModal({
                     }`}
                   >
                     <Circle className="w-4 h-4" />
-                    Tarja circular
+                    {tr('Tarja circular', 'Circular mask')}
                   </button>
                 </div>
                 {masks.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-xs" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                      Tarjas aplicadas (serão “gravadas” na imagem ao salvar):
+                      {tr('Tarjas aplicadas (serão “gravadas” na imagem ao salvar):', 'Applied masks (burned into the image when you save):')}
                     </p>
                     <ul className="space-y-1 max-h-24 overflow-y-auto pr-1">
                       {masks.map((mask, index) => (
@@ -854,13 +859,13 @@ export function ImageEditorModal({
                           style={{ color: '#E8DCC0' }}
                         >
                           <span>
-                            {mask.shape === 'circle' ? 'Tarja circular' : 'Tarja retangular'} #{index + 1}
+                            {mask.shape === 'circle' ? tr('Tarja circular', 'Circular mask') : tr('Tarja retangular', 'Rectangular mask')} #{index + 1}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveMask(index)}
                             className="p-1 rounded hover:bg-white/10"
-                            aria-label="Remover tarja"
+                            aria-label={tr('Remover tarja', 'Remove mask')}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -875,10 +880,10 @@ export function ImageEditorModal({
                 <div className="space-y-2 border-t pt-3" style={{ borderColor: 'rgba(232, 220, 192, 0.15)' }}>
                   <h3 className="text-sm font-medium flex items-center gap-2" style={{ color: '#E8DCC0' }}>
                     <Pencil className="w-4 h-4" style={{ color: '#00A88F' }} />
-                    Anotações (Premium)
+                    {tr('Anotações (Premium)', 'Annotations (Premium)')}
                   </h3>
                   <p className="text-[11px]" style={{ color: '#E8DCC0', opacity: 0.65 }}>
-                    Lápis e texto são gravados na imagem ao salvar. Use crop/tarjas depois, se precisar.
+                    {tr('Lápis e texto são gravados na imagem ao salvar. Use crop/tarjas depois, se precisar.', 'Pen and text are burned into the image when you save. Use crop/masks afterwards if needed.')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -911,7 +916,7 @@ export function ImageEditorModal({
                       }`}
                     >
                       <Pencil className="w-3.5 h-3.5" />
-                      Lápis
+                      {tr('Lápis', 'Pen')}
                     </button>
                     <button
                       type="button"
@@ -924,13 +929,13 @@ export function ImageEditorModal({
                       }`}
                     >
                       <Type className="w-3.5 h-3.5" />
-                      Caixa de texto
+                      {tr('Caixa de texto', 'Text box')}
                     </button>
                   </div>
                   {activeTool === 'pencil' && (
                     <div className="flex flex-wrap gap-2 items-center">
                       <span className="text-xs" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-                        Cor:
+                        {tr('Cor:', 'Color:')}
                       </span>
                       <button
                         type="button"
@@ -938,7 +943,7 @@ export function ImageEditorModal({
                         className={`px-2 py-1 rounded text-xs ${pencilColor === 'black' ? 'ring-2 ring-[#00A88F]' : ''}`}
                         style={{ backgroundColor: '#111', color: '#fff' }}
                       >
-                        Preta
+                        {tr('Preta', 'Black')}
                       </button>
                       <button
                         type="button"
@@ -946,10 +951,10 @@ export function ImageEditorModal({
                         className={`px-2 py-1 rounded text-xs ${pencilColor === 'white' ? 'ring-2 ring-[#00A88F]' : ''}`}
                         style={{ backgroundColor: '#f8fafc', color: '#0f172a' }}
                       >
-                        Branca
+                        {tr('Branca', 'White')}
                       </button>
                       <label className="text-xs flex items-center gap-2 ml-1" style={{ color: '#E8DCC0', opacity: 0.85 }}>
-                        Traço
+                        {tr('Traço', 'Stroke')}
                         <input
                           type="range"
                           min={0.0015}
@@ -965,7 +970,7 @@ export function ImageEditorModal({
                   )}
                   {pendingTextPlacement && (
                     <p className="text-[11px]" style={{ color: '#fde68a' }}>
-                      Toque na imagem para posicionar a caixa de texto.
+                      {tr('Toque na imagem para posicionar a caixa de texto.', 'Tap the image to place the text box.')}
                     </p>
                   )}
                   {(strokes.length > 0 || textBoxes.length > 0) && (
@@ -978,7 +983,7 @@ export function ImageEditorModal({
                           disabled={strokes.length === 0}
                           className="px-2 py-1 rounded bg-white/10 disabled:opacity-40"
                         >
-                          Desfazer último traço
+                          {tr('Desfazer último traço', 'Undo last stroke')}
                         </button>
                         <button
                           type="button"
@@ -986,7 +991,7 @@ export function ImageEditorModal({
                           disabled={strokes.length === 0}
                           className="px-2 py-1 rounded bg-white/10 disabled:opacity-40"
                         >
-                          Limpar traços
+                          {tr('Limpar traços', 'Clear strokes')}
                         </button>
                       </div>
                     </div>
@@ -1019,7 +1024,7 @@ export function ImageEditorModal({
               {/* Proporções de Crop */}
               <div className="space-y-2">
                 <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                  Proporções:
+                  {tr('Proporções:', 'Aspect ratio:')}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -1039,7 +1044,7 @@ export function ImageEditorModal({
                       color: '#E8DCC0',
                     }}
                   >
-                    Livre
+                    {tr('Livre', 'Free')}
                   </button>
                   <button
                     onClick={() => setAspectRatio(1)}
@@ -1129,7 +1134,7 @@ export function ImageEditorModal({
                   color: '#E8DCC0',
                 }}
               >
-                Resetar Alterações
+                {tr('Resetar Alterações', 'Reset Changes')}
               </button>
             </div>
           </div>
@@ -1146,7 +1151,7 @@ export function ImageEditorModal({
               color: '#E8DCC0',
             }}
           >
-            Cancelar
+            {tr('Cancelar', 'Cancel')}
           </button>
           <button
             onClick={handleApply}
@@ -1160,12 +1165,12 @@ export function ImageEditorModal({
             {processing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Processando...</span>
+                <span>{tr('Processando...', 'Processing...')}</span>
               </>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>Salvar Alterações</span>
+                <span>{tr('Salvar Alterações', 'Save Changes')}</span>
               </>
             )}
           </button>

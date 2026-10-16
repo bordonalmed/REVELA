@@ -1,6 +1,14 @@
 'use client';
 
-import { exportBackup, type BackupData } from './storage';
+import { exportBackup, importBackup, type BackupData } from './storage';
+import { supabase } from './supabase';
+
+/** Bucket privado no Supabase Storage — RLS restringe cada usuário à própria pasta {user_id}/. */
+const SECURE_BACKUP_BUCKET = 'secure-backups';
+
+function secureBackupPath(userId: string): string {
+  return `${userId}/backup.json`;
+}
 
 /**
  * Payload de backup criptografado pronto para envio ao backend.
@@ -23,6 +31,13 @@ function encodeBase64(data: ArrayBuffer): string {
   let binary = '';
   bytes.forEach((b) => (binary += String.fromCharCode(b)));
   return window.btoa(binary);
+}
+
+function decodeBase64(base64: string): ArrayBuffer {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
 async function deriveKeyFromPassword(
@@ -96,23 +111,90 @@ export async function createEncryptedBackup(
 }
 
 /**
- * Stub de envio para backend.
- * Hoje apenas chama uma rota local que poderá ser implementada futuramente.
+ * Descriptografa um payload de backup usando a senha original.
+ * Lança erro se a senha estiver errada ou o payload estiver corrompido.
+ */
+export async function decryptBackupPayload(
+  payload: EncryptedBackupPayload,
+  password: string
+): Promise<BackupData> {
+  const salt = decodeBase64(payload.kdfSalt);
+  const iv = decodeBase64(payload.iv);
+  const ciphertext = decodeBase64(payload.ciphertext);
+
+  const key = await deriveKeyFromPassword(password, salt, payload.kdfIterations);
+
+  let plaintext: ArrayBuffer;
+  try {
+    plaintext = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv) },
+      key,
+      ciphertext
+    );
+  } catch {
+    throw new Error('Senha incorreta ou backup corrompido.');
+  }
+
+  const json = new TextDecoder().decode(plaintext);
+  return JSON.parse(json) as BackupData;
+}
+
+/**
+ * Envia o backup criptografado para o Storage do Supabase, isolado por usuário via RLS
+ * (bucket privado `secure-backups`, política restringe cada usuário à própria pasta).
+ * A senha nunca sai do cliente — o backend só guarda o ciphertext.
  */
 export async function sendEncryptedBackupToServer(
+  userId: string,
   payload: EncryptedBackupPayload
 ): Promise<void> {
-  try {
-    await fetch('/api/secure-backup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
+  if (!userId) {
+    throw new Error('Usuário não autenticado.');
+  }
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const { error } = await supabase.storage
+    .from(SECURE_BACKUP_BUCKET)
+    .upload(secureBackupPath(userId), blob, { upsert: true, contentType: 'application/json' });
+
+  if (error) {
     console.error('Erro ao enviar backup seguro:', error);
     throw new Error('Falha ao enviar backup seguro. Verifique sua conexão.');
   }
+}
+
+/**
+ * Baixa o backup criptografado salvo na nuvem para este usuário, se existir.
+ */
+export async function fetchEncryptedBackupFromServer(
+  userId: string
+): Promise<EncryptedBackupPayload | null> {
+  if (!userId) return null;
+  const { data, error } = await supabase.storage
+    .from(SECURE_BACKUP_BUCKET)
+    .download(secureBackupPath(userId));
+
+  if (error || !data) return null;
+
+  const text = await data.text();
+  try {
+    return JSON.parse(text) as EncryptedBackupPayload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Baixa, descriptografa e restaura o backup seguro da nuvem para o armazenamento local.
+ */
+export async function restoreEncryptedBackupFromServer(
+  userId: string,
+  password: string
+): Promise<{ success: number; failed: number; errors: string[] }> {
+  const payload = await fetchEncryptedBackupFromServer(userId);
+  if (!payload) {
+    throw new Error('Nenhum backup seguro encontrado na nuvem.');
+  }
+  const backup = await decryptBackupPayload(payload, password);
+  return importBackup(backup);
 }
 

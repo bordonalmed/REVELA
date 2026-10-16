@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import Link from 'next/link';
 import { LandingHeader } from '@/components/landing-header';
 import { Footer } from '@/components/footer';
@@ -11,6 +13,7 @@ import { PlanEntitlementAlerts } from '@/components/plan-entitlement-alerts';
 
 export default function PlanosPage() {
   const { user } = useAuth(false);
+  const tr = useTr();
   const {
     userPlan: plan,
     entitlementLoading,
@@ -35,11 +38,10 @@ export default function PlanosPage() {
         <section className="max-w-4xl mx-auto">
           <header className="text-center mb-6 sm:mb-8">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-revela-cream mb-2">
-              Planos pensados para a rotina da clínica
+              {tr('Planos pensados para a rotina da clínica', 'Plans built around your clinic routine')}
             </h1>
             <p className="text-sm sm:text-base text-revela-cream/80 max-w-2xl mx-auto">
-              Free no aparelho · Pro: ilimitado, sua marca e export para redes · Premium: tudo do Pro + evolução,
-              PDF, templates, apresentação, captura guiada e backup opcional na nuvem (criptografado).
+              {tr('Free no aparelho · Pro: ilimitado, sua marca e export para redes · Premium: tudo do Pro + evolução, PDF, templates, apresentação, captura guiada e backup opcional na nuvem (criptografado).', 'Free on your device · Pro: unlimited, your brand and social exports · Premium: everything in Pro + evolution, PDF, templates, presentation, guided capture and optional encrypted cloud backup.')}
             </p>
           </header>
 
@@ -66,15 +68,15 @@ export default function PlanosPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="text-left">
                   <p className="text-xs sm:text-sm font-medium" style={{ color: '#E8DCC0' }}>
-                    Modo desenvolvedor
+                    {tr('Modo desenvolvedor', 'Developer mode')}
                   </p>
                   <p className="text-[11px] sm:text-xs" style={{ color: '#E8DCC0', opacity: 0.75 }}>
-                    Troque de plano para testar recursos sem Hotmart. Basta estar logado (senha já cadastrada).
+                    {tr('Troque de plano para testar recursos sem Hotmart. Basta estar logado (senha já cadastrada).', 'Switch plans to test features without Hotmart. You just need to be signed in.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] sm:text-xs" style={{ color: '#94a3b8' }}>
-                    Plano atual: <strong style={{ color: '#E8DCC0' }}>{plan}</strong>
+                    {tr('Plano atual', 'Current plan')}: <strong style={{ color: '#E8DCC0' }}>{plan}</strong>
                   </span>
                   <select
                     value={plan}
@@ -111,43 +113,43 @@ export default function PlanosPage() {
             {/* Plano Free */}
             <div className="rounded-xl border border-revela-cream/15 bg-revela-cream/[0.03] p-4 sm:p-5 flex flex-col">
               <h2 className="text-base sm:text-lg font-semibold text-revela-cream mb-1">
-                Plano Free
+                {tr('Plano Free', 'Free Plan')}
               </h2>
               <p className="text-[10px] uppercase tracking-wide text-revela-cream/70 mb-2">
-                Free — ideal para começar
+                {tr('Free — ideal para começar', 'Free — ideal to get started')}
               </p>
-              <p className="text-xl font-semibold text-revela-cream mb-3">R$ 0 / mês</p>
+              <p className="text-xl font-semibold text-revela-cream mb-3">{tr('R$ 0 / mês', 'R$ 0 / month')}</p>
               <ul className="text-xs sm:text-sm text-revela-cream/90 space-y-1.5 mb-3 flex-1">
-                <li>• Até 3 projetos.</li>
-                <li>• Comparativo antes/depois com slider.</li>
-                <li>• Dados só no aparelho.</li>
-                <li>• Exporta imagem com marca d’água Revela.</li>
-                <li>• Sem exportação para redes (no Pro).</li>
+                <li>{tr('• Até 3 projetos.', '• Up to 3 projects.')}</li>
+                <li>{tr('• Comparativo antes/depois com slider.', '• Before/after comparison with slider.')}</li>
+                <li>{tr('• Dados só no aparelho.', '• Data stays on your device.')}</li>
+                <li>{tr('• Exporta imagem com marca d’água Revela.', '• Exports images with the Revela watermark.')}</li>
+                <li>{tr('• Sem exportação para redes (no Pro).', '• No social media exports (available in Pro).')}</li>
               </ul>
               <Button
                 asChild
                 className="mt-auto w-full bg-revela-cream text-revela-dark hover:opacity-90"
               >
-                <Link href="/signup">Começar com o plano Free</Link>
+                <Link href="/signup">{tr('Começar com o plano Free', 'Start with the Free plan')}</Link>
               </Button>
             </div>
 
             {/* Revela Pro */}
             <div className="rounded-xl border border-revela-teal/70 bg-revela-teal/10 p-4 sm:p-5 flex flex-col relative">
               <span className="absolute -top-2.5 left-3 px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide bg-revela-teal text-white">
-                Mais escolhido
+                {tr('Mais escolhido', 'Most popular')}
               </span>
               <h2 className="text-base sm:text-lg font-semibold text-revela-cream mb-1">
                 Revela Pro
               </h2>
               <p className="text-[10px] uppercase tracking-wide text-revela-cream/80 mb-2">
-                Ilimitado, sua marca, export completo
+                {tr('Ilimitado, sua marca, export completo', 'Unlimited, your brand, full exports')}
               </p>
-              <p className="text-xl font-semibold text-revela-cream mb-3">R$ 19,90 / mês</p>
+              <p className="text-xl font-semibold text-revela-cream mb-3">{tr('R$ 19,90 / mês', 'R$ 19.90 / month')}</p>
               <ul className="text-xs sm:text-sm text-revela-cream/95 space-y-1.5 mb-3 flex-1">
-                <li>✔ Projetos ilimitados.</li>
-                <li>✔ Exportações completas do app, inclusive para redes.</li>
-                <li>✔ Logo e marca d’água da clínica (ou sem marca Revela).</li>
+                <li>{tr('✔ Projetos ilimitados.', '✔ Unlimited projects.')}</li>
+                <li>{tr('✔ Exportações completas do app, inclusive para redes.', '✔ Full app exports, including social media.')}</li>
+                <li>{tr('✔ Logo e marca d’água da clínica (ou sem marca Revela).', '✔ Your clinic logo and watermark (or no Revela mark).')}</li>
               </ul>
               <Button
                 asChild
@@ -158,7 +160,7 @@ export default function PlanosPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Quero o Revela Pro
+                  {tr('Quero o Revela Pro', 'Get Revela Pro')}
                 </Link>
               </Button>
             </div>
@@ -166,35 +168,34 @@ export default function PlanosPage() {
             {/* Revela Premium */}
             <div className="rounded-xl border border-revela-cream/35 bg-gradient-to-b from-revela-cream/[0.10] via-revela-cream/[0.06] to-revela-dark/60 p-4 sm:p-5 flex flex-col relative">
               <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[9px] font-semibold tracking-wide bg-revela-cream/90 text-revela-dark">
-                Avançado
+                {tr('Avançado', 'Advanced')}
               </span>
               <h2 className="text-base sm:text-lg font-semibold text-revela-cream mb-1">
                 Revela Premium
               </h2>
               <p className="text-[11px] sm:text-xs uppercase tracking-wide text-revela-cream/80 mb-2">
-                Tudo do Pro + recursos avançados
+                {tr('Tudo do Pro + recursos avançados', 'Everything in Pro + advanced features')}
               </p>
-              <p className="text-xl font-semibold text-revela-cream mb-3">R$ 49,00 / mês</p>
+              <p className="text-xl font-semibold text-revela-cream mb-3">{tr('R$ 49,00 / mês', 'R$ 49.00 / month')}</p>
               <ul className="text-xs sm:text-sm text-revela-cream/95 space-y-1.5 mb-3 flex-1">
-                <li>✔ Tudo do Revela Pro.</li>
-                <li>• Timeline de evolução do tratamento.</li>
-                <li>• Relatório visual em PDF.</li>
-                <li>• Marcações clínicas no editor.</li>
-                <li>• Modo apresentação ao paciente.</li>
-                <li>• Backup opcional na nuvem.</li>
+                <li>{tr('✔ Tudo do Revela Pro.', '✔ Everything in Revela Pro.')}</li>
+                <li>{tr('• Timeline de evolução do tratamento.', '• Treatment evolution timeline.')}</li>
+                <li>{tr('• Relatório visual em PDF.', '• Visual PDF report.')}</li>
+                <li>{tr('• Marcações clínicas no editor.', '• Clinical annotations in the editor.')}</li>
+                <li>{tr('• Modo apresentação ao paciente.', '• Patient presentation mode.')}</li>
+                <li>{tr('• Backup opcional na nuvem.', '• Optional cloud backup.')}</li>
               </ul>
               <div className="mt-auto space-y-1.5">
                 <Button
                   asChild
-                  variant="outline"
-                  className="w-full border-revela-cream text-revela-cream hover:bg-revela-cream/10"
+                  className="w-full bg-revela-cream text-revela-dark hover:opacity-90 font-semibold"
                 >
                   <Link
                     href="https://pay.hotmart.com/X104930601U"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Quero o Revela Premium
+                    {tr('Quero o Revela Premium', 'Get Revela Premium')}
                   </Link>
                 </Button>
               </div>

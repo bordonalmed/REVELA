@@ -1,5 +1,9 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
+import { notify, PLANS_ACTION } from '@/lib/notify';
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Save, Eye, ChevronLeft, ChevronRight, ArrowLeft, Sparkles } from 'lucide-react';
@@ -7,7 +11,6 @@ import { SortablePhotoThumbnails } from '@/components/sortable-photo-thumbnails'
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAllProjectsForUser, saveProject } from '@/lib/storage';
-import { listLocalProjectsForCloud, syncSelectedProjectsToCloud } from '@/lib/cloud-project-backup';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import Image from 'next/image';
@@ -30,11 +33,12 @@ interface EvolutionStepState {
 
 export default function NewProjectPage() {
   const router = useRouter();
+  const tr = useTr();
   const { hasPremiumAccess, canUsePremiumFeature, hasProAccess } = usePlan();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('');
-  const [projectDate, setProjectDate] = useState('');
+  const [projectDate, setProjectDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [projectNotes, setProjectNotes] = useState('');
   const [beforeImages, setBeforeImages] = useState<File[]>([]);
   const [afterImages, setAfterImages] = useState<File[]>([]);
@@ -46,49 +50,6 @@ export default function NewProjectPage() {
   const [projectMode, setProjectMode] = useState<'before-after' | 'evolution'>('before-after');
   const [evolutionSteps, setEvolutionSteps] = useState<EvolutionStepState[]>([]);
 
-  // Sync automática da nuvem Premium (background)
-  const cloudAutoSyncInFlightRef = useRef(false);
-  const cloudAutoSyncPendingRef = useRef(false);
-
-  const triggerAutoCloudSync = useCallback(async () => {
-    if (!hasPremiumAccess) return;
-    if (!user?.id) return;
-    if (typeof window === 'undefined') return;
-
-    const enabled = window.localStorage.getItem('revela_cloud_backup_enabled') === 'true';
-    if (!enabled) return;
-
-    if (cloudAutoSyncInFlightRef.current) {
-      cloudAutoSyncPendingRef.current = true;
-      return;
-    }
-
-    cloudAutoSyncInFlightRef.current = true;
-    try {
-      const projects = await listLocalProjectsForCloud();
-      if (!projects.length) return;
-      const res = await syncSelectedProjectsToCloud(user.id, projects);
-
-      window.localStorage.setItem(
-        'revela_cloud_last_auto_sync',
-        JSON.stringify({
-          at: new Date().toISOString(),
-          uploaded: res.uploaded,
-          updated: res.updated,
-          skipped: res.skipped,
-          failures: res.failures.length,
-        })
-      );
-    } catch (e) {
-      console.error('Auto cloud sync error:', e);
-    } finally {
-      cloudAutoSyncInFlightRef.current = false;
-      if (cloudAutoSyncPendingRef.current) {
-        cloudAutoSyncPendingRef.current = false;
-        void triggerAutoCloudSync();
-      }
-    }
-  }, [hasPremiumAccess, user?.id]);
   
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +113,7 @@ export default function NewProjectPage() {
       return [
         {
           id: 'start',
-          label: 'Início (0)',
+          label: tr('Início (0)', 'Start (0)'),
           offsetValue: 0,
           offsetUnit: 'days',
           enabled: true,
@@ -205,7 +166,7 @@ export default function NewProjectPage() {
             className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" 
             style={{ borderColor: '#00A88F', borderTopColor: 'transparent' }}
           ></div>
-          <p style={{ color: '#E8DCC0' }}>Carregando...</p>
+          <p style={{ color: '#E8DCC0' }}>{tr('Carregando...', 'Loading...')}</p>
         </div>
       </div>
     );
@@ -236,7 +197,7 @@ export default function NewProjectPage() {
 
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            reject(new Error('Não foi possível criar contexto do canvas'));
+            reject(new Error(tr('Não foi possível criar contexto do canvas', 'Could not create canvas context')));
             return;
           }
 
@@ -269,7 +230,7 @@ export default function NewProjectPage() {
     if (!newFiles.length) return;
     const combined = [...beforeImages, ...newFiles];
     if (!hasProAccess && combined.length > FREE_MAX_BEFORE_IMAGES) {
-      alert(`Limite de ${FREE_MAX_BEFORE_IMAGES} fotos ANTES no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
+      notify.info(t => t.msg.freeLimitBefore(FREE_MAX_BEFORE_IMAGES), PLANS_ACTION);
       e.target.value = '';
       return;
     }
@@ -284,7 +245,7 @@ export default function NewProjectPage() {
     if (!newFiles.length) return;
     const combined = [...afterImages, ...newFiles];
     if (!hasProAccess && combined.length > FREE_MAX_AFTER_IMAGES) {
-      alert(`Limite de ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS no plano Free. Para adicionar mais fotos, faça upgrade para o Revela Pro ou Premium.`);
+      notify.info(t => t.msg.freeLimitAfter(FREE_MAX_AFTER_IMAGES), PLANS_ACTION);
       e.target.value = '';
       return;
     }
@@ -335,7 +296,7 @@ export default function NewProjectPage() {
     try {
       // Mostrar mensagem de processamento
       const processingMessage = document.createElement('div');
-      processingMessage.textContent = 'Salvando projeto...';
+      processingMessage.textContent = tr('Salvando projeto...', 'Saving project...');
       processingMessage.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1B3C45; color: white; padding: 20px; border-radius: 8px; z-index: 9999;';
       document.body.appendChild(processingMessage);
 
@@ -343,12 +304,12 @@ export default function NewProjectPage() {
       if (!hasProAccess) {
         const existingProjects = await getAllProjectsForUser(user?.email || null);
         if (existingProjects.length >= FREE_MAX_PROJECTS) {
-          alert(`Limite de ${FREE_MAX_PROJECTS} projetos no plano Free. Para criar novos projetos, faça upgrade para o Revela Pro ou Premium.`);
+          notify.info(t => t.msg.freeLimitProjects(FREE_MAX_PROJECTS), PLANS_ACTION);
           document.body.removeChild(processingMessage);
           return;
         }
         if (beforeImages.length > FREE_MAX_BEFORE_IMAGES || afterImages.length > FREE_MAX_AFTER_IMAGES) {
-          alert(`No plano Free cada projeto pode ter no máximo ${FREE_MAX_BEFORE_IMAGES} fotos ANTES e ${FREE_MAX_AFTER_IMAGES} fotos DEPOIS. Reduza a quantidade de imagens ou faça upgrade para o Revela Pro ou Premium.`);
+          notify.info(t => t.msg.freeLimitPerProject(FREE_MAX_BEFORE_IMAGES, FREE_MAX_AFTER_IMAGES), PLANS_ACTION);
           document.body.removeChild(processingMessage);
           return;
         }
@@ -451,23 +412,21 @@ export default function NewProjectPage() {
         
         // Trackear criação de projeto
         trackCreateProject(project.name, beforeBase64.length, afterBase64.length);
-        // Sync automática (Premium) após criar projeto
-        void triggerAutoCloudSync();
         
         document.body.removeChild(processingMessage);
-        alert('Projeto salvo com sucesso no seu dispositivo!');
+        notify.success(t => t.msg.projectSavedLocal);
         // Após salvar, limpar formulário para permitir criar um novo projeto em branco
         clearForm();
       } catch (error: any) {
         document.body.removeChild(processingMessage);
-        alert(error.message || 'Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
+        notify.error(t => error.message || t.msg.saveProjectError);
         return;
       }
     } catch (error) {
       console.error('Erro ao salvar projeto:', error);
       const errorMessage = document.querySelector('div[style*="position: fixed"]');
       if (errorMessage) document.body.removeChild(errorMessage);
-      alert('Erro ao salvar projeto. Tente novamente ou reduza o número de imagens.');
+      notify.error(t => t.msg.saveProjectError);
     }
   };
 
@@ -503,10 +462,10 @@ export default function NewProjectPage() {
               color: '#E8DCC0', 
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
-            title="Voltar para dashboard"
+            title={tr('Voltar para dashboard', 'Back to dashboard')}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Voltar</span>
+            <span>{tr('Voltar', 'Back')}</span>
           </button>
         </div>
 
@@ -522,7 +481,7 @@ export default function NewProjectPage() {
             className="text-base sm:text-lg font-light mb-3"
             style={{ color: '#E8DCC0' }}
           >
-            Tipo de projeto
+            {tr('Tipo de projeto', 'Project type')}
           </h2>
           <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
             {/* Modo Antes e Depois (padrão) */}
@@ -549,13 +508,13 @@ export default function NewProjectPage() {
                 className="text-sm font-semibold mb-1"
                 style={{ color: '#E8DCC0' }}
               >
-                Antes e Depois
+                {tr('Antes e Depois', 'Before and After')}
               </p>
               <p
                 className="text-xs"
                 style={{ color: '#E8DCC0', opacity: 0.8 }}
               >
-                Compare um conjunto de fotos antes e depois de forma rápida.
+                {tr('Compare um conjunto de fotos antes e depois de forma rápida.', 'Quickly compare a set of before and after photos.')}
               </p>
             </button>
 
@@ -565,7 +524,7 @@ export default function NewProjectPage() {
               onClick={() => {
                 const canUseTimeline = hasPremiumAccess && canUsePremiumFeature('timeline');
                 if (!canUseTimeline) {
-                  alert('O modo Revela Evolução é exclusivo para usuários do plano Premium. Faça upgrade para ativar este recurso.');
+                  notify.info(t => t.msg.evolutionPremiumUpgrade, PLANS_ACTION);
                   return;
                 }
                 setProjectMode('evolution');
@@ -590,14 +549,14 @@ export default function NewProjectPage() {
                 className="text-sm font-semibold"
                 style={{ color: '#E8DCC0' }}
               >
-                Ativar modo Revela Evolução
+                {tr('Ativar modo Revela Evolução', 'Enable Revela Evolution mode')}
               </p>
               {(!hasPremiumAccess || !canUsePremiumFeature('timeline')) && (
                 <p
                   className="text-xs mt-1.5"
                   style={{ color: '#E8DCC0', opacity: 0.75 }}
                 >
-                  Exclusivo do Revela Premium
+                  {tr('Exclusivo do Revela Premium', 'Revela Premium only')}
                 </p>
               )}
             </button>
@@ -616,7 +575,7 @@ export default function NewProjectPage() {
             className="text-xl sm:text-2xl font-light mb-4" 
             style={{ color: '#E8DCC0' }}
           >
-            Novo Projeto
+            {tr('Novo Projeto', 'New Project')}
           </h1>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -624,13 +583,13 @@ export default function NewProjectPage() {
                 className="block mb-2 text-sm font-medium" 
                 style={{ color: '#E8DCC0' }}
               >
-                Nome do Projeto
+                {tr('Nome do Projeto', 'Project Name')}
               </label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Digite o nome do projeto"
+                placeholder={tr('Digite o nome do projeto', 'Enter the project name')}
                 className="w-full px-4 py-2 rounded-lg text-sm bg-transparent border border-gray-600 text-white placeholder:text-gray-500 focus:border-[#00A88F]"
               />
             </div>
@@ -639,7 +598,7 @@ export default function NewProjectPage() {
                 className="block mb-2 text-sm font-medium" 
                 style={{ color: '#E8DCC0' }}
               >
-                Data
+                {tr('Data', 'Date')}
               </label>
               <input
                 type="date"
@@ -666,7 +625,7 @@ export default function NewProjectPage() {
               className="text-base sm:text-lg font-light mb-3" 
               style={{ color: '#E8DCC0' }}
             >
-              Fotos Antes
+              {tr('Fotos Antes', 'Before Photos')}
             </h2>
             <input
               ref={beforeInputRef}
@@ -686,7 +645,7 @@ export default function NewProjectPage() {
               }}
             >
               <Camera className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
-              <span style={{ color: '#E8DCC0', opacity: 0.85 }}>Adicionar fotos</span>
+              <span style={{ color: '#E8DCC0', opacity: 0.85 }}>{tr('Adicionar fotos', 'Add photos')}</span>
             </label>
             <SortablePhotoThumbnails
               previews={beforePreviewUrls}
@@ -709,7 +668,7 @@ export default function NewProjectPage() {
               className="text-base sm:text-lg font-light mb-3" 
               style={{ color: '#E8DCC0' }}
             >
-              Fotos Depois
+              {tr('Fotos Depois', 'After Photos')}
             </h2>
             <input
               ref={afterInputRef}
@@ -729,7 +688,7 @@ export default function NewProjectPage() {
               }}
             >
               <Camera className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
-              <span style={{ color: '#E8DCC0', opacity: 0.85 }}>Adicionar fotos</span>
+              <span style={{ color: '#E8DCC0', opacity: 0.85 }}>{tr('Adicionar fotos', 'Add photos')}</span>
             </label>
             <SortablePhotoThumbnails
               previews={afterPreviewUrls}
@@ -755,14 +714,16 @@ export default function NewProjectPage() {
               className="text-base sm:text-lg font-light mb-3"
               style={{ color: '#E8DCC0' }}
             >
-              Registros da Revela Evolução
+              {tr('Registros da Revela Evolução', 'Revela Evolution Records')}
             </h2>
             <p
               className="text-xs sm:text-sm mb-4"
               style={{ color: '#E8DCC0', opacity: 0.8 }}
             >
-              Defina até 4 momentos do tratamento (por exemplo, 0, 30, 90 e 180 dias) e adicione
-              uma foto para cada registro. Eles vão alimentar o Revela Evolução visual.
+              {tr(
+                'Defina até 4 momentos do tratamento (por exemplo, 0, 30, 90 e 180 dias) e adicione uma foto para cada registro. Eles vão alimentar o Revela Evolução visual.',
+                'Set up to 4 treatment moments (for example, 0, 30, 90 and 180 days) and add one photo for each record. They feed the visual Revela Evolution.'
+              )}
             </p>
 
             <div className="space-y-4">
@@ -798,7 +759,7 @@ export default function NewProjectPage() {
                             className="text-sm font-medium"
                             style={{ color: '#E8DCC0' }}
                           >
-                            {isStart ? 'Início (0)' : step.label || `Revela ${index}`}
+                            {isStart ? tr('Início (0)', 'Start (0)') : step.label || `Revela ${index}`}
                           </p>
                           {!isStart && (
                             <div className="flex items-center gap-2 mt-1 text-[11px]">
@@ -839,8 +800,8 @@ export default function NewProjectPage() {
                                 }
                                 className="px-2 py-0.5 rounded bg-transparent border border-gray-600 text-xs text-white"
                               >
-                                <option value="days">dias</option>
-                                <option value="months">meses</option>
+                                <option value="days">{tr('dias', 'days')}</option>
+                                <option value="months">{tr('meses', 'months')}</option>
                               </select>
                             </div>
                           )}
@@ -855,7 +816,7 @@ export default function NewProjectPage() {
                           className="block mb-1 text-xs font-medium"
                           style={{ color: '#E8DCC0' }}
                         >
-                          Imagem do registro
+                          {tr('Imagem do registro', 'Record image')}
                         </label>
                         <input
                           type="file"
@@ -900,7 +861,7 @@ export default function NewProjectPage() {
                                 className="text-[11px]"
                                 style={{ color: '#E8DCC0', opacity: 0.8 }}
                               >
-                                Trocar imagem
+                                {tr('Trocar imagem', 'Change image')}
                               </span>
                             </>
                           ) : (
@@ -913,7 +874,7 @@ export default function NewProjectPage() {
                                 className="text-[11px] text-center"
                                 style={{ color: '#E8DCC0', opacity: 0.8 }}
                               >
-                                Clique para escolher uma imagem para este registro
+                                {tr('Clique para escolher uma imagem para este registro', 'Click to choose an image for this record')}
                               </span>
                             </>
                           )}
@@ -945,7 +906,7 @@ export default function NewProjectPage() {
             }}
           >
             <Eye className="w-5 h-5" />
-            Visualizar Projeto
+            {tr('Visualizar Projeto', 'Preview Project')}
           </button>
           <button
             onClick={handleSave}
@@ -957,7 +918,7 @@ export default function NewProjectPage() {
             style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
           >
             <Save className="w-5 h-5" />
-            Salvar Projeto
+            {tr('Salvar Projeto', 'Save Project')}
           </button>
           <button
             onClick={clearForm}
@@ -968,7 +929,7 @@ export default function NewProjectPage() {
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
           >
-            Novo Projeto
+            {tr('Novo Projeto', 'New Project')}
           </button>
         </div>
 
@@ -990,7 +951,7 @@ export default function NewProjectPage() {
                     className="text-lg sm:text-xl font-light mb-4 text-center"
                     style={{ color: '#E8DCC0' }}
                   >
-                    Visualização Antes e Depois
+                    {tr('Visualização Antes e Depois', 'Before and After View')}
                   </h2>
 
                   {/* Desktop: Lado a lado */}
@@ -1002,7 +963,7 @@ export default function NewProjectPage() {
                           className="text-sm font-medium"
                           style={{ color: '#E8DCC0' }}
                         >
-                          ANTES
+                          {tr('ANTES', 'BEFORE')}
                         </span>
                       </div>
                       <div
@@ -1013,7 +974,7 @@ export default function NewProjectPage() {
                           <>
                             <Image
                               src={beforePreviewUrls[beforeCurrentIndex]}
-                              alt={`Antes ${beforeCurrentIndex + 1}`}
+                              alt={`${tr("Antes", "Before")} ${beforeCurrentIndex + 1}`}
                               width={1200}
                               height={900}
                               unoptimized
@@ -1071,7 +1032,7 @@ export default function NewProjectPage() {
                           className="text-sm font-medium"
                           style={{ color: '#E8DCC0' }}
                         >
-                          DEPOIS
+                          {tr('DEPOIS', 'AFTER')}
                         </span>
                       </div>
                       <div
@@ -1082,7 +1043,7 @@ export default function NewProjectPage() {
                           <>
                             <Image
                               src={afterPreviewUrls[afterCurrentIndex]}
-                              alt={`Depois ${afterCurrentIndex + 1}`}
+                              alt={`${tr("Depois", "After")} ${afterCurrentIndex + 1}`}
                               width={1200}
                               height={900}
                               unoptimized
@@ -1143,7 +1104,7 @@ export default function NewProjectPage() {
                           className="text-sm font-medium"
                           style={{ color: '#E8DCC0' }}
                         >
-                          ANTES
+                          {tr('ANTES', 'BEFORE')}
                         </span>
                       </div>
                       <div
@@ -1154,7 +1115,7 @@ export default function NewProjectPage() {
                           <>
                             <Image
                               src={beforePreviewUrls[beforeCurrentIndex]}
-                              alt={`Antes ${beforeCurrentIndex + 1}`}
+                              alt={`${tr("Antes", "Before")} ${beforeCurrentIndex + 1}`}
                               width={1200}
                               height={900}
                               unoptimized
@@ -1212,7 +1173,7 @@ export default function NewProjectPage() {
                           className="text-sm font-medium"
                           style={{ color: '#E8DCC0' }}
                         >
-                          DEPOIS
+                          {tr('DEPOIS', 'AFTER')}
                         </span>
                       </div>
                       <div
@@ -1223,7 +1184,7 @@ export default function NewProjectPage() {
                           <>
                             <Image
                               src={afterPreviewUrls[afterCurrentIndex]}
-                              alt={`Depois ${afterCurrentIndex + 1}`}
+                              alt={`${tr("Depois", "After")} ${afterCurrentIndex + 1}`}
                               width={1200}
                               height={900}
                               unoptimized
@@ -1290,7 +1251,7 @@ export default function NewProjectPage() {
                   className="text-lg sm:text-xl font-light mb-4 text-center"
                   style={{ color: '#E8DCC0' }}
                 >
-                  Pré-visualização Revela Evolução
+                  {tr('Pré-visualização Revela Evolução', 'Revela Evolution Preview')}
                 </h2>
                 {evolutionSteps.some((step) => step.enabled && step.preview) ? (
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1311,7 +1272,7 @@ export default function NewProjectPage() {
                               style={{ color: '#E8DCC0' }}
                             >
                               {step.id === 'start'
-                                ? 'Início (0)'
+                                ? tr('Início (0)', 'Start (0)')
                                 : step.label || 'Revela'}
                             </p>
                             {step.id !== 'start' && (
@@ -1320,7 +1281,7 @@ export default function NewProjectPage() {
                                 style={{ color: '#E8DCC0', opacity: 0.7 }}
                               >
                                 + {step.offsetValue}{' '}
-                                {step.offsetUnit === 'days' ? 'dias' : 'meses'}
+                                {step.offsetUnit === 'days' ? tr('dias', 'days') : tr('meses', 'months')}
                               </p>
                             )}
                           </div>
@@ -1347,7 +1308,7 @@ export default function NewProjectPage() {
                     className="text-sm text-center"
                     style={{ color: '#E8DCC0', opacity: 0.8 }}
                   >
-                    Adicione imagens aos registros da Revela Evolução para visualizar aqui.
+                    {tr('Adicione imagens aos registros da Revela Evolução para visualizar aqui.', 'Add images to the Revela Evolution records to preview them here.')}
                   </p>
                 )}
               </div>

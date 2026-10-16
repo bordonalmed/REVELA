@@ -1,5 +1,7 @@
 'use client';
 
+import { useTr } from '@/contexts/language-context';
+
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -17,6 +19,7 @@ export function BeforeAfterViewer({
   title,
   description 
 }: BeforeAfterViewerProps) {
+  const tr = useTr();
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,16 +128,16 @@ export function BeforeAfterViewer({
 
         {/* Labels */}
         <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-md text-sm font-semibold">
-          ANTES
+          {tr('ANTES', 'BEFORE')}
         </div>
         <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-md text-sm font-semibold">
-          DEPOIS
+          {tr('DEPOIS', 'AFTER')}
         </div>
       </div>
 
       {/* Instructions */}
       <p className="text-center text-sm text-slate-500">
-        Arraste a linha para comparar as imagens
+        {tr('Arraste a linha para comparar as imagens', 'Drag the line to compare the images')}
       </p>
     </div>
   );

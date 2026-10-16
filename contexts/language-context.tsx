@@ -108,3 +108,10 @@ export function useLanguage() {
   return context;
 }
 
+
+// Atalho para textos das telas internas: tr('Voltar', 'Back').
+// Mantém as duas versões lado a lado no código, sem precisar criar uma chave nova.
+export function useTr() {
+  const { language } = useLanguage();
+  return (pt: string, en: string) => (language === 'en-US' ? en : pt);
+}
