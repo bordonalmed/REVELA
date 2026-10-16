@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, ArrowLeft, Download, Upload, Database, Settings, ChevronDown, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon, Move } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getAllProjects, getAllProjectsForUser, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
+import { getAllProjects, getAllProjectsForUser, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, getAutoBackupFailure, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
@@ -41,6 +41,7 @@ export default function ProjectsPage() {
   const [exporting, setExporting] = useState(false);
   const [autoBackup, setAutoBackup] = useState(false);
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+  const [autoBackupFailed, setAutoBackupFailed] = useState(false);
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   
   // Estados para pastas
@@ -157,6 +158,7 @@ export default function ProjectsPage() {
       loadFolders();
       // Verificar backup automático
       setAutoBackup(isAutoBackupEnabled());
+      setAutoBackupFailed(isAutoBackupEnabled() && !!getAutoBackupFailure());
       const lastBackup = getLastAutoBackup();
       if (lastBackup) {
         setLastBackupDate(lastBackup.exportDate);
@@ -233,8 +235,9 @@ export default function ProjectsPage() {
       
       // Se backup automático estiver ativo, atualizar
       if (autoBackup) {
-        enableAutoBackup();
-        setLastBackupDate(backup.exportDate);
+        const ok = await enableAutoBackup();
+        setAutoBackupFailed(!ok);
+        if (ok) setLastBackupDate(backup.exportDate);
       }
       
       // Trackear exportação de backup
@@ -298,16 +301,18 @@ export default function ProjectsPage() {
     setAutoBackup(newValue);
     
     if (newValue) {
-      enableAutoBackup();
-      // Criar backup imediatamente
-      exportBackup().then(backup => {
-        setLastBackupDate(backup.exportDate);
-        notify.success(t => t.msg.autoBackupEnabled);
-      }).catch(error => {
-        console.error('Erro ao criar backup automático:', error);
-        notify.error(t => t.msg.autoBackupInitialError);
+      // Cria o backup e só confirma se ele realmente coube no navegador
+      enableAutoBackup().then((ok) => {
+        setAutoBackupFailed(!ok);
+        if (ok) {
+          setLastBackupDate(getLastAutoBackup()?.exportDate ?? new Date().toISOString());
+          notify.success(t => t.msg.autoBackupEnabled);
+        } else {
+          notify.error(t => t.msg.autoBackupTooBig);
+        }
       });
     } else {
+      setAutoBackupFailed(false);
       disableAutoBackup();
       notify.success(t => t.msg.autoBackupDisabled);
     }
@@ -745,6 +750,14 @@ export default function ProjectsPage() {
                           </div>
                         </label>
                       </div>
+                      {autoBackup && autoBackupFailed && (
+                        <p className="text-[11px] mt-1" style={{ color: '#fde68a' }}>
+                          {tr(
+                            '⚠ O último backup automático não coube no navegador. Use "Exportar Backup" para salvar um arquivo.',
+                            '⚠ The last automatic backup did not fit in the browser. Use "Export Backup" to save a file.'
+                          )}
+                        </p>
+                      )}
                       {lastBackupDate && (
                         <div className="mt-1 text-xs" style={{ color: '#E8DCC0', opacity: 0.5 }}>
                           {tr('Último', 'Last')}: {new Date(lastBackupDate).toLocaleDateString(tr('pt-BR', 'en-US'))}

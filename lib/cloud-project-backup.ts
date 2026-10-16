@@ -72,15 +72,14 @@ function detectImageMime(bytes: Bytes): string {
 }
 
 async function uploadEncryptedImage(
-  userId: string,
-  projectId: string,
+  folder: string,
   imageKey: string,
   base64: string,
   key: CryptoKey
 ): Promise<string> {
   const compressed = await compressBase64ForCloud(base64);
   const cipher = await encryptBytes(key, dataUrlToBytes(compressed));
-  const path = `${userId}/${projectId}/${imageKey}.enc.jpg`;
+  const path = `${folder}/${imageKey}.enc.jpg`;
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, new Blob([cipher], { type: ENCRYPTED_UPLOAD_TYPE }), { upsert: true, contentType: ENCRYPTED_UPLOAD_TYPE });
@@ -101,23 +100,42 @@ async function downloadEncryptedImage(path: string, key: CryptoKey): Promise<str
 
 // Formato antigo (sem criptografia): só leitura, para restaurar dados já enviados
 async function downloadImageAsBase64(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).download(path);
-  if (error || !data) throw new Error(`Download falhou: ${error?.message || 'sem dados'}`);
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error('Erro ao converter blob'));
-    reader.readAsDataURL(data);
-  });
+  const bytes = await downloadBytes(path);
+  return `data:${detectImageMime(bytes)};base64,${toBase64(bytes)}`;
 }
 
-async function deleteProjectFolder(userId: string, projectId: string): Promise<void> {
-  const prefix = `${userId}/${projectId}/`;
-  const { data } = await supabase.storage.from(BUCKET).list(prefix.replace(/\/$/, ''), { limit: 200 });
-  if (data && data.length > 0) {
-    const paths = data.map((f: { name: string }) => `${prefix}${f.name}`);
-    await supabase.storage.from(BUCKET).remove(paths);
+type StorageItem = { name: string; id?: string | null };
+
+/** Lista os arquivos de uma pasta do bucket, entrando nas subpastas (o Storage não lista recursivamente). */
+async function listFilesRecursive(prefix: string): Promise<string[]> {
+  const { data } = await supabase.storage.from(BUCKET).list(prefix, { limit: 1000 });
+  const out: string[] = [];
+  for (const item of (data || []) as StorageItem[]) {
+    const path = `${prefix}/${item.name}`;
+    // No Supabase, subpastas vêm sem id
+    if (item.id === null || item.id === undefined) {
+      if (item.name.includes('.')) out.push(path);
+      else out.push(...(await listFilesRecursive(path)));
+    } else {
+      out.push(path);
+    }
   }
+  return out;
+}
+
+/**
+ * Apaga os arquivos do projeto na nuvem. Com `keepPrefix`, preserva essa versão
+ * (usado depois de um envio bem-sucedido para limpar só as versões antigas).
+ */
+async function removeFiles(paths: string[]): Promise<void> {
+  for (let i = 0; i < paths.length; i += 100) {
+    await supabase.storage.from(BUCKET).remove(paths.slice(i, i + 100));
+  }
+}
+
+async function deleteProjectFiles(userId: string, projectId: string, keepPrefix?: string): Promise<void> {
+  const files = await listFilesRecursive(`${userId}/${projectId}`);
+  await removeFiles(keepPrefix ? files.filter((f) => !f.startsWith(keepPrefix)) : files);
 }
 
 // ─── Metadata (DB row — lightweight, no images) ───────────────────────
@@ -134,6 +152,7 @@ interface CloudProjectMeta {
   evolutionMeta?: Array<{ id: string; date: string; label?: string; notes?: string; momentType?: string }>;
   measurements?: any[];
   folderId?: string;
+  updatedAt?: string;
 }
 
 function buildMeta(project: Project): CloudProjectMeta {
@@ -151,6 +170,7 @@ function buildMeta(project: Project): CloudProjectMeta {
     })),
     measurements: project.measurements,
     folderId: project.folderId,
+    updatedAt: project.updatedAt,
   };
 }
 
@@ -168,7 +188,10 @@ export interface CloudSyncResult {
 export interface CloudRestoreResult {
   restored: number;
   skipped: number;
+  /** Já existiam no aparelho e foram atualizados com a versão mais nova da nuvem */
   alreadyExisted: number;
+  /** A versão do aparelho era mais nova (ou igual): mantida, nada foi sobrescrito */
+  keptLocal: number;
   failures: CloudSyncFailure[];
 }
 
@@ -231,6 +254,25 @@ async function listRows(userId: string): Promise<Row[]> {
   return (data as Row[]) || [];
 }
 
+/**
+ * Agrupa os registros por projeto. O primeiro de cada grupo é o "principal":
+ * criptografado antes do formato antigo; entre iguais, o mais recente (listRows já ordena).
+ */
+function groupRowsByProject(rows: Row[]): Map<string, { row: Row; parsed: any }[]> {
+  const groups = new Map<string, { row: Row; parsed: any }[]>();
+  for (const row of rows) {
+    const parsed = parseRow(row);
+    const pid = rowProjectId(parsed);
+    if (!pid) continue;
+    if (!groups.has(pid)) groups.set(pid, []);
+    groups.get(pid)!.push({ row, parsed });
+  }
+  groups.forEach((list) => {
+    list.sort((a, b) => Number(b.parsed?.__type === ENCRYPTED_TYPE) - Number(a.parsed?.__type === ENCRYPTED_TYPE));
+  });
+  return groups;
+}
+
 const keyCache = new Map<string, Promise<CloudKey>>();
 function keyFor(password: string, salt: string, iterations: number): Promise<CloudKey> {
   const id = `${salt}:${iterations}`;
@@ -257,6 +299,13 @@ async function verifyPasswordAgainstCloud(password: string, rows: Row[]): Promis
   }
 }
 
+/** Caminhos das fotos dentro do payload cifrado (formato v3.1). */
+interface ImagePaths {
+  before: string[];
+  after: string[];
+  evolution: Record<string, string>;
+}
+
 async function syncOneProject(
   userId: string,
   project: Project,
@@ -265,44 +314,54 @@ async function syncOneProject(
 ): Promise<'inserted' | 'updated'> {
   const meta = buildMeta(project);
 
-  // Remove o que houver na pasta (inclusive cópias antigas sem criptografia)
-  await deleteProjectFolder(userId, project.id);
+  // 1) Sobe tudo numa pasta NOVA. A versão anterior continua intacta até o fim:
+  //    se a internet cair no meio, a cópia que já estava na nuvem não é perdida.
+  const version = `v${Date.now()}`;
+  const folder = `${userId}/${project.id}/${version}`;
+  const paths: ImagePaths = { before: [], after: [], evolution: {} };
+  try {
+    for (let i = 0; i < (project.beforeImages || []).length; i++) {
+      paths.before.push(await uploadEncryptedImage(folder, `before_${i}`, project.beforeImages[i], cloudKey.key));
+    }
+    for (let i = 0; i < (project.afterImages || []).length; i++) {
+      paths.after.push(await uploadEncryptedImage(folder, `after_${i}`, project.afterImages[i], cloudKey.key));
+    }
+    for (const ev of project.evolutionImages || []) {
+      paths.evolution[ev.id] = await uploadEncryptedImage(folder, `evo_${ev.id}`, ev.image, cloudKey.key);
+    }
 
-  const imagePaths: string[] = [];
-  for (let i = 0; i < (project.beforeImages || []).length; i++) {
-    imagePaths.push(await uploadEncryptedImage(userId, project.id, `before_${i}`, project.beforeImages[i], cloudKey.key));
-  }
-  for (let i = 0; i < (project.afterImages || []).length; i++) {
-    imagePaths.push(await uploadEncryptedImage(userId, project.id, `after_${i}`, project.afterImages[i], cloudKey.key));
-  }
-  for (const ev of project.evolutionImages || []) {
-    imagePaths.push(await uploadEncryptedImage(userId, project.id, `evo_${ev.id}`, ev.image, cloudKey.key));
+    // 2) Só então aponta o registro para a versão nova
+    const envelope: EncryptedEnvelope = {
+      __type: ENCRYPTED_TYPE,
+      projectId: project.id,
+      kdf: 'PBKDF2',
+      kdfSalt: cloudKey.salt,
+      kdfIterations: cloudKey.iterations,
+      payload: await encryptJson(cloudKey.key, { meta, paths }),
+    };
+    // Nome do projeto (muitas vezes o nome do paciente) não vai em claro
+    const row = {
+      title: 'Revela (encrypted)',
+      before_image_url: 'encrypted',
+      after_image_url: 'encrypted',
+      description: JSON.stringify(envelope),
+    };
+    if (existingRowId) {
+      const { error } = await supabase.from('before_after_photos').update(row).eq('id', existingRowId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('before_after_photos').insert({ user_id: userId, ...row });
+      if (error) throw error;
+    }
+  } catch (e) {
+    // Envio incompleto: descarta só a pasta nova; a versão anterior segue valendo
+    await removeFiles(await listFilesRecursive(folder)).catch(() => {});
+    throw e;
   }
 
-  const envelope: EncryptedEnvelope = {
-    __type: ENCRYPTED_TYPE,
-    projectId: project.id,
-    kdf: 'PBKDF2',
-    kdfSalt: cloudKey.salt,
-    kdfIterations: cloudKey.iterations,
-    payload: await encryptJson(cloudKey.key, { meta, imagePaths }),
-  };
-  // Nome do projeto (muitas vezes o nome do paciente) não vai em claro
-  const row = {
-    title: 'Revela (encrypted)',
-    before_image_url: 'encrypted',
-    after_image_url: 'encrypted',
-    description: JSON.stringify(envelope),
-  };
-
-  if (existingRowId) {
-    const { error } = await supabase.from('before_after_photos').update(row).eq('id', existingRowId);
-    if (error) throw error;
-    return 'updated';
-  }
-  const { error } = await supabase.from('before_after_photos').insert({ user_id: userId, ...row });
-  if (error) throw error;
-  return 'inserted';
+  // 3) Com a versão nova gravada, remove as versões antigas (inclusive arquivos sem criptografia)
+  await deleteProjectFiles(userId, project.id, `${folder}/`).catch(() => {});
+  return existingRowId ? 'updated' : 'inserted';
 }
 
 /**
@@ -318,18 +377,19 @@ export async function syncSelectedProjectsToCloud(
   const rows = await listRows(userId);
   await verifyPasswordAgainstCloud(password, rows);
 
-  const rowIdByProject = new Map<string, string>();
-  for (const r of rows) {
-    const pid = rowProjectId(parseRow(r));
-    if (pid && !rowIdByProject.has(pid)) rowIdByProject.set(pid, r.id);
-  }
+  const groups = groupRowsByProject(rows);
 
   const cloudKey = await deriveCloudKey(password);
   const result: CloudSyncResult = { uploaded: 0, updated: 0, skipped: 0, failures: [] };
 
   for (const project of selectedProjects) {
     try {
-      const action = await syncOneProject(userId, project, cloudKey, rowIdByProject.get(project.id) ?? null);
+      const group = groups.get(project.id) || [];
+      const action = await syncOneProject(userId, project, cloudKey, group[0]?.row.id ?? null);
+      // Registros repetidos do mesmo projeto (formatos antigos) deixam de valer
+      for (const dup of group.slice(1)) {
+        await supabase.from('before_after_photos').delete().eq('id', dup.row.id);
+      }
       if (action === 'inserted') result.uploaded += 1;
       else result.updated += 1;
     } catch (e: any) {
@@ -347,6 +407,112 @@ export async function syncSelectedProjectsToCloud(
 
 // ─── Restore (cloud → local) ──────────────────────────────────────────
 
+class MissingImageError extends Error {}
+
+async function fetchAll<T>(items: T[], load: (item: T) => Promise<string>): Promise<string[]> {
+  const out: string[] = [];
+  for (const item of items) {
+    try {
+      out.push(await load(item));
+    } catch {
+      throw new MissingImageError();
+    }
+  }
+  return out;
+}
+
+/** Monta o projeto a partir de um registro da nuvem. Lança MissingImageError se faltar qualquer foto. */
+async function projectFromRow(
+  userId: string,
+  row: Row,
+  parsed: any,
+  password: string,
+  ownerEmail: string | null | undefined
+): Promise<Project> {
+  // v3 (criptografado)
+  if (parsed?.__type === ENCRYPTED_TYPE) {
+    const env = parsed as EncryptedEnvelope;
+    const { key } = await keyFor(password, env.kdfSalt, env.kdfIterations);
+    const data = await decryptJson<{ meta: CloudProjectMeta; paths?: ImagePaths }>(key, env.payload);
+    const meta = data.meta;
+    // Envios feitos antes das pastas por versão guardavam as fotos direto na pasta do projeto
+    const base = `${userId}/${meta.projectId}`;
+    const paths: ImagePaths = data.paths ?? {
+      before: Array.from({ length: meta.beforeCount }, (_, i) => `${base}/before_${i}.enc.jpg`),
+      after: Array.from({ length: meta.afterCount }, (_, i) => `${base}/after_${i}.enc.jpg`),
+      evolution: Object.fromEntries((meta.evolutionMeta || []).map((e) => [e.id, `${base}/evo_${e.id}.enc.jpg`])),
+    };
+    const load = (path: string) => downloadEncryptedImage(path, key);
+    const beforeImages = await fetchAll(paths.before, load);
+    const afterImages = await fetchAll(paths.after, load);
+    const evoMeta = meta.evolutionMeta || [];
+    const evoImages = await fetchAll(evoMeta, (e) => {
+      const path = paths.evolution[e.id];
+      if (!path) throw new MissingImageError();
+      return load(path);
+    });
+    return {
+      id: meta.projectId,
+      name: meta.name,
+      date: meta.date,
+      createdAt: meta.createdAt,
+      updatedAt: meta.updatedAt,
+      notes: meta.notes,
+      ownerEmail: ownerEmail || meta.ownerEmail || undefined,
+      folderId: meta.folderId,
+      measurements: meta.measurements,
+      beforeImages,
+      afterImages,
+      evolutionImages: evoMeta.length
+        ? evoMeta.map((e, i) => ({ id: e.id, image: evoImages[i], date: e.date, label: e.label, notes: e.notes, momentType: e.momentType }))
+        : undefined,
+    };
+  }
+
+  // v2 (Storage, sem criptografia — formato antigo)
+  if (parsed?.__type === 'revela_storage_v2' && parsed.meta) {
+    const meta: CloudProjectMeta = parsed.meta;
+    const base = `${userId}/${meta.projectId}`;
+    const beforeImages = await fetchAll(Array.from({ length: meta.beforeCount }, (_, i) => `${base}/before_${i}.jpg`), downloadImageAsBase64);
+    const afterImages = await fetchAll(Array.from({ length: meta.afterCount }, (_, i) => `${base}/after_${i}.jpg`), downloadImageAsBase64);
+    const evoMeta = meta.evolutionMeta || [];
+    const evoImages = await fetchAll(evoMeta, (e) => downloadImageAsBase64(`${base}/evo_${e.id}.jpg`));
+    return {
+      id: meta.projectId,
+      name: meta.name,
+      date: meta.date,
+      createdAt: meta.createdAt,
+      notes: meta.notes,
+      ownerEmail: ownerEmail || meta.ownerEmail || undefined,
+      folderId: meta.folderId,
+      measurements: meta.measurements,
+      beforeImages,
+      afterImages,
+      evolutionImages: evoMeta.length
+        ? evoMeta.map((e, i) => ({ id: e.id, image: evoImages[i], date: e.date, label: e.label, notes: e.notes, momentType: e.momentType }))
+        : undefined,
+    };
+  }
+
+  // v1 (tudo dentro do registro — formato mais antigo)
+  const proj = parsed.project as Project;
+  return {
+    ...proj,
+    createdAt: proj.createdAt || row.updated_at || row.created_at || new Date().toISOString(),
+    beforeImages: Array.isArray(proj.beforeImages) ? proj.beforeImages : [],
+    afterImages: Array.isArray(proj.afterImages) ? proj.afterImages : [],
+    evolutionImages: Array.isArray(proj.evolutionImages) ? proj.evolutionImages : undefined,
+    notes: proj.notes || undefined,
+    ownerEmail: ownerEmail || proj.ownerEmail || undefined,
+  };
+}
+
+const lastChange = (p: { updatedAt?: string; createdAt?: string }) => p.updatedAt || p.createdAt || '';
+
+/**
+ * Traz da nuvem para este aparelho. Nunca troca uma versão do aparelho por uma igual
+ * ou mais antiga, e nunca grava um projeto com fotos faltando.
+ */
 export async function restoreProjectsFromCloud(
   userId: string,
   ownerEmail: string | null | undefined,
@@ -358,133 +524,43 @@ export async function restoreProjectsFromCloud(
     checkPassword(password);
     await verifyPasswordAgainstCloud(password, rows);
   }
-  const result: CloudRestoreResult = { restored: 0, skipped: 0, alreadyExisted: 0, failures: [] };
-  if (!rows || rows.length === 0) return result;
+  const result: CloudRestoreResult = { restored: 0, skipped: 0, alreadyExisted: 0, keptLocal: 0, failures: [] };
+  if (rows.length === 0) return result;
 
-  const existingLocal = await getAllProjectsFromIndexedDB();
-  const existingIds = new Set(existingLocal.map((p) => p.id));
+  const localById = new Map((await getAllProjectsFromIndexedDB()).map((p) => [p.id, p]));
+  const groups = groupRowsByProject(rows);
+  result.skipped += rows.filter((r) => !rowProjectId(parseRow(r))).length;
 
-  for (const row of rows) {
+  for (const [projectId, group] of Array.from(groups.entries())) {
+    // Só o registro principal de cada projeto (evita que um registro antigo sobrescreva o novo)
+    const { row, parsed } = group[0];
+    const local = localById.get(projectId);
+    let name: string | undefined = local?.name;
     try {
-      let parsed: any;
-      try { parsed = JSON.parse(row.description || '{}'); } catch { result.skipped += 1; continue; }
-
-      // v3 (criptografado)
-      if (parsed?.__type === ENCRYPTED_TYPE) {
-        const env = parsed as EncryptedEnvelope;
-        const { key } = await keyFor(password, env.kdfSalt, env.kdfIterations);
-        const { meta } = await decryptJson<{ meta: CloudProjectMeta; imagePaths: string[] }>(key, env.payload);
-        const base = `${userId}/${meta.projectId}`;
-        const beforeImages: string[] = [];
-        const afterImages: string[] = [];
-        const evolutionImages: EvolutionImage[] = [];
-        for (let i = 0; i < meta.beforeCount; i++) {
-          try { beforeImages.push(await downloadEncryptedImage(`${base}/before_${i}.enc.jpg`, key)); } catch { /* imagem ausente */ }
+      const project = await projectFromRow(userId, row, parsed, password, ownerEmail);
+      name = project.name;
+      if (local) {
+        // Formatos antigos não têm data de alteração: na dúvida, o aparelho prevalece
+        const cloudIsNewer = !!project.updatedAt && lastChange(project) > lastChange(local);
+        if (!cloudIsNewer) {
+          result.keptLocal += 1;
+          continue;
         }
-        for (let i = 0; i < meta.afterCount; i++) {
-          try { afterImages.push(await downloadEncryptedImage(`${base}/after_${i}.enc.jpg`, key)); } catch { /* imagem ausente */ }
-        }
-        for (const evMeta of meta.evolutionMeta || []) {
-          try {
-            evolutionImages.push({
-              id: evMeta.id, image: await downloadEncryptedImage(`${base}/evo_${evMeta.id}.enc.jpg`, key), date: evMeta.date,
-              label: evMeta.label, notes: evMeta.notes, momentType: evMeta.momentType,
-            });
-          } catch { /* imagem ausente */ }
-        }
-        const project: Project = {
-          id: meta.projectId,
-          name: meta.name,
-          date: meta.date,
-          createdAt: meta.createdAt,
-          notes: meta.notes,
-          ownerEmail: ownerEmail || meta.ownerEmail || undefined,
-          folderId: meta.folderId,
-          measurements: meta.measurements,
-          beforeImages,
-          afterImages,
-          evolutionImages: evolutionImages.length > 0 ? evolutionImages : undefined,
-        };
-        if (existingIds.has(project.id)) result.alreadyExisted += 1;
-        await saveProjectToIndexedDB(project);
-        result.restored += 1;
-        continue;
+        result.alreadyExisted += 1;
       }
-
-      // v2 (Storage-based, sem criptografia — formato antigo)
-      if (parsed?.__type === 'revela_storage_v2' && parsed.meta) {
-        const meta: CloudProjectMeta = parsed.meta;
-        const beforeImages: string[] = [];
-        const afterImages: string[] = [];
-        const evolutionImages: EvolutionImage[] = [];
-
-        for (let i = 0; i < meta.beforeCount; i++) {
-          try {
-            const img = await downloadImageAsBase64(`${userId}/${meta.projectId}/before_${i}.jpg`);
-            beforeImages.push(img);
-          } catch { /* image missing, skip */ }
-        }
-        for (let i = 0; i < meta.afterCount; i++) {
-          try {
-            const img = await downloadImageAsBase64(`${userId}/${meta.projectId}/after_${i}.jpg`);
-            afterImages.push(img);
-          } catch { /* image missing, skip */ }
-        }
-        if (meta.evolutionMeta) {
-          for (const evMeta of meta.evolutionMeta) {
-            try {
-              const img = await downloadImageAsBase64(`${userId}/${meta.projectId}/evo_${evMeta.id}.jpg`);
-              evolutionImages.push({
-                id: evMeta.id, image: img, date: evMeta.date,
-                label: evMeta.label, notes: evMeta.notes, momentType: evMeta.momentType,
-              });
-            } catch { /* image missing, skip */ }
-          }
-        }
-
-        const project: Project = {
-          id: meta.projectId,
-          name: meta.name,
-          date: meta.date,
-          createdAt: meta.createdAt,
-          notes: meta.notes,
-          ownerEmail: ownerEmail || meta.ownerEmail || undefined,
-          folderId: meta.folderId,
-          measurements: meta.measurements,
-          beforeImages,
-          afterImages,
-          evolutionImages: evolutionImages.length > 0 ? evolutionImages : undefined,
-        };
-
-        if (existingIds.has(project.id)) result.alreadyExisted += 1;
-        await saveProjectToIndexedDB(project);
-        result.restored += 1;
-        continue;
-      }
-
-      // v1 legacy (all-in-description)
-      if (parsed?.__type === '__revela_project_backup_v1' && parsed.project) {
-        const proj = parsed.project as Project;
-        const normalized: Project = {
-          ...proj,
-          createdAt: proj.createdAt || row.updated_at || row.created_at || new Date().toISOString(),
-          beforeImages: Array.isArray(proj.beforeImages) ? proj.beforeImages : [],
-          afterImages: Array.isArray(proj.afterImages) ? proj.afterImages : [],
-          evolutionImages: Array.isArray(proj.evolutionImages) ? proj.evolutionImages : undefined,
-          notes: proj.notes || undefined,
-          ownerEmail: ownerEmail || proj.ownerEmail || undefined,
-        };
-        if (existingIds.has(normalized.id)) result.alreadyExisted += 1;
-        await saveProjectToIndexedDB(normalized);
-        result.restored += 1;
-        continue;
-      }
-
-      result.skipped += 1;
+      await saveProjectToIndexedDB(project);
+      result.restored += 1;
     } catch (e: any) {
       result.failures.push({
-        projectId: 'unknown',
-        error: e?.message || 'Erro desconhecido ao restaurar',
+        projectId,
+        projectName: name,
+        error:
+          e instanceof MissingImageError
+            ? tr(
+                'Uma ou mais fotos não puderam ser baixadas. Nada foi alterado neste aparelho; tente de novo.',
+                'One or more photos could not be downloaded. Nothing was changed on this device; please try again.'
+              )
+            : e?.message || 'Erro desconhecido ao restaurar',
       });
     }
   }
@@ -511,7 +587,7 @@ export async function deleteUnencryptedCloudCopies(userId: string): Promise<numb
     const parsed = parseRow(r);
     if (!isUnencryptedRow(parsed)) continue;
     const pid = rowProjectId(parsed);
-    if (pid) await deleteProjectFolder(userId, pid);
+    if (pid) await deleteProjectFiles(userId, pid);
     const { error } = await supabase.from('before_after_photos').delete().eq('id', r.id);
     if (error) throw error;
     deleted += 1;

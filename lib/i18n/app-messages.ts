@@ -31,6 +31,7 @@ export interface AppMessages {
   autoBackupEnabled: string;
   autoBackupInitialError: string;
   autoBackupDisabled: string;
+  autoBackupTooBig: string;
   folderNameRequired: string;
   folderCreated: string;
   createFolderError: (msg: string) => string;
@@ -141,6 +142,8 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     autoBackupEnabled: 'Backup automático ativado! Um backup foi criado automaticamente.',
     autoBackupInitialError: 'Erro ao criar backup automático inicial.',
     autoBackupDisabled: 'Backup automático desativado.',
+    autoBackupTooBig:
+      'O backup automático não coube no armazenamento do navegador (limite de poucos MB). Use "Exportar Backup" para salvar um arquivo no computador.',
     folderNameRequired: 'Digite um nome para a pasta',
     folderCreated: 'Pasta criada com sucesso!',
     createFolderError: (msg) => `Erro ao criar pasta: ${msg}`,
@@ -226,6 +229,8 @@ export const appMessages: Record<'pt-BR' | 'en-US', AppMessages> = {
     autoBackupEnabled: 'Automatic backup enabled! A first backup was created.',
     autoBackupInitialError: 'Could not create the first automatic backup.',
     autoBackupDisabled: 'Automatic backup disabled.',
+    autoBackupTooBig:
+      'The automatic backup did not fit in the browser storage (limit of a few MB). Use "Export Backup" to save a file to your computer.',
     folderNameRequired: 'Enter a folder name',
     folderCreated: 'Folder created!',
     createFolderError: (msg) => `Could not create folder: ${msg}`,

@@ -371,9 +371,14 @@ export default function SettingsPage() {
       const res = await restoreProjectsFromCloud(user.id, user.email, cloudPassword);
       const parts: string[] = [];
       if (res.restored > 0) parts.push(tr(`${res.restored} projeto(s) restaurado(s).`, `${res.restored} project(s) restored.`));
-      if (res.alreadyExisted > 0) parts.push(tr(`${res.alreadyExisted} já existia(m) localmente (atualizado(s)).`, `${res.alreadyExisted} already existed locally (updated).`));
+      if (res.alreadyExisted > 0) parts.push(tr(`${res.alreadyExisted} atualizado(s) com a versão mais nova da nuvem.`, `${res.alreadyExisted} updated with the newer cloud version.`));
+      if (res.keptLocal > 0) parts.push(tr(`${res.keptLocal} mantido(s) como estão (a versão deste aparelho é igual ou mais nova).`, `${res.keptLocal} kept as they are (this device's version is the same or newer).`));
       if (res.skipped > 0) parts.push(tr(`${res.skipped} ignorado(s) (backup inválido).`, `${res.skipped} skipped (invalid backup).`));
-      if (res.failures.length > 0) parts.push(tr(`${res.failures.length} falha(s).`, `${res.failures.length} failed.`));
+      if (res.failures.length > 0) {
+        const names = res.failures.map((f) => f.projectName || f.projectId).join(', ');
+        parts.push(tr(`${res.failures.length} não restaurado(s): ${names}.`, `${res.failures.length} not restored: ${names}.`));
+        notify.error(res.failures[0].error);
+      }
       if (parts.length === 0) parts.push(tr('Nenhum projeto encontrado na nuvem.', 'No projects found in the cloud.'));
       setCloudSyncStatus(parts.join(' '));
 
