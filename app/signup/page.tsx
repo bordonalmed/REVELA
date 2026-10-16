@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Footer } from '@/components/footer';
 import { LanguageSelector } from '@/components/language-selector';
-import { OAuthButtons } from '@/components/oauth-buttons';
 import { useLanguage } from '@/contexts/language-context';
 import { trackSignup } from '@/lib/analytics';
 
@@ -203,18 +202,6 @@ export default function SignupPage() {
               >
                 {loading ? t.signup.submitting : t.signup.submit}
               </button>
-
-              {!isDemoMode && (
-                <OAuthButtons
-                  redirectPath="/dashboard"
-                  strings={{
-                    orDivider: t.signup.orDivider,
-                    continueWithGoogle: t.signup.continueWithGoogle,
-                    continueWithApple: t.signup.continueWithApple,
-                    oauthError: t.signup.oauthError,
-                  }}
-                />
-              )}
 
               <div className="text-center space-y-3 pt-4">
                 <p className="text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>
