@@ -1,5 +1,6 @@
 'use client';
 
+import { clearLastPlan } from '@/lib/plan-cache';
 import { notify } from '@/lib/notify';
 
 import { useRouter, usePathname } from 'next/navigation';
@@ -35,6 +36,7 @@ export function NavigationHeader() {
   const tr = useTr();
   const vault = useVaultStatus();
   const [simulated, setSimulated] = useState(false);
+  const planPending = entitlementLoading && plan === 'free';
   useEffect(() => setSimulated(!!getActiveDevPlanOverride(user)), [user]);
   const vaultDot =
     vault.phase === 'ok' ? '#2dd4bf' : vault.phase === 'syncing' ? '#60a5fa' : vault.phase === 'locked' || vault.phase === 'error' ? '#fbbf24' : null;
@@ -67,6 +69,7 @@ export function NavigationHeader() {
       // Trackear logout antes de sair
       trackLogout();
       
+      clearLastPlan();
       await supabase.auth.signOut();
       router.push('/');
     } catch (error) {
@@ -132,8 +135,15 @@ export function NavigationHeader() {
               }}
               title={simulated ? tr('Plano simulado (modo desenvolvedor). Toque para voltar ao plano real.', 'Simulated plan (developer mode). Tap to return to your real plan.') : undefined}
             >
-              <span className="sm:hidden truncate text-center leading-tight">{shortPlanName}{simulated ? ' 🧪' : ''}</span>
-              <span className="hidden sm:inline">{fullPlanName}{simulated ? ` · ${tr('simulado', 'simulated')} 🧪` : ''}</span>
+              {planPending ? (
+                // Plano ainda carregando: não mostrar "Free" por engano
+                <span className="inline-block w-12 sm:w-20 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: 'rgba(148, 163, 184, 0.35)' }} aria-hidden />
+              ) : (
+                <>
+                  <span className="sm:hidden truncate text-center leading-tight">{shortPlanName}{simulated ? ' 🧪' : ''}</span>
+                  <span className="hidden sm:inline">{fullPlanName}{simulated ? ` · ${tr('simulado', 'simulated')} 🧪` : ''}</span>
+                </>
+              )}
             </Link>
 
             {/* Seletor de Idioma */}

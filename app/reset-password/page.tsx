@@ -1,5 +1,6 @@
 'use client';
 
+import { clearLastPlan } from '@/lib/plan-cache';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -103,6 +104,7 @@ export default function ResetPasswordPage() {
 
       if (updateError) throw updateError;
 
+      clearLastPlan();
       await supabase.auth.signOut();
 
       setSuccess(true);
