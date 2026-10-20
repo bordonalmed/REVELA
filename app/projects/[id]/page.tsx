@@ -2166,7 +2166,7 @@ export default function ViewProjectPage() {
             delay={1200}
             steps={[
               { target: '[data-tour="project-toolbar"]', title: tr('Tudo o que dá para fazer', 'Everything you can do'), text: tr('Gere o PDF para o paciente, publique nas redes, apresente em tela cheia ou meça com a régua.', 'Create the patient PDF, publish to social media, present full screen or measure with the ruler.') },
-              { target: '[data-tour="toolbar-more"]', title: tr('Mais opções', 'More options'), text: tr('Aqui ficam o deslizador antes/depois, salvar imagem, notas e editar o projeto.', 'The before/after slider, save image, notes and edit project are here.') },
+              { target: '[data-tour="toolbar-more"]', title: tr('Mais opções', 'More options'), text: tr('Aqui ficam o Slider, salvar imagem, notas e editar o projeto.', 'The Slider, save image, notes and edit project are here.') },
             ]}
           />
         )}
@@ -2179,7 +2179,7 @@ export default function ViewProjectPage() {
                     { id: 'publish', primary: true, icon: <Share2 className="w-5 h-5" />, label: tr('Publicar', 'Publish'), hint: tr('Imagem pronta para redes sociais', 'Image ready for social media'), onClick: () => setShowSocialMediaModal(true) },
                     { id: 'present', primary: true, icon: <Maximize2 className="w-5 h-5" />, label: tr('Apresentar', 'Present'), hint: tr('Tela cheia para mostrar ao paciente', 'Full screen to show the patient'), onClick: handleEnterPresentationMode },
                     { id: 'measure', primary: true, icon: <Ruler className="w-5 h-5" />, label: tr('Medir', 'Measure'), hint: tr('Medir com régua na foto', 'Measure with a ruler in the photo'), onClick: handleOpenMeasurementTool },
-                    { id: 'slider', icon: <SlidersHorizontal className="w-5 h-5" />, label: tr('Deslizar antes/depois', 'Before/after slider'), hint: tr('Arraste para comparar na mesma foto', 'Drag to compare on one image'), active: isSliderMode, onClick: handleToggleSliderMode },
+                    { id: 'slider', icon: <SlidersHorizontal className="w-5 h-5" />, label: 'Slider', hint: tr('Arraste para comparar na mesma foto', 'Drag to compare on one image'), active: isSliderMode, onClick: handleToggleSliderMode },
                     { id: 'export', icon: exporting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-5 h-5" />, label: tr('Salvar imagem', 'Save image'), hint: tr('Baixa a comparação como imagem', 'Download the comparison as an image'), disabled: exporting, onClick: handleExportImage },
                   ]
                 : []),
