@@ -39,8 +39,39 @@ function setLocalStorageItem(key: string, value: string): boolean {
 export const PROJECT_CHANGED_EVENT = 'revela:project-changed';
 export type ProjectChangedDetail = { id: string; deleted?: boolean };
 
+// Exclusões ainda não registradas no Cofre (ex.: cofre trancado ou sem internet).
+// O Cofre lê esta lista na próxima sincronização para avisar os outros aparelhos.
+const PENDING_DELETES_KEY = 'revela_pending_deletes';
+
+export function getPendingDeletes(): Record<string, string> {
+  try {
+    return JSON.parse(getLocalStorageItem(PENDING_DELETES_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+export function clearPendingDelete(id: string): void {
+  const map = getPendingDeletes();
+  if (!(id in map)) return;
+  delete map[id];
+  setLocalStorageItem(PENDING_DELETES_KEY, JSON.stringify(map));
+}
+
+function markPendingDelete(id: string, deletedAt: string): void {
+  const map = getPendingDeletes();
+  const limit = Date.now() - 2 * TRASH_DAYS * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach((k) => {
+    if (new Date(map[k]).getTime() < limit) delete map[k];
+  });
+  map[id] = deletedAt;
+  setLocalStorageItem(PENDING_DELETES_KEY, JSON.stringify(map));
+}
+
 function emitProjectChanged(detail: ProjectChangedDetail) {
   if (typeof window === 'undefined') return;
+  if (detail.deleted) markPendingDelete(detail.id, new Date().toISOString());
+  else clearPendingDelete(detail.id);
   try {
     window.dispatchEvent(new CustomEvent<ProjectChangedDetail>(PROJECT_CHANGED_EVENT, { detail }));
   } catch {
@@ -102,7 +133,11 @@ export interface Project {
   // Projetos antigos não têm; nesse caso vale createdAt.
   updatedAt?: string;
   ownerEmail?: string; // Email do usuário que criou o projeto (escopo por conta)
+  // Na lixeira desde esta data (ISO). Fica guardado só neste aparelho por TRASH_DAYS dias.
+  deletedAt?: string;
 }
+
+export const TRASH_DAYS = 30;
 
 // Salvar projeto no IndexedDB
 export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
@@ -181,7 +216,7 @@ export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
 };
 
 // Obter todos os projetos do IndexedDB
-export const getAllProjectsFromIndexedDB = (): Promise<Project[]> => {
+export const getAllProjectsFromIndexedDB = (options: { includeTrash?: boolean } = {}): Promise<Project[]> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('RevelaDB', 1);
 
@@ -198,7 +233,8 @@ export const getAllProjectsFromIndexedDB = (): Promise<Project[]> => {
       const getAllRequest = store.getAll();
 
       getAllRequest.onsuccess = () => {
-        resolve(getAllRequest.result || []);
+        const all: Project[] = getAllRequest.result || [];
+        resolve(options.includeTrash ? all : all.filter((p) => !p.deletedAt));
       };
       getAllRequest.onerror = () => reject(getAllRequest.error);
     };
@@ -376,7 +412,46 @@ export const getProjectFromIndexedDB = (id: string, timeout: number = 5000): Pro
   });
 };
 
-// Deletar projeto do IndexedDB
+// ─── Lixeira ─────────────────────────────────────────────────────────────
+
+/** Move para a lixeira (some da lista, mas pode ser restaurado por TRASH_DAYS dias). */
+export const moveProjectToTrash = async (id: string, options: { silent?: boolean; deletedAt?: string } = {}): Promise<void> => {
+  const project = await getProjectFromIndexedDB(id);
+  if (!project) return;
+  // updatedAt não muda: a lixeira é só deste aparelho e não conta como edição
+  await updateProjectInIndexedDB({ ...project, deletedAt: options.deletedAt || new Date().toISOString() });
+  if (!options.silent) emitProjectChanged({ id, deleted: true });
+};
+
+/** Tira da lixeira. Conta como alteração, então volta também para o Cofre e os outros aparelhos. */
+export const restoreProjectFromTrash = async (id: string): Promise<void> => {
+  const project = await getProjectFromIndexedDB(id);
+  if (!project) return;
+  const { deletedAt: _removed, ...rest } = project;
+  await updateProject(rest as Project);
+};
+
+export const getTrashedProjects = async (ownerEmail: string | null): Promise<Project[]> => {
+  const all = await getAllProjectsFromIndexedDB({ includeTrash: true });
+  return all
+    .filter((p) => p.deletedAt && (!ownerEmail || p.ownerEmail === ownerEmail))
+    .sort((a, b) => (b.deletedAt || '').localeCompare(a.deletedAt || ''));
+};
+
+export const trashDaysLeft = (p: Project): number => {
+  const ms = new Date(p.deletedAt || 0).getTime() + TRASH_DAYS * 24 * 60 * 60 * 1000 - Date.now();
+  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+};
+
+/** Apaga de vez o que está na lixeira há mais de TRASH_DAYS dias. */
+export const purgeExpiredTrash = async (): Promise<number> => {
+  const all = await getAllProjectsFromIndexedDB({ includeTrash: true });
+  const expired = all.filter((p) => p.deletedAt && trashDaysLeft(p) === 0);
+  for (const p of expired) await deleteProjectFromIndexedDB(p.id, { silent: true });
+  return expired.length;
+};
+
+// Deletar projeto do IndexedDB (definitivo)
 export const deleteProjectFromIndexedDB = async (id: string, options: { silent?: boolean } = {}): Promise<void> => {
   if (!options.silent) emitProjectChanged({ id, deleted: true });
   return new Promise((resolve, reject) => {
@@ -642,7 +717,7 @@ export const getAllProjects = async (): Promise<Project[]> => {
     if (stored) {
       const localProjects = JSON.parse(stored);
       localProjects.forEach((project: Project) => {
-        if (!projectIds.has(project.id)) {
+        if (!projectIds.has(project.id) && !project.deletedAt) {
           allProjects.push(project);
           projectIds.add(project.id);
         }

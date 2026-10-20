@@ -201,6 +201,8 @@ export default function ViewProjectPage() {
         let loadedProject: Project | null = null;
         try {
           loadedProject = await getProjectFromIndexedDB(projectId);
+          // Projeto na lixeira não abre (precisa ser restaurado antes)
+          if (loadedProject?.deletedAt) loadedProject = null;
           if (loadedProject) {
             errorLogger.info('Projeto carregado do IndexedDB', { projectId });
             // Cancelar timeout se projeto foi carregado
