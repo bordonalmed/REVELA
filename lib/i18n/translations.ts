@@ -385,7 +385,7 @@ export const translations: Record<Language, Translations> = {
       welcome: 'Bem-vindo ao Revela',
       slogan: 'Cada imagem Revela uma Evolução',
       newProject: 'Novo projeto',
-      storedProjects: 'Armazenados',
+      storedProjects: 'Meus projetos',
       loading: 'Carregando...',
     },
     settings: {
@@ -609,7 +609,7 @@ export const translations: Record<Language, Translations> = {
       welcome: 'Welcome to Revela',
       slogan: 'Each Image Reveals an Evolution',
       newProject: 'New project',
-      storedProjects: 'Stored',
+      storedProjects: 'My projects',
       loading: 'Loading...',
     },
     settings: {

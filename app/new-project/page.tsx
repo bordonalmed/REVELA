@@ -929,7 +929,7 @@ export default function NewProjectPage() {
               borderColor: 'rgba(232, 220, 192, 0.1)' 
             }}
           >
-            {tr('Novo Projeto', 'New Project')}
+            {tr('Limpar e começar de novo', 'Clear and start over')}
           </button>
         </div>
 

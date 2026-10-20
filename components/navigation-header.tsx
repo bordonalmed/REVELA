@@ -3,9 +3,9 @@
 import { clearLastPlan } from '@/lib/plan-cache';
 import { notify } from '@/lib/notify';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { LogOut, Settings, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { VaultAgent, useVaultStatus } from '@/components/vault-agent';
 import { useTr } from '@/contexts/language-context';
@@ -22,8 +22,6 @@ import { PlanEntitlementAlerts } from '@/components/plan-entitlement-alerts';
 export function NavigationHeader() {
   const { t } = useLanguage();
   const router = useRouter();
-  const pathname = usePathname();
-  const isDashboard = pathname === '/dashboard';
   const { user } = useAuth(false);
   const {
     userPlan: plan,
@@ -90,7 +88,7 @@ export function NavigationHeader() {
       <div className="container mx-auto px-3 py-1.5 sm:py-2">
         <div className="flex items-center justify-between">
           {/* Logotipo à esquerda */}
-          <Link href="/dashboard">
+          <Link href="/dashboard" aria-label={tr('Início', 'Home')} title={tr('Início', 'Home')}>
             <div className="relative w-[36px] sm:w-[56px] h-auto">
               <SafeImage 
                 src="/revela3-transparent-processed.png" 
@@ -149,18 +147,20 @@ export function NavigationHeader() {
             {/* Seletor de Idioma */}
             <LanguageSelector />
             
-            {/* Cofre Revela (escudo) com bolinha de status */}
+            {/* Cofre Revela (escudo) com bolinha de status — com nome, para ninguém ficar adivinhando */}
             <button
               onClick={() => router.push('/cofre')}
-              className="relative p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="relative flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg hover:bg-white/10 transition-colors text-xs sm:text-sm"
               aria-label={vaultLabel}
               title={vaultLabel}
               style={{ color: '#E8DCC0' }}
+              data-tour="vault"
             >
-              <ShieldCheck className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>{tr('Cofre', 'Vault')}</span>
               {vaultDot && (
                 <span
-                  className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${vault.phase === 'syncing' ? 'animate-pulse' : ''}`}
+                  className={`absolute top-0.5 left-4 sm:left-5 w-2 h-2 rounded-full ${vault.phase === 'syncing' ? 'animate-pulse' : ''}`}
                   style={{ backgroundColor: vaultDot }}
                 />
               )}
@@ -170,33 +170,24 @@ export function NavigationHeader() {
             {/* Configurações (engrenagem) sempre visível */}
             <button
               onClick={() => router.push('/settings')}
-              className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 rounded-lg hover:bg-white/10 transition-colors text-sm"
               aria-label={t.common.settings}
+              title={t.common.settings}
               style={{ color: '#E8DCC0' }}
             >
-              <Settings className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden lg:inline">{t.common.settings}</span>
             </button>
-
-            {/* Home/Dashboard quando não estiver na dashboard */}
-            {!isDashboard && (
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
-                aria-label={t.common.dashboard}
-                style={{ color: '#E8DCC0' }}
-              >
-                <Home className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
-              </button>
-            )}
 
             {/* Botão Sair */}
             <button
               onClick={handleLogout}
                 className="p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
                 aria-label={t.common.logout}
+                title={t.common.logout}
                 style={{ color: '#E8DCC0' }}
             >
-              <LogOut className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

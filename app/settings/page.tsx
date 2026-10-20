@@ -4,7 +4,8 @@ import { useTr } from '@/contexts/language-context';
 
 import { notify } from '@/lib/notify';
 import Link from 'next/link';
-import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { ShieldCheck, ChevronRight, Upload, Compass } from 'lucide-react';
+import { resetTours } from '@/components/guided-tour';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -350,13 +351,20 @@ export default function SettingsPage() {
                   <Label htmlFor="clinicLogo" style={{ color: '#E8DCC0' }}>
                     {tr('Enviar meu logo', 'Upload my logo')}
                   </Label>
-                  <input
-                    id="clinicLogo"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="text-sm text-revela-cream"
-                  />
+                  <label
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors hover:bg-white/5"
+                    style={{ color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.25)' }}
+                  >
+                    <Upload className="w-4 h-4" />
+                    {clinicLogo ? tr('Trocar imagem', 'Change image') : tr('Escolher imagem', 'Choose image')}
+                    <input
+                      id="clinicLogo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="sr-only"
+                    />
+                  </label>
                 </div>
 
                 {clinicLogo && (
@@ -531,13 +539,20 @@ export default function SettingsPage() {
                 <Label htmlFor="clinicLogo" style={{ color: '#E8DCC0' }}>
                   {tr('Logo da clínica', 'Clinic logo')}
                 </Label>
-                <input
-                  id="clinicLogo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="text-sm text-revela-cream"
-                />
+                <label
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors hover:bg-white/5"
+                  style={{ color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.25)' }}
+                >
+                  <Upload className="w-4 h-4" />
+                  {clinicLogo ? tr('Trocar imagem', 'Change image') : tr('Escolher imagem', 'Choose image')}
+                  <input
+                    id="clinicLogo"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="sr-only"
+                  />
+                </label>
               </div>
 
               {clinicLogo && (
@@ -596,6 +611,28 @@ export default function SettingsPage() {
           </span>
           <ChevronRight className="w-5 h-5 shrink-0" style={{ color: '#94a3b8' }} />
         </Link>
+
+        {/* Tour de primeiro uso */}
+        <button
+          type="button"
+          onClick={() => {
+            resetTours();
+            notify.success(tr('Pronto! O tour vai aparecer de novo nas telas.', 'Done! The tour will show again on each screen.'), { label: tr('Ir para o início', 'Go to home'), href: '/dashboard' });
+          }}
+          className="w-full flex items-center gap-4 rounded-lg p-4 sm:p-6 mb-6 border text-left transition-colors hover:bg-white/5"
+          style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', borderColor: 'rgba(232, 220, 192, 0.1)' }}
+        >
+          <span className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(232, 220, 192, 0.08)', color: '#E8DCC0' }}>
+            <Compass className="w-6 h-6" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-lg font-light" style={{ color: '#E8DCC0' }}>{tr('Rever o tour', 'Replay the tour')}</span>
+            <span className="block text-xs sm:text-sm" style={{ color: '#E8DCC0', opacity: 0.8 }}>
+              {tr('Mostra de novo as dicas de onde fica cada coisa.', 'Shows the tips about where everything is again.')}
+            </span>
+          </span>
+          <ChevronRight className="w-5 h-5 shrink-0" style={{ color: '#94a3b8' }} />
+        </button>
 
         {/* Alterar Senha */}
         <div 
