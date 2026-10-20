@@ -34,6 +34,20 @@ function setLocalStorageItem(key: string, value: string): boolean {
   }
 }
 
+// Avisa o app (ex.: Cofre Revela) que um projeto mudou. Não dispara em gravações
+// feitas pela própria sincronização, para não criar um vai-e-volta.
+export const PROJECT_CHANGED_EVENT = 'revela:project-changed';
+export type ProjectChangedDetail = { id: string; deleted?: boolean };
+
+function emitProjectChanged(detail: ProjectChangedDetail) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent<ProjectChangedDetail>(PROJECT_CHANGED_EVENT, { detail }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface Folder {
   id: string;
   name: string;
@@ -363,7 +377,8 @@ export const getProjectFromIndexedDB = (id: string, timeout: number = 5000): Pro
 };
 
 // Deletar projeto do IndexedDB
-export const deleteProjectFromIndexedDB = async (id: string): Promise<void> => {
+export const deleteProjectFromIndexedDB = async (id: string, options: { silent?: boolean } = {}): Promise<void> => {
+  if (!options.silent) emitProjectChanged({ id, deleted: true });
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('RevelaDB', 1);
 
@@ -435,6 +450,11 @@ export const deleteProjectFromIndexedDB = async (id: string): Promise<void> => {
 
 // Função para salvar projeto (tenta IndexedDB primeiro, depois localStorage)
 export const saveProject = async (input: Project): Promise<void> => {
+  await saveProjectInner(input);
+  emitProjectChanged({ id: input.id });
+};
+
+const saveProjectInner = async (input: Project): Promise<void> => {
   const project: Project = { ...input, updatedAt: new Date().toISOString() };
   try {
     // Tentar IndexedDB primeiro
@@ -555,6 +575,11 @@ export const updateProjectInIndexedDB = (project: Project): Promise<void> => {
 
 // Função para atualizar projeto (tenta IndexedDB primeiro, depois localStorage)
 export const updateProject = async (input: Project): Promise<void> => {
+  await updateProjectInner(input);
+  emitProjectChanged({ id: input.id });
+};
+
+const updateProjectInner = async (input: Project): Promise<void> => {
   const project: Project = { ...input, updatedAt: new Date().toISOString() };
   try {
     // Tentar IndexedDB primeiro
