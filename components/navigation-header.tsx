@@ -4,7 +4,9 @@ import { notify } from '@/lib/notify';
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, LogOut, Settings } from 'lucide-react';
+import { Home, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { VaultAgent, useVaultStatus } from '@/components/vault-agent';
+import { useTr } from '@/contexts/language-context';
 import { supabase } from '@/lib/supabase';
 import { SafeImage } from '@/components/safe-image';
 import { LanguageSelector } from '@/components/language-selector';
@@ -22,10 +24,26 @@ export function NavigationHeader() {
   const { user } = useAuth(false);
   const {
     userPlan: plan,
+    hasPremiumAccess,
     entitlementLoading,
     entitlementFetchError,
     showPurchaseEmailHint,
   } = usePlan();
+
+  const tr = useTr();
+  const vault = useVaultStatus();
+  const vaultDot =
+    vault.phase === 'ok' ? '#2dd4bf' : vault.phase === 'syncing' ? '#60a5fa' : vault.phase === 'locked' || vault.phase === 'error' ? '#fbbf24' : null;
+  const vaultLabel =
+    vault.phase === 'ok'
+      ? tr('Cofre: sincronizado', 'Vault: synced')
+      : vault.phase === 'syncing'
+        ? tr('Cofre: sincronizando…', 'Vault: syncing…')
+        : vault.phase === 'locked'
+          ? tr('Cofre: bloqueado neste aparelho', 'Vault: locked on this device')
+          : vault.phase === 'error'
+            ? tr('Cofre: precisa de atenção', 'Vault: needs attention')
+            : tr('Cofre Revela', 'Revela Vault');
 
   const fullPlanName =
     plan === 'premium'
@@ -115,6 +133,24 @@ export function NavigationHeader() {
             {/* Seletor de Idioma */}
             <LanguageSelector />
             
+            {/* Cofre Revela (escudo) com bolinha de status */}
+            <button
+              onClick={() => router.push('/cofre')}
+              className="relative p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label={vaultLabel}
+              title={vaultLabel}
+              style={{ color: '#E8DCC0' }}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+              {vaultDot && (
+                <span
+                  className={`absolute top-0.5 right-0.5 w-2 h-2 rounded-full ${vault.phase === 'syncing' ? 'animate-pulse' : ''}`}
+                  style={{ backgroundColor: vaultDot }}
+                />
+              )}
+            </button>
+            <VaultAgent userId={user?.id} ownerEmail={user?.email} enabled={!!user?.id && hasPremiumAccess} />
+
             {/* Configurações (engrenagem) sempre visível */}
             <button
               onClick={() => router.push('/settings')}

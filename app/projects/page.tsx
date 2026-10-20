@@ -4,7 +4,10 @@ import { useTr } from '@/contexts/language-context';
 
 import { notify, confirmDialog } from '@/lib/notify';
 import type { Translations } from '@/lib/i18n/translations';
-import { isInCloud, lastBackupAt, markExported } from '@/lib/cloud-project-backup';
+import { lastBackupAt, markExported } from '@/lib/cloud-project-backup';
+import { isProjectInVault } from '@/lib/vault';
+import { useVaultStatus, VAULT_UPDATED_EVENT } from '@/components/vault-agent';
+import { ShieldCheck } from 'lucide-react';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -47,6 +50,7 @@ export default function ProjectsPage() {
   const [autoBackupFailed, setAutoBackupFailed] = useState(false);
   // Lembrete: dias desde o último backup (arquivo exportado ou envio para a nuvem); null = não mostrar
   const [backupReminderDays, setBackupReminderDays] = useState<number | null>(null);
+  const vault = useVaultStatus();
   const [showBackupMenu, setShowBackupMenu] = useState(false);
   
   // Estados para pastas
@@ -203,8 +207,22 @@ export default function ProjectsPage() {
     }
   }, [showBackupMenu]);
 
+  // Projetos que chegaram ou foram apagados em outro aparelho (Cofre)
+  useEffect(() => {
+    const reload = () => { void loadProjects(user?.email || null); };
+    window.addEventListener(VAULT_UPDATED_EVENT, reload);
+    return () => window.removeEventListener(VAULT_UPDATED_EVENT, reload);
+  }, [loadProjects, user?.email]);
+
   const handleDelete = async (id: string) => {
-    if (!(await confirmDialog(t => t.msg.confirmDeleteProject, { confirmLabel: t => t.common.delete, danger: true }))) {
+    const vaultOn = ['ok', 'syncing', 'error'].includes(vault.phase);
+    const message = vaultOn
+      ? tr(
+          'Apagar este projeto? Ele também será apagado do Cofre e dos seus outros aparelhos. Essa ação não pode ser desfeita.',
+          'Delete this project? It will also be deleted from the Vault and your other devices. This cannot be undone.'
+        )
+      : (t: Translations) => t.msg.confirmDeleteProject;
+    if (!(await confirmDialog(message, { confirmLabel: t => t.common.delete, danger: true }))) {
       return;
     }
 
@@ -221,10 +239,6 @@ export default function ProjectsPage() {
       }
       
       notify.success(t => t.msg.projectDeleted);
-      // Apagar no aparelho não apaga a cópia da nuvem
-      if (isInCloud(id)) {
-        notify.info(t => t.msg.stillInCloud, { label: t => t.msg.manageCloud, href: '/settings' });
-      }
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
       notify.error(t => t.msg.deleteProjectError);
@@ -491,8 +505,32 @@ export default function ProjectsPage() {
           
         </div>
 
-        {/* Lembrete de backup: as fotos ficam só neste aparelho */}
-        {backupReminderDays !== null && projects.length > 0 && (
+        {/* Cofre bloqueado neste aparelho */}
+        {vault.phase === 'locked' && vault.items > 0 && (
+          <div
+            className="mb-6 rounded-lg border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+            style={{ backgroundColor: 'rgba(0, 168, 143, 0.08)', borderColor: 'rgba(0, 168, 143, 0.45)' }}
+            role="status"
+          >
+            <ShieldCheck className="w-6 h-6 shrink-0" style={{ color: '#00A88F' }} />
+            <p className="text-xs sm:text-sm flex-1" style={{ color: '#E8DCC0' }}>
+              {tr(
+                `Você tem ${vault.items} projeto(s) no Cofre. Abra o cofre neste aparelho para vê-los aqui.`,
+                `You have ${vault.items} project(s) in your Vault. Unlock it on this device to see them here.`
+              )}
+            </p>
+            <Link
+              href="/cofre"
+              className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-center"
+              style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+            >
+              {tr('Abrir cofre', 'Unlock vault')}
+            </Link>
+          </div>
+        )}
+
+        {/* Lembrete de backup: as fotos ficam só neste aparelho (o Cofre ligado já é backup) */}
+        {backupReminderDays !== null && projects.length > 0 && !['ok', 'syncing'].includes(vault.phase) && (
           <div
             className="mb-6 rounded-lg border p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3"
             style={{ backgroundColor: 'rgba(234, 179, 8, 0.08)', borderColor: 'rgba(234, 179, 8, 0.45)' }}
@@ -958,6 +996,19 @@ export default function ProjectsPage() {
                 >
                   {project.name}
                 </h3>
+                {user?.id && ['ok', 'syncing', 'error'].includes(vault.phase) && (
+                  <div className="mb-1">
+                    {isProjectInVault(user.id, project) ? (
+                      <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#5eead4' }}>
+                        <ShieldCheck className="w-3 h-3" /> {tr('no cofre', 'in vault')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#94a3b8' }}>
+                        <ShieldCheck className="w-3 h-3" /> {tr('enviando ao cofre…', 'sending to vault…')}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {hasEvolution && (
                   <div className="mb-2 flex items-center gap-2">
                     <span

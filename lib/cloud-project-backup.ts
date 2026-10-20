@@ -71,7 +71,7 @@ function detectImageMime(bytes: Bytes): string {
   return 'image/jpeg';
 }
 
-async function uploadEncryptedImage(
+export async function uploadEncryptedImage(
   folder: string,
   imageKey: string,
   base64: string,
@@ -93,7 +93,7 @@ async function downloadBytes(path: string): Promise<Bytes> {
   return new Uint8Array(await data.arrayBuffer());
 }
 
-async function downloadEncryptedImage(path: string, key: CryptoKey): Promise<string> {
+export async function downloadEncryptedImage(path: string, key: CryptoKey): Promise<string> {
   const plain = await decryptBytes(key, await downloadBytes(path));
   return `data:${detectImageMime(plain)};base64,${toBase64(plain)}`;
 }
@@ -107,7 +107,7 @@ async function downloadImageAsBase64(path: string): Promise<string> {
 type StorageItem = { name: string; id?: string | null };
 
 /** Lista os arquivos de uma pasta do bucket, entrando nas subpastas (o Storage não lista recursivamente). */
-async function listFilesRecursive(prefix: string): Promise<string[]> {
+export async function listFilesRecursive(prefix: string): Promise<string[]> {
   const { data } = await supabase.storage.from(BUCKET).list(prefix, { limit: 1000 });
   const out: string[] = [];
   for (const item of (data || []) as StorageItem[]) {
@@ -127,20 +127,20 @@ async function listFilesRecursive(prefix: string): Promise<string[]> {
  * Apaga os arquivos do projeto na nuvem. Com `keepPrefix`, preserva essa versão
  * (usado depois de um envio bem-sucedido para limpar só as versões antigas).
  */
-async function removeFiles(paths: string[]): Promise<void> {
+export async function removeFiles(paths: string[]): Promise<void> {
   for (let i = 0; i < paths.length; i += 100) {
     await supabase.storage.from(BUCKET).remove(paths.slice(i, i + 100));
   }
 }
 
-async function deleteProjectFiles(userId: string, projectId: string, keepPrefix?: string): Promise<void> {
+export async function deleteProjectFiles(userId: string, projectId: string, keepPrefix?: string): Promise<void> {
   const files = await listFilesRecursive(`${userId}/${projectId}`);
   await removeFiles(keepPrefix ? files.filter((f) => !f.startsWith(keepPrefix)) : files);
 }
 
 // ─── Metadata (DB row — lightweight, no images) ───────────────────────
 
-interface CloudProjectMeta {
+export interface CloudProjectMeta {
   projectId: string;
   name: string;
   date: string;
@@ -155,7 +155,7 @@ interface CloudProjectMeta {
   updatedAt?: string;
 }
 
-function buildMeta(project: Project): CloudProjectMeta {
+export function buildMeta(project: Project): CloudProjectMeta {
   return {
     projectId: project.id,
     name: project.name,
@@ -234,7 +234,7 @@ export function markExported() {
   try { localStorage.setItem('revela_last_export', new Date().toISOString()); } catch { /* ignore */ }
 }
 
-function markCloudSync() {
+export function markCloudSync() {
   try { localStorage.setItem('revela_last_cloud_sync', new Date().toISOString()); } catch { /* ignore */ }
 }
 
@@ -296,9 +296,9 @@ function checkPassword(password: string) {
   }
 }
 
-type Row = { id: string; description: string | null; created_at?: string; updated_at?: string };
+export type Row = { id: string; description: string | null; created_at?: string; updated_at?: string };
 
-function parseRow(row: Row): any {
+export function parseRow(row: Row): any {
   try {
     return JSON.parse(row.description || '{}');
   } catch {
@@ -313,7 +313,7 @@ function rowProjectId(parsed: any): string | null {
   return null;
 }
 
-async function listRows(userId: string): Promise<Row[]> {
+export async function listRows(userId: string): Promise<Row[]> {
   const { data, error } = await supabase
     .from('before_after_photos')
     .select('id,description,created_at,updated_at')
@@ -369,13 +369,13 @@ async function verifyPasswordAgainstCloud(password: string, rows: Row[]): Promis
 }
 
 /** Caminhos das fotos dentro do payload cifrado (formato v3.1). */
-interface ImagePaths {
+export interface ImagePaths {
   before: string[];
   after: string[];
   evolution: Record<string, string>;
 }
 
-const photoCount = (p: Project) =>
+export const photoCount = (p: Project) =>
   (p.beforeImages?.length || 0) + (p.afterImages?.length || 0) + (p.evolutionImages?.length || 0);
 
 async function syncOneProject(
@@ -494,9 +494,9 @@ export async function syncSelectedProjectsToCloud(
 
 // ─── Restore (cloud → local) ──────────────────────────────────────────
 
-class MissingImageError extends Error {}
+export class MissingImageError extends Error {}
 
-async function fetchAll<T>(items: T[], load: (item: T) => Promise<string>): Promise<string[]> {
+export async function fetchAll<T>(items: T[], load: (item: T) => Promise<string>): Promise<string[]> {
   const out: string[] = [];
   for (const item of items) {
     try {
@@ -617,7 +617,10 @@ export async function restoreProjectsFromCloud(
 
   const localById = new Map((await getAllProjectsFromIndexedDB()).map((p) => [p.id, p]));
   const groups = groupRowsByProject(rows);
-  result.skipped += rows.filter((r) => !rowProjectId(parseRow(r))).length;
+  result.skipped += rows.filter((r) => {
+    const parsed = parseRow(r);
+    return !rowProjectId(parsed) && !String(parsed?.__type || '').startsWith('revela_vault');
+  }).length;
 
   const entries = Array.from(groups.entries()).filter(([id]) => !options.onlyIds || options.onlyIds.includes(id));
   let done = 0;
