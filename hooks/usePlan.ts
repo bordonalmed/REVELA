@@ -36,7 +36,7 @@ export interface UsePlanReturn {
  * Inclui plano Hotmart sincronizado via webhook (`revela_entitlements`).
  */
 export function usePlan(): UsePlanReturn {
-  const { user } = useAuth(false);
+  const { user, loading: authLoading } = useAuth(false);
   const [dbPlan, setDbPlan] = useState<UserPlan | null>(null);
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [entitlementFetchError, setEntitlementFetchError] = useState(false);
@@ -53,8 +53,11 @@ export function usePlan(): UsePlanReturn {
       return;
     }
 
+    let first = true;
     const load = () => {
-      setEntitlementLoading(true);
+      // Só a primeira busca mostra "carregando"; as de fundo (ao voltar para a aba) não piscam a tela
+      if (first) setEntitlementLoading(true);
+      first = false;
       fetchEntitlementPlanForEmail(email).then((result) => {
         if (cancelled) return;
 
@@ -103,7 +106,8 @@ export function usePlan(): UsePlanReturn {
     hasPremiumAccess: hasPremiumAccessFn(user, dbPlan),
     canUsePremiumFeature: (featureId: PremiumFeatureId) =>
       canUsePremiumFeature(userPlan, featureId),
-    entitlementLoading,
+    // Enquanto a sessão ou o plano ainda não chegaram, não tratar a conta como Free
+    entitlementLoading: authLoading || entitlementLoading || (!!user?.email && !entitlementChecked),
     entitlementFetchError,
     showPurchaseEmailHint,
   };

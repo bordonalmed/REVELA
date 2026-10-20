@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, ArrowLeft, Download, Upload, Database, Settings, ChevronDown, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon, Move } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getAllProjects, getAllProjectsForUser, deleteProjectFromIndexedDB, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, getAutoBackupFailure, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
+import { getAllProjects, getAllProjectsForUser, moveProjectToTrash, getTrashedProjects, purgeExpiredTrash, TRASH_DAYS, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, getAutoBackupFailure, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
@@ -61,6 +61,7 @@ export default function ProjectsPage() {
   const [projectToMove, setProjectToMove] = useState<string | null>(null);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [trashCount, setTrashCount] = useState(0);
 
   const checkUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -74,8 +75,10 @@ export default function ProjectsPage() {
   const loadProjects = useCallback(async (ownerEmail: string | null = null) => {
     try {
       setLoadingProjects(true);
+      await purgeExpiredTrash().catch(() => 0);
       const allProjects = await getAllProjectsForUser(ownerEmail);
       setProjects(allProjects);
+      setTrashCount((await getTrashedProjects(ownerEmail).catch(() => [])).length);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
     } finally {
@@ -218,11 +221,14 @@ export default function ProjectsPage() {
     const vaultOn = ['ok', 'syncing', 'error'].includes(vault.phase);
     const message = vaultOn
       ? tr(
-          'Apagar este projeto? Ele também será apagado do Cofre e dos seus outros aparelhos. Essa ação não pode ser desfeita.',
-          'Delete this project? It will also be deleted from the Vault and your other devices. This cannot be undone.'
+          `Mover este projeto para a lixeira? Ele sai também dos seus outros aparelhos. Você pode restaurar em até ${TRASH_DAYS} dias.`,
+          `Move this project to the trash? It will also leave your other devices. You can restore it within ${TRASH_DAYS} days.`
         )
-      : (t: Translations) => t.msg.confirmDeleteProject;
-    if (!(await confirmDialog(message, { confirmLabel: t => t.common.delete, danger: true }))) {
+      : tr(
+          `Mover este projeto para a lixeira? Você pode restaurar em até ${TRASH_DAYS} dias.`,
+          `Move this project to the trash? You can restore it within ${TRASH_DAYS} days.`
+        );
+    if (!(await confirmDialog(message, { confirmLabel: tr('Mover para a lixeira', 'Move to trash'), danger: true }))) {
       return;
     }
 
@@ -230,7 +236,7 @@ export default function ProjectsPage() {
       // Encontrar projeto antes de deletar para tracking
       const projectToDelete = projects.find(p => p.id === id);
       
-      await deleteProjectFromIndexedDB(id);
+      await moveProjectToTrash(id);
       await loadProjects(user?.email || null);
       
       // Trackear deleção de projeto
@@ -238,7 +244,7 @@ export default function ProjectsPage() {
         trackDeleteProject(id, projectToDelete.name);
       }
       
-      notify.success(t => t.msg.projectDeleted);
+      notify.success(tr('Projeto movido para a lixeira.', 'Project moved to the trash.'), { label: tr('Ver lixeira', 'View trash'), href: '/lixeira' });
     } catch (error) {
       console.error('Erro ao excluir projeto:', error);
       notify.error(t => t.msg.deleteProjectError);
@@ -489,6 +495,13 @@ export default function ProjectsPage() {
               <div className="text-sm text-right sm:text-left" style={{ color: '#E8DCC0', opacity: 0.7 }}>
                 {filteredAndSortedProjects.length} {tr('de', 'of')} {projects.length} {projects.length !== 1 ? tr('projetos', 'projects') : tr('projeto', 'project')}
               </div>
+              <Link
+                href="/lixeira"
+                className="px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 flex items-center justify-center gap-2 border"
+                style={{ color: '#E8DCC0', borderColor: 'rgba(232,220,192,0.25)' }}
+              >
+                <Trash2 className="w-4 h-4" /> {tr('Lixeira', 'Trash')}{trashCount > 0 ? ` (${trashCount})` : ''}
+              </Link>
               <button
                 onClick={() => router.push('/new-project')}
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2 border"

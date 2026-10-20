@@ -22,7 +22,9 @@ import {
   type Project,
   getAllProjectsFromIndexedDB,
   saveProjectToIndexedDB,
-  deleteProjectFromIndexedDB,
+  moveProjectToTrash,
+  getPendingDeletes,
+  clearPendingDelete,
 } from './storage';
 import {
   buildMeta,
@@ -522,10 +524,29 @@ export interface VaultSyncResult {
  * Regra: vale a versão mais recente; exclusões feitas em outro aparelho são aplicadas aqui.
  */
 export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEmail?: string | null): Promise<VaultSyncResult> {
-  const rows = await readVaultRows(userId);
+  let rows = await readVaultRows(userId);
   const key = await deviceKey(userId, rows.header?.data);
-  const local = await getAllProjectsFromIndexedDB();
-  const localById = new Map(local.map((p) => [p.id, p]));
+
+  // Exclusões feitas aqui enquanto o cofre estava trancado ou sem internet
+  const pending = getPendingDeletes();
+  let wrote = false;
+  for (const [projectId, deletedAt] of Object.entries(pending)) {
+    const item = rows.items.get(projectId)?.[0]?.data;
+    const tomb = rows.tombstones.get(projectId)?.[0]?.data;
+    // Editado em outro aparelho depois da exclusão: a edição vence (o projeto volta)
+    const editedLater = item && item.updatedAt > deletedAt;
+    if (!editedLater && !(tomb && !item)) {
+      await deleteFromVault(userId, projectId, deletedAt);
+      wrote = true;
+    }
+    clearPendingDelete(projectId);
+  }
+  if (wrote) rows = await readVaultRows(userId);
+
+  const everything = await getAllProjectsFromIndexedDB({ includeTrash: true });
+  const local = everything.filter((p) => !p.deletedAt);
+  const trashed = everything.filter((p) => p.deletedAt);
+  const localById = new Map(everything.map((p) => [p.id, p]));
   const synced = readSynced(userId);
   const result: VaultSyncResult = { sent: 0, received: 0, deletedHere: 0, failures: [] };
 
@@ -547,6 +568,11 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
     } else if (synced[p.id] !== here) {
       synced[p.id] = here;
     }
+  }
+  // Na lixeira daqui, mas editado em outro aparelho depois: volta da lixeira
+  for (const p of trashed) {
+    const item = rows.items.get(p.id)?.[0]?.data;
+    if (item && !isDeleted(rows, p.id) && item.updatedAt > (p.deletedAt as string) && item.updatedAt > lastChange(p)) toPull.push(item);
   }
   rows.items.forEach((list, projectId) => {
     if (!localById.has(projectId) && !isDeleted(rows, projectId)) toPull.push(list[0].data);
@@ -586,8 +612,10 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
     }
     onProgress?.({ done: ++done, total, projectName: name });
   }
+  // Apagado em outro aparelho: aqui vai para a lixeira (pode ser restaurado por 30 dias)
   for (const p of toDeleteHere) {
-    await deleteProjectFromIndexedDB(p.id, { silent: true });
+    const tomb = rows.tombstones.get(p.id)?.[0]?.data;
+    await moveProjectToTrash(p.id, { silent: true, deletedAt: tomb?.deletedAt });
     const map = readSynced(userId);
     delete map[p.id];
     writeSynced(userId, map);
@@ -609,13 +637,14 @@ export async function pushOneProject(userId: string, project: Project): Promise<
 }
 
 /** Registra a exclusão no cofre (remove fotos e dados; os outros aparelhos apagam na próxima sincronização). */
-export async function deleteFromVault(userId: string, projectId: string): Promise<void> {
+export async function deleteFromVault(userId: string, projectId: string, deletedAt?: string): Promise<void> {
   const rows = await readVaultRows(userId);
   await deviceKey(userId, rows.header?.data); // só quem tem a chave do cofre atual pode apagar
   await deleteProjectFiles(userId, projectId);
   await deleteRows([...(rows.items.get(projectId) || []), ...(rows.tombstones.get(projectId) || [])].map((x) => x.row));
-  const tomb: Tombstone = { __type: TOMBSTONE_TYPE, projectId, deletedAt: new Date().toISOString() };
+  const tomb: Tombstone = { __type: TOMBSTONE_TYPE, projectId, deletedAt: deletedAt || new Date().toISOString() };
   await insertRow(userId, tomb, 'Revela (deleted)');
+  clearPendingDelete(projectId);
   const map = readSynced(userId);
   delete map[projectId];
   writeSynced(userId, map);
