@@ -5,6 +5,7 @@ import { notify } from '@/lib/notify';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Home, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { VaultAgent, useVaultStatus } from '@/components/vault-agent';
 import { useTr } from '@/contexts/language-context';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +15,7 @@ import { useLanguage } from '@/contexts/language-context';
 import { trackLogout } from '@/lib/analytics';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlan } from '@/hooks/usePlan';
+import { getActiveDevPlanOverride } from '@/lib/plans';
 import { PlanEntitlementAlerts } from '@/components/plan-entitlement-alerts';
 
 export function NavigationHeader() {
@@ -32,6 +34,8 @@ export function NavigationHeader() {
 
   const tr = useTr();
   const vault = useVaultStatus();
+  const [simulated, setSimulated] = useState(false);
+  useEffect(() => setSimulated(!!getActiveDevPlanOverride(user)), [user]);
   const vaultDot =
     vault.phase === 'ok' ? '#2dd4bf' : vault.phase === 'syncing' ? '#60a5fa' : vault.phase === 'locked' || vault.phase === 'error' ? '#fbbf24' : null;
   const vaultLabel =
@@ -124,10 +128,12 @@ export function NavigationHeader() {
                       ? 'rgba(34, 197, 94, 0.4)'
                       : 'rgba(148, 163, 184, 0.4)',
                 borderWidth: 1,
+                borderStyle: simulated ? 'dashed' : 'solid',
               }}
+              title={simulated ? tr('Plano simulado (modo desenvolvedor). Toque para voltar ao plano real.', 'Simulated plan (developer mode). Tap to return to your real plan.') : undefined}
             >
-              <span className="sm:hidden truncate text-center leading-tight">{shortPlanName}</span>
-              <span className="hidden sm:inline">{fullPlanName}</span>
+              <span className="sm:hidden truncate text-center leading-tight">{shortPlanName}{simulated ? ' 🧪' : ''}</span>
+              <span className="hidden sm:inline">{fullPlanName}{simulated ? ` · ${tr('simulado', 'simulated')} 🧪` : ''}</span>
             </Link>
 
             {/* Seletor de Idioma */}

@@ -20,13 +20,30 @@ function normalizeUserEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+// Simulação de plano do desenvolvedor: vale só para a aba atual (sessionStorage) e
+// some ao fechá-la, para não ficar "preso" em Free/Pro sem perceber.
+const DEV_PLAN_KEY = 'revela_dev_plan';
+
 function getDevPlanOverride(): UserPlan | null {
   if (typeof window === 'undefined') return null;
-  const isDev = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEV_MODE === 'true';
-  if (!isDev) return null;
-  const stored = window.localStorage.getItem('revela_dev_plan');
-  if (stored === 'free' || stored === 'pro' || stored === 'premium') return stored;
+  try {
+    // Versões antigas guardavam no localStorage (para sempre). Limpa.
+    window.localStorage.removeItem(DEV_PLAN_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    const stored = window.sessionStorage.getItem(DEV_PLAN_KEY);
+    if (stored === 'free' || stored === 'pro' || stored === 'premium') return stored;
+  } catch {
+    /* ignore */
+  }
   return null;
+}
+
+/** Plano simulado ativo nesta aba (só para os e-mails do dono), ou null. */
+export function getActiveDevPlanOverride(user: User | null): UserPlan | null {
+  return canOverridePlan(user) ? getDevPlanOverride() : null;
 }
 
 export function canOverridePlan(user: User | null): boolean {
@@ -36,11 +53,13 @@ export function canOverridePlan(user: User | null): boolean {
 
 export function setDevPlanOverride(plan: UserPlan | null): void {
   if (typeof window === 'undefined') return;
-  if (!plan) {
-    window.localStorage.removeItem('revela_dev_plan');
-    return;
+  try {
+    window.localStorage.removeItem(DEV_PLAN_KEY);
+    if (!plan) window.sessionStorage.removeItem(DEV_PLAN_KEY);
+    else window.sessionStorage.setItem(DEV_PLAN_KEY, plan);
+  } catch {
+    /* ignore */
   }
-  window.localStorage.setItem('revela_dev_plan', plan);
 }
 
 /**
@@ -56,13 +75,15 @@ export function getUserPlan(user: User | null, hotmartEntitlement?: UserPlan | n
     if (override) return override;
   }
 
+  // Dono do produto é sempre Premium, mesmo que exista uma compra Pro de teste no e-mail
+  if (DEV_PREMIUM_EMAILS.includes(email)) {
+    return 'premium';
+  }
+
   if (hotmartEntitlement === 'premium' || hotmartEntitlement === 'pro') {
     return hotmartEntitlement;
   }
 
-  if (DEV_PREMIUM_EMAILS.includes(email)) {
-    return 'premium';
-  }
   if (DEV_PRO_EMAILS.includes(email)) {
     return 'pro';
   }

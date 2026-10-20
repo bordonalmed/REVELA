@@ -71,7 +71,7 @@ export default function PlanosPage() {
                     {tr('Modo desenvolvedor', 'Developer mode')}
                   </p>
                   <p className="text-[11px] sm:text-xs" style={{ color: '#E8DCC0', opacity: 0.75 }}>
-                    {tr('Troque de plano para testar recursos sem Hotmart. Basta estar logado (senha já cadastrada).', 'Switch plans to test features without Hotmart. You just need to be signed in.')}
+                    {tr('Simule outro plano para testar. Vale só nesta aba: ao fechá-la (ou tocar em "Plano real") você volta ao Premium.', 'Simulate another plan for testing. It only applies to this tab: close it (or tap "Real plan") to return to Premium.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default function PlanosPage() {
                       color: '#E8DCC0',
                     }}
                   >
-                    Reset
+                    {tr('Plano real', 'Real plan')}
                   </button>
                 </div>
               </div>
