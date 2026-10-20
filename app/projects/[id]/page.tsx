@@ -11,6 +11,8 @@ import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Imag
 import type { User } from '@supabase/supabase-js';
 import { getProjectFromIndexedDB, updateProject, type Project, type Measurement } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
+import { ProjectToolbar } from '@/components/project-toolbar';
+import { GuidedTour } from '@/components/guided-tour';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
@@ -76,8 +78,6 @@ export default function ViewProjectPage() {
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [isSliderMode, setIsSliderMode] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showDesktopMenu, setShowDesktopMenu] = useState(false);
   const [viewerHeight, setViewerHeight] = useState<number | null>(null);
   const [stackedSectionHeight, setStackedSectionHeight] = useState<number | null>(null);
   const beforeInputRef = React.useRef<HTMLInputElement>(null);
@@ -118,10 +118,12 @@ export default function ViewProjectPage() {
       // Em landscape, usar toda a altura disponível menos pequenos espaços
       // Em tablets landscape, deixar mais espaço para controles
       const landscapePadding = isTablet ? 12 : 8;
-      const availableHeight = landscape 
+      let availableHeight = landscape 
         ? height - (header ? header.getBoundingClientRect().height : 0) - landscapePadding
         : height - headerHeight - mainMarginTop - extraPadding;
       
+      // Barra de ações (embaixo no celular, flutuante no computador) não pode cobrir as fotos
+      availableHeight -= width < 640 ? 64 : 76;
       setViewerHeight(Math.max(availableHeight, 0));
 
       // Para modo empilhado (portrait), calcular altura de cada seção
@@ -1151,7 +1153,7 @@ export default function ViewProjectPage() {
       >
         {/* Botão Voltar/X - Mobile portrait */}
         {!isLandscape && (
-          <div className="mb-2 sm:mb-6">
+          <div className="mb-2 sm:mb-6 flex items-center gap-3">
             {(isEditing || isSliderMode || isPresentationMode) ? (
               <button
                 onClick={() => {
@@ -1180,6 +1182,13 @@ export default function ViewProjectPage() {
                 <ArrowLeft className="w-4 h-4" />
                 <span>{tr('Voltar', 'Back')}</span>
               </button>
+            )}
+            {/* Nome do projeto no celular (o cartão de informações só aparece no computador) */}
+            {!isEditing && (
+              <div className="sm:hidden min-w-0">
+                <p className="text-base truncate" style={{ color: '#E8DCC0' }}>{project.name}</p>
+                <p className="text-xs" style={{ color: '#E8DCC0', opacity: 0.6 }}>{formatLocalDate(project.date)}</p>
+              </div>
             )}
           </div>
         )}
@@ -1263,8 +1272,7 @@ export default function ViewProjectPage() {
                   </div>
                 )}
               </div>
-              {/* Barra de botões inline escondida a pedido: as mesmas ações já ficam
-                  disponíveis no menu "☰" (showMobileMenu/showDesktopMenu mais abaixo). */}
+              {/* Barra inline antiga (escondida): as ações ficam na barra fixa <ProjectToolbar /> */}
               {!isEditing ? (
                 <div className="hidden flex-wrap gap-2">
                   {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
@@ -2151,416 +2159,34 @@ export default function ViewProjectPage() {
           </div>
         )}
 
-        {/* Botões Flutuantes - Mobile Portrait: Menu Compacto */}
-        {!isEditing && !isLandscape && (
-          <div className="fixed top-16 right-4 z-50">
-            {/* Menu Principal (botão hambúrguer) */}
-            <button
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(10px)'
-              }}
-              title="Menu"
-              aria-label="Menu"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            {/* Menu Expandido */}
-            {showMobileMenu && (
-              <>
-                {/* Overlay para fechar ao clicar fora */}
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowMobileMenu(false)}
-                />
-                <div className="absolute top-14 right-0 flex flex-col gap-2 mt-2 z-50">
-                  {/* Botão Voltar */}
-                  <button
-                    onClick={() => {
-                      router.back();
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Voltar', 'Back')}
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>{tr('Voltar', 'Back')}</span>
-                  </button>
-              {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
-                <>
-                  <button
-                    onClick={() => {
-                      handleExportImage();
-                      setShowMobileMenu(false);
-                    }}
-                    disabled={exporting}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Exportar', 'Export')}
-                  >
-                    {exporting ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4" />
-                    )}
-                    <span>{tr('Exportar', 'Export')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowPdfReportModal(true);
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Gerar relatório PDF', 'Generate PDF report')}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>PDF</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowSocialMediaModal(true);
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Publicar nas redes sociais', 'Publish to social media')}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>{tr('Publicar', 'Publish')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleEnterPresentationMode();
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Apresentação', 'Presentation')}
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    <span>{tr('Apresentação', 'Presentation')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleToggleSliderMode();
-                      setShowMobileMenu(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
-                      isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
-                    }`}
-                    style={{ 
-                      backgroundColor: isSliderMode 
-                        ? 'rgba(0, 168, 143, 0.25)' 
-                        : 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title="Slider"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span>Slider</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleOpenMeasurementTool();
-                      setShowMobileMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Medir', 'Measure')}
-                  >
-                    <Ruler className="w-4 h-4" />
-                    <span>{tr('Medir', 'Measure')}</span>
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => {
-                  handleOpenNotes();
-                  setShowMobileMenu(false);
-                }}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
-                  project.notes ? 'ring-2 ring-[#00A88F]' : ''
-                }`}
-                style={{ 
-                  backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                  color: '#E8DCC0',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                  backdropFilter: 'blur(10px)'
-                }}
-                title={tr('Notas', 'Notes')}
-              >
-                <FileText className="w-4 h-4" />
-                <span>{tr('Notas', 'Notes')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleEdit();
-                  setShowMobileMenu(false);
-                }}
-                className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                style={{ 
-                  backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                  color: '#E8DCC0',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                  backdropFilter: 'blur(10px)'
-                }}
-                title={tr('Editar', 'Edit')}
-              >
-                <Edit2 className="w-4 h-4" />
-                <span>{tr('Editar', 'Edit')}</span>
-              </button>
-                </div>
-              </>
-            )}
-          </div>
+        {/* Barra de ações do projeto (sempre visível) */}
+        {!isEditing && !isPresentationMode && (
+          <GuidedTour
+            id="project-v1"
+            delay={1200}
+            steps={[
+              { target: '[data-tour="project-toolbar"]', title: tr('Tudo o que dá para fazer', 'Everything you can do'), text: tr('Gere o PDF para o paciente, publique nas redes, apresente em tela cheia ou meça com a régua.', 'Create the patient PDF, publish to social media, present full screen or measure with the ruler.') },
+              { target: '[data-tour="toolbar-more"]', title: tr('Mais opções', 'More options'), text: tr('Aqui ficam o deslizador antes/depois, salvar imagem, notas e editar o projeto.', 'The before/after slider, save image, notes and edit project are here.') },
+            ]}
+          />
         )}
-
-        {/* Botões Flutuantes - Desktop/Landscape: Menu Hambúrguer */}
-        {!isEditing && isLandscape && (
-          <div className="fixed top-16 right-4 z-50">
-            {/* Menu Principal (botão hambúrguer) */}
-            <button
-              onClick={() => setShowDesktopMenu(!showDesktopMenu)}
-              className="p-2.5 rounded-full shadow-lg transition-all active:scale-95"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                color: '#E8DCC0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(10px)'
-              }}
-              title="Menu"
-              aria-label="Menu"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            {/* Menu Expandido */}
-            {showDesktopMenu && (
-              <>
-                {/* Overlay para fechar ao clicar fora */}
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowDesktopMenu(false)}
-                />
-                <div className="absolute top-14 right-0 flex flex-col gap-2 mt-2 z-50">
-                  {/* Botão Voltar */}
-                  <button
-                    onClick={() => {
-                      router.back();
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Voltar', 'Back')}
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>{tr('Voltar', 'Back')}</span>
-                  </button>
-            {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
-              <>
-                  <button
-                    onClick={() => {
-                      handleExportImage();
-                      setShowDesktopMenu(false);
-                    }}
-                    disabled={exporting}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Exportar', 'Export')}
-                  >
-                    {exporting ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ImageIcon className="w-4 h-4" />
-                    )}
-                    <span>{tr('Exportar', 'Export')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowPdfReportModal(true);
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Gerar relatório PDF', 'Generate PDF report')}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>PDF</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowSocialMediaModal(true);
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Publicar nas redes sociais', 'Publish to social media')}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>{tr('Publicar', 'Publish')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleEnterPresentationMode();
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Apresentação', 'Presentation')}
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    <span>{tr('Apresentação', 'Presentation')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleToggleSliderMode();
-                      setShowDesktopMenu(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
-                      isSliderMode ? 'ring-2 ring-[#00A88F]' : ''
-                    }`}
-                    style={{ 
-                      backgroundColor: isSliderMode 
-                        ? 'rgba(0, 168, 143, 0.25)' 
-                        : 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title="Slider"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span>Slider</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleOpenMeasurementTool();
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)',
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Medir', 'Measure')}
-                  >
-                    <Ruler className="w-4 h-4" />
-                    <span>{tr('Medir', 'Measure')}</span>
-                  </button>
-              </>
-            )}
-                  <button
-                    onClick={() => {
-                      handleOpenNotes();
-                      setShowDesktopMenu(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg ${
-                      project?.notes ? 'ring-2 ring-[#00A88F]' : ''
-                    }`}
-                    style={{ 
-                      backgroundColor: project?.notes 
-                        ? 'rgba(0, 168, 143, 0.25)' 
-                        : 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Notas', 'Notes')}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>{tr('Notas', 'Notes')}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleEdit();
-                      setShowDesktopMenu(false);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                    style={{ 
-                      backgroundColor: 'rgba(232, 220, 192, 0.15)', 
-                      color: '#E8DCC0',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                    title={tr('Editar', 'Edit')}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span>{tr('Editar', 'Edit')}</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+        {!isEditing && (
+          <ProjectToolbar
+            actions={[
+              ...(displayBeforeImages.length > 0 && displayAfterImages.length > 0
+                ? [
+                    { id: 'pdf', primary: true, icon: <Download className="w-5 h-5" />, label: 'PDF', hint: tr('Relatório para o paciente', 'Report for the patient'), onClick: () => setShowPdfReportModal(true) },
+                    { id: 'publish', primary: true, icon: <Share2 className="w-5 h-5" />, label: tr('Publicar', 'Publish'), hint: tr('Imagem pronta para redes sociais', 'Image ready for social media'), onClick: () => setShowSocialMediaModal(true) },
+                    { id: 'present', primary: true, icon: <Maximize2 className="w-5 h-5" />, label: tr('Apresentar', 'Present'), hint: tr('Tela cheia para mostrar ao paciente', 'Full screen to show the patient'), onClick: handleEnterPresentationMode },
+                    { id: 'measure', primary: true, icon: <Ruler className="w-5 h-5" />, label: tr('Medir', 'Measure'), hint: tr('Medir com régua na foto', 'Measure with a ruler in the photo'), onClick: handleOpenMeasurementTool },
+                    { id: 'slider', icon: <SlidersHorizontal className="w-5 h-5" />, label: tr('Deslizar antes/depois', 'Before/after slider'), hint: tr('Arraste para comparar na mesma foto', 'Drag to compare on one image'), active: isSliderMode, onClick: handleToggleSliderMode },
+                    { id: 'export', icon: exporting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-5 h-5" />, label: tr('Salvar imagem', 'Save image'), hint: tr('Baixa a comparação como imagem', 'Download the comparison as an image'), disabled: exporting, onClick: handleExportImage },
+                  ]
+                : []),
+              { id: 'notes', icon: <FileText className="w-5 h-5" />, label: tr('Notas', 'Notes'), dot: !!project.notes, onClick: handleOpenNotes },
+              { id: 'edit', icon: <Edit2 className="w-5 h-5" />, label: tr('Editar projeto', 'Edit project'), hint: tr('Trocar fotos, nome e data', 'Change photos, name and date'), onClick: handleEdit },
+            ]}
+          />
         )}
 
         {/* Modal de Notas */}

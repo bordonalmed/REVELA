@@ -1,14 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchEntitlementPlanForEmail } from '@/lib/entitlements';
-import {
-  getUserPlan,
-  hasProAccess as hasProAccessFn,
-  hasPremiumAccess as hasPremiumAccessFn,
-  type UserPlan,
-} from '@/lib/plans';
+import { getActiveDevPlanOverride, getUserPlan, type UserPlan } from '@/lib/plans';
+import { clearLastPlan, getCachedEntitlement, getLastPlan, setCachedEntitlement, setLastPlan } from '@/lib/plan-cache';
 import {
   canUsePremiumFeature,
   type PremiumFeatureId,
@@ -31,12 +27,14 @@ export interface UsePlanReturn {
   showPurchaseEmailHint: boolean;
 }
 
+const noopSubscribe = () => () => {};
+
 /**
  * Hook para acesso ao plano do usuário e permissões (Pro/Premium).
  * Inclui plano Hotmart sincronizado via webhook (`revela_entitlements`).
  */
 export function usePlan(): UsePlanReturn {
-  const { user, loading: authLoading } = useAuth(false);
+  const { user, loading: authLoading, error: authError } = useAuth(false);
   const [dbPlan, setDbPlan] = useState<UserPlan | null>(null);
   const [entitlementLoading, setEntitlementLoading] = useState(false);
   const [entitlementFetchError, setEntitlementFetchError] = useState(false);
@@ -46,14 +44,25 @@ export function usePlan(): UsePlanReturn {
     let cancelled = false;
     const email = user?.email;
     if (!email) {
+      // Sessão ainda carregando ou falha de conexão: manter o que já se sabia
+      if (authLoading || authError) return;
+      // Saiu da conta
       setDbPlan(null);
       setEntitlementLoading(false);
       setEntitlementFetchError(false);
       setEntitlementChecked(false);
+      clearLastPlan();
       return;
     }
 
-    let first = true;
+    // Começa com o plano Hotmart guardado deste e-mail (a busca abaixo confirma em segundo plano)
+    const cached = getCachedEntitlement(email);
+    if (cached !== undefined) {
+      setDbPlan(cached);
+      setEntitlementChecked(true);
+    }
+
+    let first = cached === undefined;
     const load = () => {
       // Só a primeira busca mostra "carregando"; as de fundo (ao voltar para a aba) não piscam a tela
       if (first) setEntitlementLoading(true);
@@ -66,6 +75,7 @@ export function usePlan(): UsePlanReturn {
           setEntitlementFetchError(true);
         } else {
           setDbPlan(result.plan);
+          setCachedEntitlement(email, result.plan);
           setEntitlementFetchError(false);
         }
 
@@ -89,9 +99,28 @@ export function usePlan(): UsePlanReturn {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-  }, [user?.email ?? null]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email ?? null, authLoading, !!authError]);
 
-  const userPlan = getUserPlan(user, dbPlan);
+  const livePlan = getUserPlan(user, dbPlan);
+  // Sem usuário só por um instante (carregando ou falha de rede) ou plano ainda não confirmado:
+  // mostrar o último plano conhecido em vez de cair para Free.
+  const transient = !user && (authLoading || !!authError);
+  const unconfirmed = !!user?.email && !entitlementChecked && livePlan === 'free';
+  // No servidor não há localStorage: só usar o plano guardado depois de montar no navegador
+  const inBrowser = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const userPlan: UserPlan = !inBrowser
+    ? livePlan
+    : transient
+      ? getLastPlan() ?? 'free'
+      : unconfirmed
+        ? getLastPlan(user?.email) ?? livePlan
+        : livePlan;
+
+  useEffect(() => {
+    if (!user?.email || !entitlementChecked || getActiveDevPlanOverride(user)) return;
+    setLastPlan(user.email, livePlan);
+  }, [user, entitlementChecked, livePlan]);
 
   const showPurchaseEmailHint =
     !!user?.email &&
@@ -102,8 +131,8 @@ export function usePlan(): UsePlanReturn {
 
   return {
     userPlan,
-    hasProAccess: hasProAccessFn(user, dbPlan),
-    hasPremiumAccess: hasPremiumAccessFn(user, dbPlan),
+    hasProAccess: userPlan === 'pro' || userPlan === 'premium',
+    hasPremiumAccess: userPlan === 'premium',
     canUsePremiumFeature: (featureId: PremiumFeatureId) =>
       canUsePremiumFeature(userPlan, featureId),
     // Enquanto a sessão ou o plano ainda não chegaram, não tratar a conta como Free

@@ -12,11 +12,12 @@ import { ShieldCheck } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, ArrowLeft, Download, Upload, Database, Settings, ChevronDown, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon, Move } from 'lucide-react';
+import { MoreHorizontal, FolderInput, Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, Download, Upload, Database, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAllProjects, getAllProjectsForUser, moveProjectToTrash, getTrashedProjects, purgeExpiredTrash, TRASH_DAYS, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, getAutoBackupFailure, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
+import { GuidedTour } from '@/components/guided-tour';
 import { Footer } from '@/components/footer';
 import { SafeBase64Image } from '@/components/safe-image';
 import { trackDeleteProject, trackExportBackup, trackImportBackup, trackCreateFolder, trackUpdateFolder, trackDeleteFolder } from '@/lib/analytics';
@@ -466,56 +467,25 @@ export default function ProjectsPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl pt-20 sm:pt-24">
-        {/* Botão Voltar */}
-        <div className="mb-4 sm:mb-6">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
-            style={{ 
-              backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-              color: '#E8DCC0', 
-              borderColor: 'rgba(232, 220, 192, 0.1)' 
-            }}
-            title={tr('Voltar para dashboard', 'Back to dashboard')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{tr('Voltar', 'Back')}</span>
-          </button>
-        </div>
-
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-            <h1 
-              className="text-2xl sm:text-3xl font-light" 
-              style={{ color: '#E8DCC0' }}
-            >
-              {tr('Projetos Armazenados', 'Saved Projects')}
+        <div className="mb-5 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-light" style={{ color: '#E8DCC0' }}>
+              {tr('Meus projetos', 'My projects')}
             </h1>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              <div className="text-sm text-right sm:text-left" style={{ color: '#E8DCC0', opacity: 0.7 }}>
-                {filteredAndSortedProjects.length} {tr('de', 'of')} {projects.length} {projects.length !== 1 ? tr('projetos', 'projects') : tr('projeto', 'project')}
-              </div>
-              <Link
-                href="/lixeira"
-                className="px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 flex items-center justify-center gap-2 border"
-                style={{ color: '#E8DCC0', borderColor: 'rgba(232,220,192,0.25)' }}
-              >
-                <Trash2 className="w-4 h-4" /> {tr('Lixeira', 'Trash')}{trashCount > 0 ? ` (${trashCount})` : ''}
-              </Link>
-              <button
-                onClick={() => router.push('/new-project')}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2 border"
-                style={{ 
-                  backgroundColor: '#00A88F', 
-                  color: '#FFFFFF', 
-                  borderColor: '#00A88F' 
-                }}
-              >
-                + {tr('Novo Projeto', 'New Project')}
-              </button>
-            </div>
+            <p className="text-sm mt-1" style={{ color: '#E8DCC0', opacity: 0.6 }}>
+              {filteredAndSortedProjects.length !== projects.length
+                ? `${filteredAndSortedProjects.length} ${tr('de', 'of')} ${projects.length} ${tr('projetos', 'projects')}`
+                : `${projects.length} ${projects.length !== 1 ? tr('projetos', 'projects') : tr('projeto', 'project')}`}
+            </p>
           </div>
-          
+          <button
+            onClick={() => router.push('/new-project')}
+            className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-1.5"
+            style={{ backgroundColor: '#00A88F', color: '#FFFFFF' }}
+            data-tour="new-project"
+          >
+            <span className="text-lg leading-none">+</span> {tr('Novo projeto', 'New project')}
+          </button>
         </div>
 
         {/* Cofre bloqueado neste aparelho */}
@@ -585,31 +555,9 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* Seção de Pastas */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium" style={{ color: '#E8DCC0', opacity: 0.8 }}>
-              {tr('Pastas', 'Folders')}
-            </h2>
-            <button
-              onClick={() => {
-                setEditingFolder(null);
-                setNewFolderName('');
-                setShowFolderModal(true);
-              }}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90 flex items-center gap-1.5 border"
-              style={{ 
-                backgroundColor: 'rgba(232, 220, 192, 0.05)', 
-                color: '#E8DCC0', 
-                borderColor: 'rgba(232, 220, 192, 0.1)' 
-              }}
-              title={tr('Criar nova pasta', 'Create new folder')}
-            >
-              <FolderPlus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{tr('Nova Pasta', 'New Folder')}</span>
-            </button>
-          </div>
-
+        {/* Pastas (só aparecem quando o usuário cria alguma; "Nova pasta" fica no menu ⋯) */}
+        {folders.length > 0 && (
+        <div className="mb-4">
           {/* Lista de Pastas */}
           <div className="flex flex-wrap gap-2">
             {/* Opção "Todos" */}
@@ -699,11 +647,13 @@ export default function ProjectsPage() {
             })}
           </div>
         </div>
+        )}
 
         {/* Barra de Busca e Filtros */}
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-2">
           {/* Busca */}
-          <div className="relative">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#E8DCC0', opacity: 0.5 }} />
             <input
               type="text"
@@ -736,12 +686,12 @@ export default function ProjectsPage() {
             )}
           </div>
 
-          {/* Controles de Filtro e Ordenação */}
-          <div className="flex flex-wrap gap-3">
+          {/* Controles de Filtro e Ordenação (mesma linha da busca) */}
             {/* Botão Toggle Filtros */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+              aria-label={tr('Filtros', 'Filters')}
+              className="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
               style={{
                 backgroundColor: showFilters ? '#00A88F' : 'rgba(232, 220, 192, 0.05)',
                 borderColor: showFilters ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
@@ -749,11 +699,11 @@ export default function ProjectsPage() {
               }}
             >
               <Filter className="w-4 h-4" />
-              {tr('Filtros', 'Filters')}
+              <span className="hidden sm:inline">{tr('Filtros', 'Filters')}</span>
             </button>
 
-            {/* Dropdown de Ordenação */}
-            <div className="relative">
+            {/* Dropdown de Ordenação (no celular fica dentro de Filtros) */}
+            <div className="relative hidden sm:block">
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
@@ -777,17 +727,18 @@ export default function ProjectsPage() {
             <div className="relative backup-menu-container">
               <button
                 onClick={() => setShowBackupMenu(!showBackupMenu)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
+                className="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border h-full"
                 style={{
                   backgroundColor: showBackupMenu ? '#00A88F' : 'rgba(232, 220, 192, 0.05)',
                   borderColor: showBackupMenu ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
                   color: showBackupMenu ? '#FFFFFF' : '#E8DCC0'
                 }}
-                title={tr('Opções de Backup', 'Backup Options')}
+                title={tr('Mais opções: pastas, backup e lixeira', 'More: folders, backup and trash')}
+                aria-label={tr('Mais opções', 'More options')}
+                data-tour="more-menu"
               >
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">Backup</span>
-                <ChevronDown className={`w-4 h-4 transition-transform ${showBackupMenu ? 'rotate-180' : ''}`} />
+                <MoreHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">{tr('Mais', 'More')}</span>
               </button>
 
               {/* Menu Dropdown de Backup */}
@@ -800,6 +751,30 @@ export default function ProjectsPage() {
                   }}
                 >
                   <div className="p-2 space-y-1">
+                    {/* Nova pasta */}
+                    <button
+                      onClick={() => {
+                        setEditingFolder(null);
+                        setNewFolderName('');
+                        setShowFolderModal(true);
+                        setShowBackupMenu(false);
+                      }}
+                      className="w-full px-3 py-2 rounded text-sm transition-all hover:bg-white/10 flex items-center gap-2"
+                      style={{ color: '#E8DCC0' }}
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      <span>{tr('Nova pasta', 'New folder')}</span>
+                    </button>
+                    <Link
+                      href="/lixeira"
+                      className="w-full px-3 py-2 rounded text-sm transition-all hover:bg-white/10 flex items-center gap-2"
+                      style={{ color: '#E8DCC0' }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>{tr('Lixeira', 'Trash')}{trashCount > 0 ? ` (${trashCount})` : ''}</span>
+                    </Link>
+                    <div className="h-px my-1" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }} />
+                    <p className="px-3 pt-1 text-[11px] uppercase tracking-wide" style={{ color: '#E8DCC0', opacity: 0.5 }}>Backup</p>
                     {/* Exportar */}
                     <button
                       onClick={() => {
@@ -892,6 +867,20 @@ export default function ProjectsPage() {
                 borderColor: 'rgba(232, 220, 192, 0.1)'
               }}
             >
+              <div className="sm:hidden">
+                <h3 className="text-sm font-medium mb-2" style={{ color: '#E8DCC0' }}>{tr('Ordenar', 'Sort')}</h3>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="w-full px-3 py-2 rounded-lg text-sm border"
+                  style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', borderColor: 'rgba(232, 220, 192, 0.1)', color: '#E8DCC0' }}
+                >
+                  <option value="recent">{tr('Mais Recentes', 'Newest')}</option>
+                  <option value="oldest">{tr('Mais Antigos', 'Oldest')}</option>
+                  <option value="name-asc">{tr('Nome A-Z', 'Name A-Z')}</option>
+                  <option value="name-desc">{tr('Nome Z-A', 'Name Z-A')}</option>
+                </select>
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium" style={{ color: '#E8DCC0' }}>
                   {tr('Filtrar por Data', 'Filter by Date')}
@@ -1095,7 +1084,7 @@ export default function ProjectsPage() {
                     style={{ backgroundColor: 'rgba(232, 220, 192, 0.05)', color: '#E8DCC0', borderColor: 'rgba(232, 220, 192, 0.1)' }}
                   >
                     <Eye className="w-4 h-4" />
-                    {tr('Visualizar', 'View')}
+                    {tr('Abrir', 'Open')}
                   </button>
                   <button
                     onClick={() => router.push(`/projects/${project.id}?mode=edit`)}
@@ -1123,21 +1112,36 @@ export default function ProjectsPage() {
                       borderColor: 'rgba(232, 220, 192, 0.1)' 
                     }}
                     title={tr('Mover para pasta', 'Move to folder')}
-                    aria-label={tr('Mover projeto', 'Move project')}
+                    aria-label={tr('Mover para pasta', 'Move to folder')}
                   >
-                    <Move className="w-4 h-4" />
+                    <FolderInput className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(project.id)}
                     className="px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all hover:opacity-80"
                     style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5' }}
                     aria-label={tr('Excluir projeto', 'Delete project')}
+                    title={tr('Mover para a lixeira', 'Move to trash')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             )})}
+          </div>
+        )}
+        <GuidedTour
+          id="projects-v1"
+          enabled={projects.length > 0}
+          steps={[
+            { target: '[data-tour="more-menu"]', title: tr('Pastas, backup e lixeira', 'Folders, backup and trash'), text: tr('Crie pastas, faça backup dos seus projetos e recupere o que apagou na lixeira.', 'Create folders, back up your projects and recover deleted ones from the trash.') },
+          ]}
+        />
+        {trashCount > 0 && (
+          <div className="mt-8 text-center">
+            <Link href="/lixeira" className="inline-flex items-center gap-2 text-sm hover:underline" style={{ color: '#E8DCC0', opacity: 0.7 }}>
+              <Trash2 className="w-4 h-4" /> {tr(`Lixeira (${trashCount})`, `Trash (${trashCount})`)}
+            </Link>
           </div>
         )}
       </main>
