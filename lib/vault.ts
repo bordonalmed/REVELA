@@ -255,6 +255,7 @@ interface VaultRows {
 async function readVaultRows(userId: string): Promise<VaultRows> {
   const rows = await listRows(userId);
   const out: VaultRows = { items: new Map(), tombstones: new Map(), legacyCount: 0 };
+  const legacyIds = new Set<string>();
   for (const row of rows) {
     const data = parseRow(row);
     const type = data?.__type;
@@ -269,9 +270,11 @@ async function readVaultRows(userId: string): Promise<VaultRows> {
       list.push({ row, data });
       out.tombstones.set(data.projectId, list);
     } else if (type === 'revela_storage_v3_enc' || type === 'revela_storage_v2' || type === '__revela_project_backup_v1') {
-      out.legacyCount += 1;
+      // Conta projetos, não registros (a versão antiga às vezes guardava mais de um por projeto)
+      legacyIds.add(data.projectId || data.meta?.projectId || data.project?.id || `row:${row.id}`);
     }
   }
+  out.legacyCount = legacyIds.size;
   // O mais recente primeiro (por data de alteração)
   out.items.forEach((list) => list.sort((a, b) => b.data.updatedAt.localeCompare(a.data.updatedAt)));
   return out;
@@ -729,11 +732,12 @@ function notify() {
 export async function deleteLegacyCloudCopies(userId: string): Promise<number> {
   const rowsAll = await listRows(userId);
   const vaultRows = await readVaultRows(userId);
-  const key = await deviceKey(userId, vaultRows.header?.data);
+  // Sem cofre ainda não há fotos do cofre para preservar
+  const key = vaultRows.header ? await deviceKey(userId, vaultRows.header.data) : null;
   const keep: string[] = [];
-  for (const list of Array.from(vaultRows.items.values())) {
+  for (const list of key ? Array.from(vaultRows.items.values()) : []) {
     try {
-      const { paths } = JSON.parse(new TextDecoder().decode(await decryptBytes(key, fromBase64(list[0].data.payload)))) as {
+      const { paths } = JSON.parse(new TextDecoder().decode(await decryptBytes(key!, fromBase64(list[0].data.payload)))) as {
         paths: ImagePaths;
       };
       const first = [...paths.before, ...paths.after, ...Object.values(paths.evolution)][0];
