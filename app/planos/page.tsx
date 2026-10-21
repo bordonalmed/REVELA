@@ -92,7 +92,6 @@ export default function PlanosPage() {
     { label: tr('Projetos', 'Projects'), cells: [tr(`Até ${FREE_MAX_PROJECTS}`, `Up to ${FREE_MAX_PROJECTS}`), tr('Ilimitados', 'Unlimited'), tr('Ilimitados', 'Unlimited')] },
     { label: tr('Fotos por projeto', 'Photos per project'), cells: [tr(`${FREE_MAX_BEFORE_IMAGES} antes + ${FREE_MAX_AFTER_IMAGES} depois`, `${FREE_MAX_BEFORE_IMAGES} before + ${FREE_MAX_AFTER_IMAGES} after`), tr('Ilimitadas', 'Unlimited'), tr('Ilimitadas', 'Unlimited')] },
     { label: tr('Antes e depois lado a lado e Slider', 'Side-by-side before/after and Slider'), cells: [true, true, true] },
-    { label: tr('Medir com régua na foto', 'Measure with a ruler on the photo'), cells: [true, true, true] },
     { label: tr('Modo apresentação ao paciente', 'Patient presentation mode'), cells: [true, true, true] },
     { label: tr('Lixeira de 30 dias', '30-day trash'), cells: [true, true, true] },
     { label: tr('Salvar imagem da comparação', 'Save the comparison image'), cells: [tr('Com marca Revela', 'With Revela mark'), tr('Com sua logo ou sem marca', 'Your logo or no mark'), tr('Com sua logo ou sem marca', 'Your logo or no mark')] },
@@ -215,7 +214,7 @@ export default function PlanosPage() {
                 <Feature>{tr(`Até ${FREE_MAX_PROJECTS} projetos`, `Up to ${FREE_MAX_PROJECTS} projects`)}</Feature>
                 <Feature>{tr(`Até ${FREE_MAX_BEFORE_IMAGES} fotos antes e ${FREE_MAX_AFTER_IMAGES} depois por projeto`, `Up to ${FREE_MAX_BEFORE_IMAGES} before and ${FREE_MAX_AFTER_IMAGES} after photos per project`)}</Feature>
                 <Feature>{tr('Antes e depois lado a lado e Slider', 'Side-by-side before/after and Slider')}</Feature>
-                <Feature>{tr('Medir com régua e modo apresentação', 'Ruler measurement and presentation mode')}</Feature>
+                <Feature>{tr('Modo apresentação ao paciente', 'Patient presentation mode')}</Feature>
                 <Feature>{tr('Salvar imagem com a marca Revela', 'Save images with the Revela mark')}</Feature>
                 <Feature>{tr('Fotos guardadas só no seu aparelho', 'Photos kept only on your device')}</Feature>
               </ul>

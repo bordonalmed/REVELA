@@ -7,9 +7,9 @@ import { notify, PLANS_ACTION } from '@/lib/notify';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2, Ruler } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Save, X, Plus, Trash2, Download, Image as ImageIcon, FileText, Maximize2, Minimize2, ArrowLeft, SlidersHorizontal, Share2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-import { getProjectFromIndexedDB, updateProject, type Project, type Measurement } from '@/lib/storage';
+import { getProjectFromIndexedDB, updateProject, type Project } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
 import { ProjectToolbar } from '@/components/project-toolbar';
 import { GuidedTour } from '@/components/guided-tour';
@@ -26,7 +26,6 @@ import { SocialMediaExportModal } from '@/components/social-media-export-modal';
 import { ImageEditorModal } from '@/components/image-editor-modal';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
-import { MeasurementTool } from '@/components/measurement-tool';
 import { remapMeasurements, measurementsAfterImageEdit } from '@/lib/measurements';
 import { 
   trackViewProject, 
@@ -66,8 +65,6 @@ export default function ViewProjectPage() {
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [showPdfReportModal, setShowPdfReportModal] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
-  const [showMeasurementTool, setShowMeasurementTool] = useState(false);
-  const [measuringImageType, setMeasuringImageType] = useState<'before' | 'after'>('before');
   const [evolutionSelectedLeftId, setEvolutionSelectedLeftId] = useState<string | null>(null);
   const [evolutionSelectedRightId, setEvolutionSelectedRightId] = useState<string | null>(null);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
@@ -466,31 +463,6 @@ export default function ViewProjectPage() {
     }
   };
 
-  const handleOpenMeasurementTool = () => {
-    if (isEditing) {
-      notify.info(t => t.msg.saveBeforeMeasuring);
-      return;
-    }
-    setMeasuringImageType(displayBeforeImages.length > 0 ? 'before' : 'after');
-    setShowMeasurementTool(true);
-  };
-
-  const handleMeasurementsChange = async (newMeasurements: Measurement[]) => {
-    if (!project) return;
-
-    try {
-      const updatedProject: Project = {
-        ...project,
-        measurements: newMeasurements,
-      };
-
-      await updateProject(updatedProject);
-      setProject(updatedProject);
-    } catch (error) {
-      console.error('Erro ao salvar medidas:', error);
-      notify.error(t => t.msg.measurementsSaveError);
-    }
-  };
 
   const handleEnterPresentationMode = () => {
     // Em Revela Evolução Premium não exibimos a tela fullscreen ANTES/DEPOIS.
@@ -1031,7 +1003,7 @@ export default function ViewProjectPage() {
           {/* Botão Sair (canto superior direito) */}
           <button
             onClick={handleExitPresentationMode}
-            className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100"
+            className="absolute top-4 right-4 z-10 p-3 rounded-full bg-black/50 hover:bg-black/70 transition-all opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
             style={{ color: '#FFFFFF' }}
             title={tr('Sair (ESC)', 'Exit (ESC)')}
           >
@@ -1039,7 +1011,7 @@ export default function ViewProjectPage() {
           </button>
 
           {/* Controles para Imagem ANTES (lado esquerdo) */}
-          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             {beforeCurrentIndex > 0 && (
               <button
                 onClick={prevBeforeImage}
@@ -1063,7 +1035,7 @@ export default function ViewProjectPage() {
           </div>
 
           {/* Controles para Imagem DEPOIS (lado direito) */}
-          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity">
             {afterCurrentIndex > 0 && (
               <button
                 onClick={prevAfterImage}
@@ -1097,7 +1069,7 @@ export default function ViewProjectPage() {
                 style={{ maxWidth: '100%', maxHeight: '100%' }}
               />
               <div 
-                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                 style={{ color: '#FFFFFF' }}
               >
                 <span className="text-sm font-medium">ANTES ({beforeCurrentIndex + 1}/{displayBeforeImages.length})</span>
@@ -1105,7 +1077,7 @@ export default function ViewProjectPage() {
             </div>
 
             {/* Separador */}
-            <div className="w-px h-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-px h-full bg-white/20 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity" />
 
             {/* Imagem Depois */}
             <div className="flex-1 h-full flex items-center justify-center relative">
@@ -1116,7 +1088,7 @@ export default function ViewProjectPage() {
                 style={{ maxWidth: '100%', maxHeight: '100%' }}
               />
               <div 
-                className="absolute bottom-4 right-1/2 transform translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute bottom-4 right-1/2 transform translate-x-1/2 px-4 py-2 rounded-lg bg-black/50 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                 style={{ color: '#FFFFFF' }}
               >
                 <span className="text-sm font-medium">DEPOIS ({afterCurrentIndex + 1}/{displayAfterImages.length})</span>
@@ -1126,7 +1098,7 @@ export default function ViewProjectPage() {
 
           {/* Indicador de Teclas (canto inferior esquerdo) */}
           <div 
-            className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+            className="absolute bottom-4 left-4 px-4 py-2 rounded-lg bg-black/50 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity text-xs"
             style={{ color: '#FFFFFF' }}
           >
             <div>{tr('← → ANTES | Shift+← → DEPOIS | ESC Sair | F Fullscreen', '← → BEFORE | Shift+← → AFTER | ESC Exit | F Fullscreen')}</div>
@@ -1350,19 +1322,6 @@ export default function ViewProjectPage() {
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="hidden sm:inline">Slider</span>
                       </button>
-                      <button
-                        onClick={handleOpenMeasurementTool}
-                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 flex items-center gap-2 border"
-                        style={{
-                          backgroundColor: 'rgba(232, 220, 192, 0.05)',
-                          color: '#E8DCC0',
-                          borderColor: 'rgba(232, 220, 192, 0.1)'
-                        }}
-                        title={tr('Medir distâncias na imagem', 'Measure distances on the image')}
-                      >
-                        <Ruler className="w-4 h-4" />
-                        <span className="hidden sm:inline">{tr('Medir', 'Measure')}</span>
-                      </button>
                     </>
                   )}
                   <button
@@ -1504,7 +1463,7 @@ export default function ViewProjectPage() {
                             />
                           </div>
                           {isEditing && displayBeforeImages.length > 1 && (
-                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity z-10">
                               <button
                                 type="button"
                                 disabled={index === 0}
@@ -1532,19 +1491,19 @@ export default function ViewProjectPage() {
                           <div className="absolute -top-2 -right-2 flex gap-1 z-10">
                             <button
                               onClick={() => handleEditImage('before', index)}
-                              className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-1.5 rounded-full shadow bg-blue-500 text-white opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#00A88F' }}
                               title={tr('Editar imagem', 'Edit image')}
                             >
-                              <Edit2 className="w-3 h-3" />
+                              <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleRemoveBeforeImage(index)}
-                              className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-1.5 rounded-full shadow bg-red-500 text-white opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#ef4444' }}
                               title={tr('Remover imagem', 'Remove image')}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                           <div 
@@ -1623,7 +1582,7 @@ export default function ViewProjectPage() {
                             />
                           </div>
                           {isEditing && displayAfterImages.length > 1 && (
-                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div className="absolute -bottom-6 left-0 right-0 flex justify-center gap-0.5 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity z-10">
                               <button
                                 type="button"
                                 disabled={index === 0}
@@ -1651,19 +1610,19 @@ export default function ViewProjectPage() {
                           <div className="absolute -top-2 -right-2 flex gap-1 z-10">
                             <button
                               onClick={() => handleEditImage('after', index)}
-                              className="p-1 rounded-full bg-blue-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-1.5 rounded-full shadow bg-blue-500 text-white opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#00A88F' }}
                               title={tr('Editar imagem', 'Edit image')}
                             >
-                              <Edit2 className="w-3 h-3" />
+                              <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleRemoveAfterImage(index)}
-                              className="p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="p-1.5 rounded-full shadow bg-red-500 text-white opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity"
                               style={{ backgroundColor: '#ef4444' }}
                               title={tr('Remover imagem', 'Remove image')}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                           <div 
@@ -2165,7 +2124,7 @@ export default function ViewProjectPage() {
             id="project-v1"
             delay={1200}
             steps={[
-              { target: '[data-tour="project-toolbar"]', title: tr('Tudo o que dá para fazer', 'Everything you can do'), text: tr('Gere o PDF para o paciente, publique nas redes, apresente em tela cheia ou meça com a régua.', 'Create the patient PDF, publish to social media, present full screen or measure with the ruler.') },
+              { target: '[data-tour="project-toolbar"]', title: tr('Tudo o que dá para fazer', 'Everything you can do'), text: tr('Gere o PDF para o paciente, publique nas redes, ou apresente em tela cheia.', 'Create the patient PDF, publish to social media, or present full screen.') },
               { target: '[data-tour="toolbar-more"]', title: tr('Mais opções', 'More options'), text: tr('Aqui ficam o Slider, salvar imagem, notas e editar o projeto.', 'The Slider, save image, notes and edit project are here.') },
             ]}
           />
@@ -2178,7 +2137,6 @@ export default function ViewProjectPage() {
                     { id: 'pdf', primary: true, icon: <Download className="w-5 h-5" />, label: 'PDF', hint: tr('Relatório para o paciente', 'Report for the patient'), onClick: () => setShowPdfReportModal(true) },
                     { id: 'publish', primary: true, icon: <Share2 className="w-5 h-5" />, label: tr('Publicar', 'Publish'), hint: tr('Imagem pronta para redes sociais', 'Image ready for social media'), onClick: () => setShowSocialMediaModal(true) },
                     { id: 'present', primary: true, icon: <Maximize2 className="w-5 h-5" />, label: tr('Apresentar', 'Present'), hint: tr('Tela cheia para mostrar ao paciente', 'Full screen to show the patient'), onClick: handleEnterPresentationMode },
-                    { id: 'measure', primary: true, icon: <Ruler className="w-5 h-5" />, label: tr('Medir', 'Measure'), hint: tr('Medir com régua na foto', 'Measure with a ruler in the photo'), onClick: handleOpenMeasurementTool },
                     { id: 'slider', icon: <SlidersHorizontal className="w-5 h-5" />, label: 'Slider', hint: tr('Arraste para comparar na mesma foto', 'Drag to compare on one image'), active: isSliderMode, onClick: handleToggleSliderMode },
                     { id: 'export', icon: exporting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-5 h-5" />, label: tr('Salvar imagem', 'Save image'), hint: tr('Baixa a comparação como imagem', 'Download the comparison as an image'), disabled: exporting, onClick: handleExportImage },
                   ]
@@ -2315,58 +2273,6 @@ export default function ViewProjectPage() {
           />
         )}
 
-        {/* Modal de Ferramenta de Medição */}
-        {showMeasurementTool && project && (
-          <div
-            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 overflow-y-auto"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
-          >
-            <div className="w-full max-w-4xl my-8">
-              {displayBeforeImages.length > 0 && displayAfterImages.length > 0 && (
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <button
-                    onClick={() => setMeasuringImageType('before')}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
-                    style={{
-                      backgroundColor: measuringImageType === 'before' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
-                      color: '#E8DCC0',
-                      borderColor: measuringImageType === 'before' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
-                      ...(measuringImageType === 'before' && { boxShadow: '0 0 0 2px #00A88F' })
-                    }}
-                  >
-                    {tr('Antes', 'Before')}
-                  </button>
-                  <button
-                    onClick={() => setMeasuringImageType('after')}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border transition-all"
-                    style={{
-                      backgroundColor: measuringImageType === 'after' ? 'rgba(0, 168, 143, 0.2)' : 'rgba(232, 220, 192, 0.05)',
-                      color: '#E8DCC0',
-                      borderColor: measuringImageType === 'after' ? '#00A88F' : 'rgba(232, 220, 192, 0.1)',
-                      ...(measuringImageType === 'after' && { boxShadow: '0 0 0 2px #00A88F' })
-                    }}
-                  >
-                    {tr('Depois', 'After')}
-                  </button>
-                </div>
-              )}
-              {(measuringImageType === 'before' ? displayBeforeImages : displayAfterImages).length > 0 && (
-                <MeasurementTool
-                  imageSrc={
-                    measuringImageType === 'before'
-                      ? displayBeforeImages[beforeCurrentIndex]
-                      : displayAfterImages[afterCurrentIndex]
-                  }
-                  imageType={measuringImageType}
-                  imageIndex={measuringImageType === 'before' ? beforeCurrentIndex : afterCurrentIndex}
-                  measurements={project.measurements || []}
-                  onMeasurementsChange={handleMeasurementsChange}
-                  onClose={() => setShowMeasurementTool(false)}
-                />
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Modal de Edição de Imagem */}
         {showImageEditor &&

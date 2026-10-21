@@ -52,7 +52,7 @@ function HowItWorks() {
   const steps = [
     { icon: <Camera className="w-5 h-5" />, t: tr('Crie um projeto', 'Create a project'), d: tr('Dê um nome (ex.: nome do paciente) e a data.', 'Give it a name (e.g. the patient) and a date.') },
     { icon: <Images className="w-5 h-5" />, t: tr('Adicione as fotos', 'Add the photos'), d: tr('Escolha as fotos de antes e as de depois.', 'Pick the before photos and the after photos.') },
-    { icon: <FileDown className="w-5 h-5" />, t: tr('Compare e compartilhe', 'Compare and share'), d: tr('Veja lado a lado, apresente, meça e gere o PDF.', 'See side by side, present, measure and create the PDF.') },
+    { icon: <FileDown className="w-5 h-5" />, t: tr('Compare e compartilhe', 'Compare and share'), d: tr('Veja lado a lado, apresente e gere o PDF.', 'See side by side, present and create the PDF.') },
   ];
   return (
     <section className="px-4 pb-10">

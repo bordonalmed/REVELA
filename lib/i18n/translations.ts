@@ -276,14 +276,14 @@ export const translations: Record<Language, Translations> = {
       planProName: 'Revela Pro',
       planPremiumName: 'Revela Premium',
       planFreeDescription:
-        'Até 3 projetos, Slider, medir, apresentação e imagem com a marca Revela. Fotos só no aparelho.',
+        'Até 3 projetos, Slider, apresentação e imagem com a marca Revela. Fotos só no aparelho.',
       planProDescription:
         'Projetos e fotos ilimitados, sua logo nas imagens e publicação nas redes.',
       planPremiumDescription:
         'Tudo do Pro + Cofre (projetos em todos os aparelhos), PDF, Revela Evolução e marcações clínicas.',
       planFreeBullets: [
         'Até 3 projetos (3 fotos antes e 3 depois).',
-        'Antes e depois com Slider, medir e apresentação.',
+        'Antes e depois com Slider e apresentação.',
         'Imagem com a marca Revela.',
         'Fotos guardadas só no seu aparelho.',
       ],
@@ -499,13 +499,13 @@ export const translations: Record<Language, Translations> = {
       planProName: 'Revela Pro',
       planPremiumName: 'Revela Premium',
       planFreeDescription:
-        'Up to 3 projects, Slider, measuring, presentation and images with the Revela mark. Photos on your device only.',
+        'Up to 3 projects, Slider, presentation and images with the Revela mark. Photos on your device only.',
       planProDescription: 'Unlimited projects and photos, your logo on images and social publishing.',
       planPremiumDescription:
         'Everything in Pro + Vault (projects on all devices), PDF, Revela Evolution and clinical annotations.',
       planFreeBullets: [
         'Up to 3 projects (3 before and 3 after photos).',
-        'Before/after with Slider, measuring and presentation.',
+        'Before/after with Slider and presentation.',
         'Images with the Revela mark.',
         'Photos kept on your device only.',
       ],

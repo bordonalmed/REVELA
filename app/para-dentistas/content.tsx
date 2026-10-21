@@ -86,7 +86,7 @@ export default function ParaDentistasPageContent() {
             <div className="rounded-xl border border-revela-cream/10 bg-revela-cream/[0.03] p-6">
               <h3 className="text-base font-medium mb-2">{tr('Comparação Profissional', 'Professional Comparison')}</h3>
               <p className="text-sm opacity-80">
-                {tr('Slider interativo, zoom com marcações, medições sobre a imagem. Perfeito para mostrar resultados na cadeira do paciente.', 'Interactive slider, zoom with annotations, measurements on the image. Perfect for showing results chairside.')}
+                {tr('Slider interativo, zoom e marcações sobre a imagem. Perfeito para mostrar resultados na cadeira do paciente.', 'Interactive slider, zoom and annotations on the image. Perfect for showing results chairside.')}
               </p>
             </div>
             <div className="rounded-xl border border-revela-cream/10 bg-revela-cream/[0.03] p-6">
