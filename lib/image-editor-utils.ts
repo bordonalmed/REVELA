@@ -25,6 +25,69 @@ export interface PrivacyMask {
   width: number;
   height: number;
   shape: PrivacyMaskShape;
+  /** 'solid' = tarja preta (padrão); 'pixelate' = mosaico que borra o local escolhido */
+  style?: 'solid' | 'pixelate';
+}
+
+/** Tamanho do bloco do mosaico (o mesmo na prévia e no resultado). */
+export function pixelBlockSize(width: number, height: number): number {
+  return Math.max(8, Math.round(Math.min(width, height) / 32));
+}
+
+/** Versão em mosaico da imagem inteira (usada nas tarjas de desfoque). */
+export async function pixelateImage(imageSrc: string): Promise<string> {
+  const img = await createImage(imageSrc);
+  return pixelateCanvas(img).toDataURL('image/jpeg', 0.95);
+}
+
+function pixelateCanvas(img: HTMLImageElement | HTMLCanvasElement): HTMLCanvasElement {
+  const W = img.width;
+  const H = img.height;
+  const block = pixelBlockSize(W, H);
+  const small = document.createElement('canvas');
+  small.width = Math.max(1, Math.ceil(W / block));
+  small.height = Math.max(1, Math.ceil(H / block));
+  const sctx = small.getContext('2d')!;
+  sctx.imageSmoothingEnabled = true;
+  sctx.drawImage(img, 0, 0, small.width, small.height);
+  const out = document.createElement('canvas');
+  out.width = W;
+  out.height = H;
+  const octx = out.getContext('2d')!;
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(small, 0, 0, small.width * block, small.height * block);
+  return out;
+}
+
+/**
+ * Brilho e contraste (-50 a +50). Mesma conta do filtro CSS usado na prévia:
+ * brightness(b) e depois contrast(c).
+ */
+export async function adjustTones(imageSrc: string, brightness: number, contrast: number): Promise<string> {
+  if (!brightness && !contrast) return imageSrc;
+  const img = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = data.data;
+  const b = 1 + brightness / 100;
+  const c = 1 + contrast / 100;
+  for (let i = 0; i < d.length; i += 4) {
+    for (let k = 0; k < 3; k++) {
+      const v = (d[i + k] * b - 127.5) * c + 127.5;
+      d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+export function tonesCssFilter(brightness: number, contrast: number): string | undefined {
+  if (!brightness && !contrast) return undefined;
+  return `brightness(${1 + brightness / 100}) contrast(${1 + contrast / 100})`;
 }
 
 /**
@@ -282,6 +345,7 @@ export async function applyImageTransformations(
   ctx.drawImage(img, 0, 0);
 
   ctx.fillStyle = '#000000';
+  const pixelated = masks.some((m) => m.style === 'pixelate') ? pixelateCanvas(img) : null;
 
   masks.forEach((mask) => {
     const x = mask.x * img.width;
@@ -290,6 +354,17 @@ export async function applyImageTransformations(
     const h = mask.height * img.height;
 
     if (w <= 0 || h <= 0) return;
+
+    if (mask.style === 'pixelate' && pixelated) {
+      ctx.save();
+      ctx.beginPath();
+      if (mask.shape === 'circle') ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      else ctx.rect(x, y, w, h);
+      ctx.clip();
+      ctx.drawImage(pixelated, 0, 0);
+      ctx.restore();
+      return;
+    }
 
     if (mask.shape === 'circle') {
       const cx = x + w / 2;
@@ -309,7 +384,34 @@ export async function applyImageTransformations(
 }
 
 /** Cor do traço (lápis) nas anotações clínicas Premium */
-export type AnnotationStrokeColor = 'black' | 'white';
+export type AnnotationStrokeColor = string; // 'black' | 'white' (antigos) ou cor hex
+
+export const ANNOTATION_COLORS = ['#000000', '#ffffff', '#ef4444', '#facc15', '#22c55e', '#3b82f6'];
+
+export function annotationColor(c: AnnotationStrokeColor): string {
+  return c === 'white' ? '#ffffff' : c === 'black' ? '#000000' : c;
+}
+
+/** Seta ou círculo/elipse (coordenadas 0–1 da imagem) */
+export interface AnnotationShape {
+  id: string;
+  kind: 'arrow' | 'ellipse';
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: AnnotationStrokeColor;
+  widthRel: number;
+}
+
+/** Pontas da seta (em pixels) — usado na prévia e no resultado */
+export function arrowHeadPoints(x1: number, y1: number, x2: number, y2: number, lineWidth: number): [number, number, number, number] {
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  const len = Math.max(12, lineWidth * 4.5);
+  const a1 = ang + Math.PI - Math.PI / 7;
+  const a2 = ang + Math.PI + Math.PI / 7;
+  return [x2 + len * Math.cos(a1), y2 + len * Math.sin(a1), x2 + len * Math.cos(a2), y2 + len * Math.sin(a2)];
+}
 
 /** Traço livre em coordenadas normalizadas 0–1 sobre a imagem fonte (antes do crop/rotação) */
 export interface AnnotationStroke {
@@ -373,9 +475,10 @@ function wrapTextForCanvas(
 export async function rasterizeClinicalAnnotationsOnSource(
   imageSrc: string,
   strokes: AnnotationStroke[],
-  textBoxes: AnnotationTextBox[]
+  textBoxes: AnnotationTextBox[],
+  shapes: AnnotationShape[] = []
 ): Promise<string> {
-  if (!strokes.length && !textBoxes.length) {
+  if (!strokes.length && !textBoxes.length && !shapes.length) {
     return imageSrc;
   }
 
@@ -397,13 +500,13 @@ export async function rasterizeClinicalAnnotationsOnSource(
     if (stroke.points.length === 1) {
       // Toque único: vira um ponto (como aparece na prévia)
       const p = stroke.points[0];
-      ctx.fillStyle = stroke.color === 'white' ? '#ffffff' : '#000000';
+      ctx.fillStyle = annotationColor(stroke.color);
       ctx.beginPath();
       ctx.arc(p.x * img.width, p.y * img.height, Math.max(1, stroke.widthRel * minDim) / 2, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
-    ctx.strokeStyle = stroke.color === 'white' ? '#ffffff' : '#000000';
+    ctx.strokeStyle = annotationColor(stroke.color);
     ctx.lineWidth = Math.max(1, stroke.widthRel * minDim);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -413,6 +516,30 @@ export async function rasterizeClinicalAnnotationsOnSource(
     for (let i = 1; i < stroke.points.length; i++) {
       const p = stroke.points[i];
       ctx.lineTo(p.x * img.width, p.y * img.height);
+    }
+    ctx.stroke();
+  }
+
+  for (const sh of shapes) {
+    const lw = Math.max(1, sh.widthRel * minDim);
+    ctx.strokeStyle = annotationColor(sh.color);
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const x1 = sh.x1 * img.width;
+    const y1 = sh.y1 * img.height;
+    const x2 = sh.x2 * img.width;
+    const y2 = sh.y2 * img.height;
+    ctx.beginPath();
+    if (sh.kind === 'ellipse') {
+      ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2);
+    } else {
+      const [hx1, hy1, hx2, hy2] = arrowHeadPoints(x1, y1, x2, y2, lw);
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.moveTo(hx1, hy1);
+      ctx.lineTo(x2, y2);
+      ctx.lineTo(hx2, hy2);
     }
     ctx.stroke();
   }

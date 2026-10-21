@@ -18,6 +18,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { pruneOriginals } from './image-originals';
 import {
   type Project,
   getAllProjectsFromIndexedDB,
@@ -625,6 +626,15 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
     const name = localById.get(item.projectId)?.name;
     try {
       const project = await pullProject(userId, item, key, ownerEmail);
+      // Originais de fotos editadas ficam só no aparelho: mantém os que ainda valem
+      const localOriginals = localById.get(item.projectId)?.imageOriginals;
+      if (localOriginals) {
+        project.imageOriginals = pruneOriginals(localOriginals, [
+          ...project.beforeImages,
+          ...project.afterImages,
+          ...(project.evolutionImages || []).map((e) => e.image),
+        ]);
+      }
       await saveProjectToIndexedDB(project);
       const map = readSynced(userId);
       map[project.id] = item.updatedAt;
