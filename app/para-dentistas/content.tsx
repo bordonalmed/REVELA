@@ -71,7 +71,7 @@ export default function ParaDentistasPageContent() {
                 <li>{tr('Gere relatórios em PDF para enviar ao paciente (plano Premium)', 'Generate PDF reports to send to patients (Premium plan)')}</li>
                 <li>{tr('Timeline de evolução para ortodontia e tratamentos longos', 'Evolution timeline for orthodontics and long treatments')}</li>
                 <li>{tr('Exporte imagens para redes sociais com sua marca (plano Pro)', 'Export images for social media with your brand (Pro plan)')}</li>
-                <li>{tr('Fotos nunca saem do dispositivo — segurança para dados sensíveis', 'Photos never leave your device — security for sensitive data')}</li>
+                <li>{tr('Fotos guardadas no seu aparelho — segurança para dados sensíveis', 'Photos kept on your device — security for sensitive data')}</li>
               </ul>
             </div>
           </section>

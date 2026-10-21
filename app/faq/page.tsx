@@ -65,8 +65,8 @@ export default function FAQPage() {
               <h2 className="font-medium mb-1">{tr('O Revela é pago?', 'Is Revela paid?')}</h2>
               <p>
                 {tr(
-                  'Tem um plano gratuito (até 3 projetos, com marca d’água) pra começar sem compromisso. Os planos pagos são o Revela Pro (projetos ilimitados e exportação completa) e o Revela Premium (tudo do Pro, mais timeline de evolução, relatório em PDF, marcações clínicas e backup na nuvem). Veja os valores e detalhes atualizados na página de',
-                  'There is a free plan (up to 3 projects, with watermark) so you can start with no commitment. The paid plans are Revela Pro (unlimited projects and full exports) and Revela Premium (everything in Pro, plus evolution timeline, PDF report, clinical annotations and cloud backup). See current prices and details on the'
+                  'Tem um plano gratuito (até 3 projetos, com marca d’água) pra começar sem compromisso. Os planos pagos são o Revela Pro (projetos ilimitados e exportação completa) e o Revela Premium (tudo do Pro, mais o Cofre Revela para ver seus projetos em todos os aparelhos, relatório em PDF, Revela Evolução e marcações clínicas). Veja os valores e detalhes atualizados na página de',
+                  'There is a free plan (up to 3 projects, with watermark) so you can start with no commitment. The paid plans are Revela Pro (unlimited projects and full exports) and Revela Premium (everything in Pro, plus the Revela Vault to see your projects on all your devices, PDF report, Revela Evolution and clinical annotations). See current prices and details on the'
                 )}{' '}
                 <a href="/planos" className="underline" style={{ color: '#00A88F' }}>
                   {tr('planos', 'plans page')}
