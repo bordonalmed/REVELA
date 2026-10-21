@@ -2,13 +2,15 @@
 
 /**
  * Tour rápido de primeiro uso: destaca um elemento da tela e mostra um balão explicando.
- * Cada tour aparece uma vez por navegador (localStorage). Os alvos são achados por
+ * Cada tour aparece só na primeira vez da conta: fica marcado neste navegador e na conta
+ * (vale para qualquer aparelho). É marcado assim que aparece. Os alvos são achados por
  * seletor CSS (ex.: [data-tour="new-project"]); passo sem alvo visível é pulado.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useTr } from '@/contexts/language-context';
+import { supabase } from '@/lib/supabase';
 
 export interface TourStep {
   target: string;
@@ -17,16 +19,36 @@ export interface TourStep {
 }
 
 const PREFIX = 'revela_tour_';
+// Também guardado na conta (user_metadata), para não ensinar de novo em outro aparelho
+const META_KEY = 'revela_tours_done';
 
-export function isTourDone(id: string): boolean {
+function localDone(id: string): boolean {
   try {
     return localStorage.getItem(PREFIX + id) === 'done';
   } catch {
-    return true;
+    return false;
   }
 }
 
-function markDone(id: string) {
+async function accountDone(): Promise<string[]> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const list = data?.session?.user?.user_metadata?.[META_KEY];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Já viu este tour (neste aparelho ou em qualquer outro com a mesma conta)? */
+export async function isTourDone(id: string): Promise<boolean> {
+  if (localDone(id)) return true;
+  const done = (await accountDone()).includes(id);
+  if (done) markLocal(id);
+  return done;
+}
+
+function markLocal(id: string) {
   try {
     localStorage.setItem(PREFIX + id, 'done');
   } catch {
@@ -34,12 +56,29 @@ function markDone(id: string) {
   }
 }
 
+/** Marca como visto aqui e na conta. */
+export async function markTourDone(id: string): Promise<void> {
+  markLocal(id);
+  try {
+    const list = await accountDone();
+    if (list.includes(id)) return;
+    await supabase.auth.updateUser({ data: { [META_KEY]: [...list, id] } });
+  } catch {
+    /* sem conexão: fica só neste aparelho */
+  }
+}
+
 /** Faz todos os tours aparecerem de novo (Configurações › Rever o tour). */
-export function resetTours() {
+export async function resetTours(): Promise<void> {
   try {
     Object.keys(localStorage)
       .filter((k) => k.startsWith(PREFIX))
       .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* ignore */
+  }
+  try {
+    await supabase.auth.updateUser({ data: { [META_KEY]: [] } });
   } catch {
     /* ignore */
   }
@@ -69,12 +108,21 @@ export function GuidedTour({ id, steps, delay = 700, enabled = true }: { id: str
 
   // Começa depois que a tela montou, só com os passos cujo alvo está visível
   useEffect(() => {
-    if (!enabled || isTourDone(id)) return;
-    const timer = setTimeout(() => {
+    if (!enabled || localDone(id)) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      if (await isTourDone(id)) return;
+      if (cancelled) return;
       const visible = stepsRef.current.filter((s) => findVisible(s.target));
-      if (visible.length) setActive(visible);
+      if (!visible.length) return;
+      // Marca já ao mostrar: mesmo que a pessoa saia da tela no meio, não ensina de novo
+      void markTourDone(id);
+      setActive(visible);
     }, delay);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [id, delay, enabled]);
 
   const step = active?.[index];
@@ -101,9 +149,8 @@ export function GuidedTour({ id, steps, delay = 700, enabled = true }: { id: str
   }, [step, measure]);
 
   const finish = useCallback(() => {
-    markDone(id);
     setActive(null);
-  }, [id]);
+  }, []);
 
   useEffect(() => {
     if (!active) return;

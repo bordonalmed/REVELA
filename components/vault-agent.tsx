@@ -9,7 +9,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { PROJECT_CHANGED_EVENT, getProjectFromIndexedDB, type ProjectChangedDetail } from '@/lib/storage';
-import { deleteFromVault, getVaultState, pushOneProject, syncVault, VaultError, type VaultSyncResult } from '@/lib/vault';
+import { deleteFromVault, purgeInVault, getVaultState, pushOneProject, syncVault, VaultError, type VaultSyncResult } from '@/lib/vault';
 import type { CloudProgress } from '@/lib/cloud-project-backup';
 
 export const VAULT_UPDATED_EVENT = 'revela:vault-updated';
@@ -102,7 +102,7 @@ export function VaultAgent({ userId, ownerEmail, enabled }: { userId?: string; o
     // Mudanças locais → envio automático (com uma pequena espera para juntar edições seguidas)
     const timers = new Map<string, ReturnType<typeof setTimeout>>();
     const onChange = (ev: Event) => {
-      const { id, deleted } = (ev as CustomEvent<ProjectChangedDetail>).detail || ({} as ProjectChangedDetail);
+      const { id, deleted, purged } = (ev as CustomEvent<ProjectChangedDetail>).detail || ({} as ProjectChangedDetail);
       if (!id || status.phase === 'off' || status.phase === 'none' || status.phase === 'locked') return;
       clearTimeout(timers.get(id));
       timers.set(
@@ -112,7 +112,9 @@ export function VaultAgent({ userId, ownerEmail, enabled }: { userId?: string; o
           void enqueue(async () => {
             try {
               setStatus({ phase: 'syncing' });
-              if (deleted) {
+              if (purged) {
+                await purgeInVault(userId, id);
+              } else if (deleted) {
                 await deleteFromVault(userId, id);
               } else {
                 const project = await getProjectFromIndexedDB(id);

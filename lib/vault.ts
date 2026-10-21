@@ -25,6 +25,9 @@ import {
   moveProjectToTrash,
   getPendingDeletes,
   clearPendingDelete,
+  getPendingPurges,
+  clearPendingPurge,
+  deleteProjectFromIndexedDB,
 } from './storage';
 import {
   buildMeta,
@@ -238,6 +241,8 @@ interface Tombstone {
   __type: typeof TOMBSTONE_TYPE;
   projectId: string;
   deletedAt: string;
+  /** Apagado de vez (da lixeira): os outros aparelhos apagam também da lixeira deles */
+  purgedAt?: string;
 }
 
 interface VaultRows {
@@ -541,6 +546,15 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
     }
     clearPendingDelete(projectId);
   }
+  // Apagados de vez aqui enquanto o cofre estava trancado ou sem internet
+  for (const [projectId, purgedAt] of Object.entries(getPendingPurges())) {
+    const item = rows.items.get(projectId)?.[0]?.data;
+    if (!(item && item.updatedAt > purgedAt)) {
+      await purgeInVault(userId, projectId, purgedAt);
+      wrote = true;
+    }
+    clearPendingPurge(projectId);
+  }
   if (wrote) rows = await readVaultRows(userId);
 
   const everything = await getAllProjectsFromIndexedDB({ includeTrash: true });
@@ -553,13 +567,22 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
   const toPush: Project[] = [];
   const toPull: ItemEnvelope[] = [];
   const toDeleteHere: Project[] = [];
+  const toPurgeHere: Project[] = [];
+  const purgedFor = (p: Project) => {
+    const tomb = rows.tombstones.get(p.id)?.[0]?.data;
+    const item = rows.items.get(p.id)?.[0]?.data;
+    return !!tomb?.purgedAt && tomb.purgedAt >= lastChange(p) && (!item || item.updatedAt <= tomb.purgedAt);
+  };
 
   for (const p of local) {
     const item = rows.items.get(p.id)?.[0]?.data;
     const tomb = rows.tombstones.get(p.id)?.[0]?.data;
     const here = lastChange(p);
+    // Apagado de vez em outro aparelho
+    if (purgedFor(p)) {
+      toPurgeHere.push(p);
     // Apagado em outro aparelho depois da última alteração feita aqui
-    if (tomb && tomb.deletedAt >= here && (!item || tomb.deletedAt >= item.updatedAt)) {
+    } else if (tomb && tomb.deletedAt >= here && (!item || tomb.deletedAt >= item.updatedAt)) {
       toDeleteHere.push(p);
     } else if (!item || item.updatedAt < here) {
       toPush.push(p);
@@ -571,6 +594,10 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
   }
   // Na lixeira daqui, mas editado em outro aparelho depois: volta da lixeira
   for (const p of trashed) {
+    if (purgedFor(p)) {
+      toPurgeHere.push(p);
+      continue;
+    }
     const item = rows.items.get(p.id)?.[0]?.data;
     if (item && !isDeleted(rows, p.id) && item.updatedAt > (p.deletedAt as string) && item.updatedAt > lastChange(p)) toPull.push(item);
   }
@@ -622,6 +649,15 @@ export async function syncVault(userId: string, onProgress?: ProgressFn, ownerEm
     result.deletedHere += 1;
   }
 
+  // Apagado de vez em outro aparelho: some daqui também (inclusive da lixeira)
+  for (const p of toPurgeHere) {
+    await deleteProjectFromIndexedDB(p.id, { silent: true });
+    const map = readSynced(userId);
+    delete map[p.id];
+    writeSynced(userId, map);
+    result.deletedHere += 1;
+  }
+
   markCloudSync();
   return result;
 }
@@ -645,6 +681,23 @@ export async function deleteFromVault(userId: string, projectId: string, deleted
   const tomb: Tombstone = { __type: TOMBSTONE_TYPE, projectId, deletedAt: deletedAt || new Date().toISOString() };
   await insertRow(userId, tomb, 'Revela (deleted)');
   clearPendingDelete(projectId);
+  const map = readSynced(userId);
+  delete map[projectId];
+  writeSynced(userId, map);
+}
+
+/** Registra no cofre que o projeto foi apagado de vez (os outros aparelhos apagam até da lixeira). */
+export async function purgeInVault(userId: string, projectId: string, purgedAt?: string): Promise<void> {
+  const rows = await readVaultRows(userId);
+  await deviceKey(userId, rows.header?.data);
+  const at = purgedAt || new Date().toISOString();
+  const previous = rows.tombstones.get(projectId)?.[0]?.data;
+  await deleteProjectFiles(userId, projectId);
+  await deleteRows([...(rows.items.get(projectId) || []), ...(rows.tombstones.get(projectId) || [])].map((x) => x.row));
+  const tomb: Tombstone = { __type: TOMBSTONE_TYPE, projectId, deletedAt: previous?.deletedAt || at, purgedAt: at };
+  await insertRow(userId, tomb, 'Revela (deleted)');
+  clearPendingDelete(projectId);
+  clearPendingPurge(projectId);
   const map = readSynced(userId);
   delete map[projectId];
   writeSynced(userId, map);
