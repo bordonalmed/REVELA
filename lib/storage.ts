@@ -166,6 +166,8 @@ export interface Project {
   // Projetos antigos não têm; nesse caso vale createdAt.
   updatedAt?: string;
   ownerEmail?: string; // Email do usuário que criou o projeto (escopo por conta)
+  /** Fotos originais das que foram editadas (chave = impressão digital da foto editada). Só neste aparelho. */
+  imageOriginals?: Record<string, string>;
   // Na lixeira desde esta data (ISO). Fica guardado só neste aparelho por TRASH_DAYS dias.
   deletedAt?: string;
 }

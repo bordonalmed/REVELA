@@ -23,7 +23,9 @@ import { TreatmentTimeline } from '@/components/treatment-timeline';
 import { errorLogger } from '@/lib/error-logger';
 import { exportComparisonImage } from '@/lib/export-utils';
 import { SocialMediaExportModal } from '@/components/social-media-export-modal';
-import { ImageEditorModal } from '@/components/image-editor-modal';
+import { ImageEditorModal, type EditorSaveOptions, type PairTransform } from '@/components/image-editor-modal';
+import { createImage, getCroppedImg, rotateImage } from '@/lib/image-editor-utils';
+import { findOriginal, pruneOriginals, recordEdit } from '@/lib/image-originals';
 import { WatermarkedContainer } from '@/components/watermarked-container';
 import { PdfReportModal } from '@/components/pdf-report-modal';
 import { remapMeasurements, measurementsAfterImageEdit } from '@/lib/measurements';
@@ -745,80 +747,99 @@ export default function ViewProjectPage() {
     setShowImageEditor(true);
   };
 
-  const handleSaveEditedImage = async (editedImage: string) => {
+  /** Mesmo giro e recorte aplicados na foto correspondente (antes ↔ depois). */
+  const applyPairTransform = async (src: string, pair: PairTransform): Promise<string> => {
+    const deg = (((pair.quarterTurns % 4) + 4) % 4) * 90 + pair.fineAngle;
+    let out = deg ? await rotateImage(src, deg) : src;
+    if (pair.crop) {
+      // Mesma proporção, mesmo centro e mesma fração da foto (as fotos podem ter tamanhos diferentes)
+      const img = await createImage(out);
+      const W = img.width;
+      const H = img.height;
+      const { aspect } = pair.crop;
+      const fraction = (pair.crop.width / 100) * (pair.crop.height / 100);
+      let w = Math.sqrt(fraction * W * H * aspect);
+      let h = w / aspect;
+      const fit = Math.min(1, W / w, H / h);
+      w *= fit;
+      h *= fit;
+      const cx = ((pair.crop.x + pair.crop.width / 2) / 100) * W;
+      const cy = ((pair.crop.y + pair.crop.height / 2) / 100) * H;
+      const x = Math.min(Math.max(cx - w / 2, 0), W - w);
+      const y = Math.min(Math.max(cy - h / 2, 0), H - h);
+      if (w >= 2 && h >= 2) out = await getCroppedImg(out, { x, y, width: w, height: h }, 0);
+    }
+    return out;
+  };
+
+  const editingImageSrc = (): string | undefined => {
+    if (!project) return undefined;
+    if (editingImageType === 'evolution') return (project.evolutionImages || []).find((e) => e.id === editingEvolutionId)?.image;
+    if (editingImageIndex === null) return undefined;
+    return editingImageType === 'before' ? editingBeforeImages[editingImageIndex] : editingAfterImages[editingImageIndex];
+  };
+
+  const allProjectImages = (p: Project) => [...p.beforeImages, ...p.afterImages, ...(p.evolutionImages || []).map((e) => e.image)];
+
+  const handleSaveEditedImage = async (editedImage: string, options?: EditorSaveOptions) => {
     if (!project) return;
 
     try {
-      if (editingImageType === 'before' && editingImageIndex !== null) {
-        // Sempre salvar permanentemente no projeto
-        const newImages = [...project.beforeImages];
-        newImages[editingImageIndex] = editedImage;
-        
-        const updatedProject: Project = {
+      const previous = editingImageSrc() ?? editedImage;
+      // Guarda a primeira versão da foto para o "Restaurar original"
+      let originals = recordEdit(project.imageOriginals, previous, editedImage);
+      let updatedProject: Project = project;
+
+      if ((editingImageType === 'before' || editingImageType === 'after') && editingImageIndex !== null) {
+        const side = editingImageType === 'before' ? 'beforeImages' : 'afterImages';
+        const otherSide = editingImageType === 'before' ? 'afterImages' : 'beforeImages';
+        const idx = editingImageIndex;
+        const newImages = [...project[side]];
+        const oldImage = newImages[idx];
+        newImages[idx] = editedImage;
+        updatedProject = {
           ...project,
-          beforeImages: newImages,
+          [side]: newImages,
           // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
-          measurements: await measurementsAfterImageEdit(
-            project.measurements, 'before', editingImageIndex, project.beforeImages[editingImageIndex], editedImage
-          ),
+          measurements: await measurementsAfterImageEdit(project.measurements, editingImageType, idx, oldImage, editedImage),
         };
-        
-        // Salvar permanentemente no IndexedDB
-        await updateProject(updatedProject);
-        setProject(updatedProject);
-        
-        // Trackear edição de imagem
-        if (user) {
-          trackEditImage(project.id, project.name, 'before', editingImageIndex, 'all');
+
+        // Mesmo enquadramento na foto correspondente
+        let pairNew: string | null = null;
+        if (options?.pair && project[otherSide][idx]) {
+          const pairOld = project[otherSide][idx];
+          pairNew = await applyPairTransform(pairOld, options.pair);
+          originals = recordEdit(originals, pairOld, pairNew);
+          const otherImages = [...project[otherSide]];
+          otherImages[idx] = pairNew;
+          updatedProject = { ...updatedProject, [otherSide]: otherImages };
         }
-        
-        // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
+
+        // Se estiver no modo de edição, também atualizar os arrays de edição
         if (isEditing) {
-          const newEditingImages = [...editingBeforeImages];
-          newEditingImages[editingImageIndex] = editedImage;
-          setEditingBeforeImages(newEditingImages);
+          const setSide = editingImageType === 'before' ? setEditingBeforeImages : setEditingAfterImages;
+          const setOther = editingImageType === 'before' ? setEditingAfterImages : setEditingBeforeImages;
+          setSide((prev) => prev.map((img, i) => (i === idx ? editedImage : img)));
+          if (pairNew) setOther((prev) => prev.map((img, i) => (i === idx ? pairNew! : img)));
         }
-      } else if (editingImageType === 'after' && editingImageIndex !== null) {
-        // Sempre salvar permanentemente no projeto
-        const newImages = [...project.afterImages];
-        newImages[editingImageIndex] = editedImage;
-        
-        const updatedProject: Project = {
-          ...project,
-          afterImages: newImages,
-          // Se a edição mudou o tamanho da foto (recorte/rotação), as medidas dela deixam de valer
-          measurements: await measurementsAfterImageEdit(
-            project.measurements, 'after', editingImageIndex, project.afterImages[editingImageIndex], editedImage
-          ),
-        };
-        
-        // Salvar permanentemente no IndexedDB
-        await updateProject(updatedProject);
-        setProject(updatedProject);
-        
-        // Trackear edição de imagem
+
         if (user) {
-          trackEditImage(project.id, project.name, 'after', editingImageIndex, 'all');
-        }
-        
-        // Se estiver no modo de edição, também atualizar o array de edição para manter consistência
-        if (isEditing) {
-          const newEditingImages = [...editingAfterImages];
-          newEditingImages[editingImageIndex] = editedImage;
-          setEditingAfterImages(newEditingImages);
+          trackEditImage(project.id, project.name, editingImageType, idx, 'all');
         }
       } else if (editingImageType === 'evolution' && editingEvolutionId) {
-        const newEvo = (project.evolutionImages || []).map((e) =>
-          e.id === editingEvolutionId ? { ...e, image: editedImage } : e
-        );
-        const updatedProject: Project = {
+        updatedProject = {
           ...project,
-          evolutionImages: newEvo,
+          evolutionImages: (project.evolutionImages || []).map((e) => (e.id === editingEvolutionId ? { ...e, image: editedImage } : e)),
         };
-        await updateProject(updatedProject);
-        setProject(updatedProject);
       }
-      
+
+      updatedProject = { ...updatedProject, imageOriginals: pruneOriginals(originals, allProjectImages(updatedProject)) };
+      // Salvar permanentemente no IndexedDB
+      await updateProject(updatedProject);
+      setProject(updatedProject);
+      if (options?.restoredOriginal) notify.success(tr('Foto original restaurada.', 'Original photo restored.'));
+      else if (options?.pair) notify.success(tr('Mesmo enquadramento aplicado nas duas fotos.', 'Same framing applied to both photos.'));
+
       setShowImageEditor(false);
       setEditingImageIndex(null);
       setEditingEvolutionId(null);
@@ -921,6 +942,12 @@ export default function ViewProjectPage() {
           { before: project.beforeImages, after: project.afterImages },
           { before: beforeToSave, after: afterToSave }
         ),
+        // Originais de fotos que saíram do projeto não precisam mais ser guardados
+        imageOriginals: pruneOriginals(project.imageOriginals, [
+          ...beforeToSave,
+          ...afterToSave,
+          ...(project.evolutionImages || []).map((e) => e.image),
+        ]),
       };
 
       await updateProject(updatedProject);
@@ -2287,6 +2314,14 @@ export default function ViewProjectPage() {
             onClose={handleCloseImageEditor}
             onSave={handleSaveEditedImage}
             allowClinicalAnnotations={allowClinicalAnnotations}
+            originalSrc={findOriginal(project.imageOriginals, editingImageSrc() || '')}
+            pairLabel={
+              editingImageType === 'before' && editingImageIndex !== null && editingAfterImages[editingImageIndex]
+                ? `${tr('DEPOIS', 'AFTER')} #${editingImageIndex + 1}`
+                : editingImageType === 'after' && editingImageIndex !== null && editingBeforeImages[editingImageIndex]
+                  ? `${tr('ANTES', 'BEFORE')} #${editingImageIndex + 1}`
+                  : undefined
+            }
             imageSrc={
               editingImageType === 'evolution' && editingEvolutionId
                 ? (project.evolutionImages || []).find((e) => e.id === editingEvolutionId)!.image
