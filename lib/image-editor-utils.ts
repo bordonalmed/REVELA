@@ -393,7 +393,16 @@ export async function rasterizeClinicalAnnotationsOnSource(
   const minDim = Math.min(img.width, img.height);
 
   for (const stroke of strokes) {
-    if (stroke.points.length < 2) continue;
+    if (!stroke.points.length) continue;
+    if (stroke.points.length === 1) {
+      // Toque único: vira um ponto (como aparece na prévia)
+      const p = stroke.points[0];
+      ctx.fillStyle = stroke.color === 'white' ? '#ffffff' : '#000000';
+      ctx.beginPath();
+      ctx.arc(p.x * img.width, p.y * img.height, Math.max(1, stroke.widthRel * minDim) / 2, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
     ctx.strokeStyle = stroke.color === 'white' ? '#ffffff' : '#000000';
     ctx.lineWidth = Math.max(1, stroke.widthRel * minDim);
     ctx.lineCap = 'round';
@@ -420,8 +429,8 @@ export async function rasterizeClinicalAnnotationsOnSource(
     ctx.font = `${fontBase}px sans-serif`;
     const lines = wrapTextForCanvas(ctx, (box.text || ' ').trim() || ' ', bw - pad * 2);
     let ty = by + pad;
+    void bh; // a caixa cresce com o texto: nenhuma linha é cortada
     for (const line of lines) {
-      if (ty + fontBase > by + bh) break;
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = Math.max(2, fontBase * 0.12);
       ctx.lineJoin = 'round';
