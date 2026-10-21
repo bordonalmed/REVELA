@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck, Lock, Smartphone, Laptop, RefreshCw, KeyRound, Copy, Download, Printer, Eye, EyeOff,
-  CheckCircle2, AlertTriangle, ArrowLeft, Cloud, LogOut, Trash2, Sparkles, ChevronRight, X,
+  CheckCircle2, AlertTriangle, ArrowLeft, Cloud, LogOut, Trash2, Sparkles, ChevronRight, X, HelpCircle, ChevronDown,
 } from 'lucide-react';
 import { NavigationHeader } from '@/components/navigation-header';
 import { Footer } from '@/components/footer';
@@ -201,6 +201,34 @@ function Steps({ step }: { step: 1 | 2 | 3 }) {
   );
 }
 
+/** Apaga as cópias da nuvem antiga sem trazer nada (quem já tem tudo no aparelho ou eram testes). */
+function useDiscardLegacy(userId: string | undefined, count: number, onDone: () => void) {
+  const tr = useTr();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!userId) return;
+    const ok = await confirmDialog(
+      tr(
+        `Apagar ${count} projeto(s) da nuvem antiga sem trazer? Os projetos que estão neste aparelho e no Cofre não mudam. Não dá para desfazer.`,
+        `Delete ${count} project(s) from the old cloud without bringing them in? Projects on this device and in the Vault stay as they are. This cannot be undone.`
+      ),
+      { confirmLabel: tr('Apagar da nuvem antiga', 'Delete from old cloud'), danger: true }
+    );
+    if (!ok) return;
+    try {
+      setBusy(true);
+      await deleteLegacyCloudCopies(userId);
+      notify.success(tr('Nuvem antiga limpa.', 'Old cloud cleared.'));
+      onDone();
+    } catch (e) {
+      notify.error(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { run, busy };
+}
+
 const errorText = (e: any) => (e instanceof VaultError ? e.message : e?.message || String(e));
 
 // ─── Página ────────────────────────────────────────────────────────────
@@ -243,7 +271,7 @@ export default function CofrePage() {
       {!hasPremiumAccess ? (
         <Upsell />
       ) : vault.phase === 'none' ? (
-        <Intro onStart={() => setDialog('setup')} legacy={vault.legacy} />
+        <Intro onStart={() => setDialog('setup')} legacy={vault.legacy} userId={userId} onChanged={() => refresh(true)} />
       ) : vault.phase === 'locked' ? (
         <Unlock userId={userId!} items={vault.items} message={vault.error} onForgot={() => setDialog('forgot')} onUnlocked={() => refresh(true)} />
       ) : (
@@ -253,6 +281,8 @@ export default function CofrePage() {
           onDialog={setDialog}
         />
       )}
+
+      <VaultFaq />
 
       {dialog === 'setup' && userId && <SetupWizard userId={userId} onClose={() => { setDialog(null); refresh(true); }} />}
       {dialog === 'change' && userId && <ChangePasswordDialog userId={userId} onClose={() => setDialog(null)} />}
@@ -285,6 +315,115 @@ function Hero({ title, subtitle, icon }: { title: string; subtitle: string; icon
   );
 }
 
+/** Tira-dúvidas do Cofre, em linguagem simples. */
+function VaultFaq() {
+  const tr = useTr();
+  const items: [string, string][] = [
+    [
+      tr('O que é o Cofre?', 'What is the Vault?'),
+      tr(
+        'É um lugar seguro na internet onde o Revela guarda uma cópia dos seus projetos, trancada com uma senha que só você sabe. Assim seus projetos aparecem no celular, no computador e em qualquer aparelho em que você entrar com sua conta.',
+        'It is a safe place online where Revela keeps a copy of your projects, locked with a password only you know. That way your projects show up on your phone, computer and any device you sign in to.'
+      ),
+    ],
+    [
+      tr('Sem o Cofre, meus projetos estão seguros?', 'Without the Vault, are my projects safe?'),
+      tr(
+        'Sim. Sem o Cofre, tudo fica só neste aparelho, sem ir para a internet. O risco é outro: se o aparelho for perdido, formatado ou o navegador for limpo, os projetos vão junto. Por isso, sem o Cofre, use "Exportar backup" de vez em quando.',
+        'Yes. Without the Vault everything stays on this device only, never online. The risk is different: if the device is lost, reset or the browser is cleared, the projects go with it. So without the Vault, use "Export backup" from time to time.'
+      ),
+    ],
+    [
+      tr('Alguém consegue ver minhas fotos?', 'Can anyone see my photos?'),
+      tr(
+        'Não. As fotos e os dados são trancados no seu aparelho antes de sair dele. No servidor só fica um conteúdo embaralhado, que ninguém consegue abrir sem a sua senha do cofre — nem a equipe do Revela. Isso ajuda você a cumprir a LGPD com as fotos dos seus pacientes.',
+        'No. Photos and data are locked on your device before they leave it. The server only holds scrambled content that nobody can open without your vault password — not even the Revela team.'
+      ),
+    ],
+    [
+      tr('Senha do cofre é a mesma senha da minha conta?', 'Is the vault password the same as my account password?'),
+      tr(
+        'Não, são duas senhas diferentes. A senha da conta é para entrar no Revela. A senha do cofre é para destrancar suas fotos. Assim, mesmo que alguém descubra a senha da sua conta, não consegue abrir o cofre.',
+        'No, they are two different passwords. The account password signs you in to Revela. The vault password unlocks your photos. Even if someone learns your account password, they cannot open the vault.'
+      ),
+    ],
+    [
+      tr('Vou precisar digitar a senha do cofre toda hora?', 'Will I have to type the vault password all the time?'),
+      tr(
+        'Não. Só uma vez em cada aparelho. Depois ele lembra e sincroniza sozinho.',
+        'No. Only once on each device. After that it remembers and syncs by itself.'
+      ),
+    ],
+    [
+      tr('Como vejo meus projetos no celular (ou em outro computador)?', 'How do I see my projects on my phone (or another computer)?'),
+      tr(
+        'Entre no Revela com seu e-mail e senha, toque em "Cofre" no topo e digite a senha do cofre. Pronto: seus projetos aparecem.',
+        'Sign in to Revela with your e-mail and password, tap "Vault" at the top and enter the vault password. Done: your projects appear.'
+      ),
+    ],
+    [
+      tr('Preciso apertar algum botão para sincronizar?', 'Do I need to press a button to sync?'),
+      tr(
+        'Não. Criou, editou ou apagou um projeto, a mudança vai para os outros aparelhos sozinha. O botão "Sincronizar agora" é só para quando você quiser forçar na hora.',
+        'No. Create, edit or delete a project and the change reaches your other devices by itself. "Sync now" is only for when you want to force it right away.'
+      ),
+    ],
+    [
+      tr('E se eu esquecer a senha do cofre?', 'What if I forget the vault password?'),
+      tr(
+        'Você tem 3 saídas: 1) usar o código de recuperação (aquele de 16 letras e números que aparece quando você liga o cofre); 2) num aparelho que já está conectado, tocar em "Trocar senha do cofre" — ele não pede a senha antiga; 3) se não tiver nenhum dos dois, recriar o cofre usando os projetos deste aparelho.',
+        'You have 3 ways out: 1) use the recovery code (the 16 letters and numbers shown when you turn on the vault); 2) on a device that is already connected, tap "Change vault password" — it does not ask for the old one; 3) if you have neither, recreate the vault from the projects on this device.'
+      ),
+    ],
+    [
+      tr('O que é o código de recuperação?', 'What is the recovery code?'),
+      tr(
+        'É uma chave reserva, tipo a chave extra de casa. Ela aparece uma única vez, quando você liga o cofre. Guarde impresso ou num lugar seguro. Se perder, dá para gerar outro em "Novo código de recuperação".',
+        'It is a spare key, like the extra key to your house. It is shown only once, when you turn on the vault. Print it or keep it somewhere safe. If you lose it, make a new one in "New recovery code".'
+      ),
+    ],
+    [
+      tr('Se eu apagar um projeto, o que acontece?', 'What happens if I delete a project?'),
+      tr(
+        'Ele vai para a lixeira em todos os seus aparelhos e pode ser restaurado por 30 dias. Se você apagar de vez na lixeira, ele some de todos os aparelhos.',
+        'It goes to the trash on all your devices and can be restored for 30 days. If you delete it forever in the trash, it disappears from every device.'
+      ),
+    ],
+    [
+      tr('Usei um computador emprestado. E agora?', 'I used a borrowed computer. What now?'),
+      tr(
+        'No Cofre desse computador, toque em "Desconectar este aparelho" e depois saia da sua conta. Ele deixa de sincronizar e esquece a senha do cofre.',
+        'In the Vault on that computer, tap "Disconnect this device" and then sign out. It stops syncing and forgets the vault password.'
+      ),
+    ],
+    [
+      tr('Quem pode usar o Cofre?', 'Who can use the Vault?'),
+      tr(
+        'O Cofre faz parte do Revela Premium. Nos outros planos, os projetos ficam só no aparelho e o backup é feito pelo "Exportar backup".',
+        'The Vault is part of Revela Premium. On other plans, projects stay on the device and backups are made with "Export backup".'
+      ),
+    ],
+  ];
+  return (
+    <section className="mt-8" aria-labelledby="vault-faq-title">
+      <h2 id="vault-faq-title" className="scroll-mt-24 flex items-center gap-2 text-base font-medium mb-3" style={{ color: C.cream }}>
+        <HelpCircle className="w-5 h-5" style={{ color: C.teal }} /> {tr('Dúvidas sobre o Cofre', 'Vault questions')}
+      </h2>
+      <div className="rounded-2xl border overflow-hidden" style={{ borderColor: C.border }} data-testid="vault-faq">
+        {items.map(([q, a], i) => (
+          <details key={q} className={`group ${i ? 'border-t' : ''}`} style={{ borderColor: C.border, backgroundColor: C.panel }}>
+            <summary className="flex items-center gap-3 px-5 py-4 cursor-pointer list-none hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+              <span className="flex-1 text-sm font-medium" style={{ color: C.cream }}>{q}</span>
+              <ChevronDown className="w-4 h-4 shrink-0 transition-transform group-open:rotate-180" style={{ color: C.muted }} />
+            </summary>
+            <p className="px-5 pb-4 text-sm leading-relaxed" style={{ color: C.cream, opacity: 0.8 }}>{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Benefits() {
   const tr = useTr();
   const items = [
@@ -310,6 +449,11 @@ function Upsell() {
   return (
     <>
       <Hero title={tr('Cofre Revela', 'Revela Vault')} subtitle={tr('Seus projetos em todos os seus aparelhos, trancados com uma senha que só você sabe.', 'Your projects on all your devices, locked with a password only you know.')} />
+      <p className="text-center -mt-3 mb-5">
+        <a href="#vault-faq-title" className="inline-flex items-center gap-1.5 text-sm underline" style={{ color: C.teal }}>
+          <HelpCircle className="w-4 h-4" /> {tr('O que é o Cofre? Tire suas dúvidas', 'What is the Vault? Get answers')}
+        </a>
+      </p>
       <Benefits />
       <Panel tone="teal" className="text-center">
         <p className="text-sm mb-4" style={{ color: C.cream }}>
@@ -322,11 +466,17 @@ function Upsell() {
   );
 }
 
-function Intro({ onStart, legacy }: { onStart: () => void; legacy: number }) {
+function Intro({ onStart, legacy, userId, onChanged }: { onStart: () => void; legacy: number; userId?: string; onChanged: () => void }) {
   const tr = useTr();
+  const discard = useDiscardLegacy(userId, legacy, onChanged);
   return (
     <>
       <Hero title={tr('Cofre Revela', 'Revela Vault')} subtitle={tr('Seus projetos em todos os seus aparelhos, trancados com uma senha que só você sabe.', 'Your projects on all your devices, locked with a password only you know.')} />
+      <p className="text-center -mt-3 mb-5">
+        <a href="#vault-faq-title" className="inline-flex items-center gap-1.5 text-sm underline" style={{ color: C.teal }}>
+          <HelpCircle className="w-4 h-4" /> {tr('O que é o Cofre? Tire suas dúvidas', 'What is the Vault? Get answers')}
+        </a>
+      </p>
       <Benefits />
       <Panel className="text-center">
         <PrimaryButton className="w-full sm:w-auto" onClick={onStart}>
@@ -337,7 +487,10 @@ function Intro({ onStart, legacy }: { onStart: () => void; legacy: number }) {
         </p>
         {legacy > 0 && (
           <p className="text-xs mt-3" style={{ color: C.warn }}>
-            {tr(`Você tem ${legacy} projeto(s) da nuvem antiga. Depois de ligar o cofre, dá para trazê-los.`, `You have ${legacy} project(s) from the old cloud. After turning on the vault you can bring them in.`)}
+            {tr(`Você tem ${legacy} projeto(s) da nuvem antiga. Depois de ligar o cofre, dá para trazê-los.`, `You have ${legacy} project(s) from the old cloud. After turning on the vault you can bring them in.`)}{' '}
+            <button onClick={discard.run} disabled={discard.busy} className="underline disabled:opacity-50" style={{ color: C.muted }}>
+              {tr('Ou apagar sem trazer', 'Or delete without bringing in')}
+            </button>
           </p>
         )}
       </Panel>
@@ -405,6 +558,7 @@ function Dashboard({ userId, onSync, onDialog }: { userId: string; onSync: () =>
   const tr = useTr();
   const vault = useVaultStatus();
   const syncing = vault.phase === 'syncing';
+  const discardLegacy = useDiscardLegacy(userId, vault.legacy, onSync);
 
   useEffect(() => {
     const onUpdated = () => { /* os números já vêm do status */ };
@@ -474,7 +628,12 @@ function Dashboard({ userId, onSync, onDialog }: { userId: string; onSync: () =>
           <p className="text-sm mb-3" style={{ color: C.cream }}>
             {tr(`Encontramos ${vault.legacy} projeto(s) da nuvem antiga (antes do Cofre).`, `We found ${vault.legacy} project(s) from the old cloud (before the Vault).`)}
           </p>
-          <GhostButton onClick={() => onDialog('legacy')}>{tr('Trazer para o cofre', 'Bring into the vault')} <ChevronRight className="w-4 h-4" /></GhostButton>
+          <div className="flex flex-wrap gap-2">
+            <GhostButton onClick={() => onDialog('legacy')}>{tr('Trazer para o cofre', 'Bring into the vault')} <ChevronRight className="w-4 h-4" /></GhostButton>
+            <GhostButton danger onClick={discardLegacy.run} disabled={discardLegacy.busy}>
+              <Trash2 className="w-4 h-4" /> {tr('Apagar sem trazer', 'Delete without bringing in')}
+            </GhostButton>
+          </div>
         </Panel>
       )}
 
@@ -767,6 +926,8 @@ function OptionCard({ icon, title, desc, onClick }: { icon: React.ReactNode; tit
 
 function LegacyDialog({ userId, email, onClose }: { userId: string; email?: string | null; onClose: () => void }) {
   const tr = useTr();
+  const vault = useVaultStatus();
+  const discard = useDiscardLegacy(userId, vault.legacy, onClose);
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -799,6 +960,14 @@ function LegacyDialog({ userId, email, onClose }: { userId: string; email?: stri
         <PasswordField value={pw} onChange={setPw} placeholder={tr('Senha da nuvem antiga (se tiver)', 'Old cloud password (if any)')} />
         {err && <p className="text-sm" style={{ color: C.danger }}>{err}</p>}
         <PrimaryButton className="w-full" onClick={importAll} disabled={busy}>{busy ? tr('Trazendo…', 'Bringing in…') : tr('Trazer para o cofre', 'Bring into the vault')}</PrimaryButton>
+        <button
+          onClick={async () => { await discard.run(); }}
+          disabled={busy || discard.busy}
+          className="w-full text-sm underline disabled:opacity-50"
+          style={{ color: C.muted }}
+        >
+          {tr('Não quero esses projetos: apagar da nuvem antiga', 'I do not want these projects: delete from the old cloud')}
+        </button>
       </div>
     </Modal>
   );
