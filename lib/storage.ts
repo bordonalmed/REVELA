@@ -176,13 +176,6 @@ export const TRASH_DAYS = 30;
 export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('RevelaDB', 1);
-    
-    // Criar backup automático após salvar (se habilitado)
-    const createAutoBackupAfterSave = () => {
-      if (isAutoBackupEnabled()) {
-        void runAutoBackup();
-      }
-    };
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
@@ -210,9 +203,6 @@ export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
         } catch (error) {
           console.warn('Erro ao salvar no localStorage:', error);
         }
-        
-        // Criar backup automático
-        createAutoBackupAfterSave();
         resolve();
       };
       
@@ -228,7 +218,6 @@ export const saveProjectToIndexedDB = (project: Project): Promise<void> => {
             projects.push(project);
           }
           setLocalStorageItem('revela_projects', JSON.stringify(projects));
-          createAutoBackupAfterSave();
           resolve();
         } catch (error) {
           reject(error);
@@ -664,12 +653,7 @@ export const updateProjectInIndexedDB = (project: Project): Promise<void> => {
         } catch (error) {
           // Ignorar erro
         }
-        
-        // Criar backup automático
-        if (isAutoBackupEnabled()) {
-          void runAutoBackup();
-        }
-        
+
         resolve();
       };
       updateRequest.onerror = () => reject(updateRequest.error);
@@ -855,62 +839,15 @@ export const importBackup = async (backupData: BackupData): Promise<{ success: n
   return results;
 };
 
-// Backup automático (salva no localStorage como fallback)
-export const enableAutoBackup = async (): Promise<boolean> => {
-  if (typeof window === 'undefined') return false;
-  
-  // Salvar preferência
-  setLocalStorageItem('revela_auto_backup', 'enabled');
-  
-  // Criar backup inicial
-  return runAutoBackup();
-};
-
-/**
- * Grava o backup automático no armazenamento do navegador.
- * Retorna false se não couber (o limite costuma ser ~5 MB, poucas fotos) — antes isso
- * falhava em silêncio e o app dava o backup como feito.
- */
-export const runAutoBackup = async (): Promise<boolean> => {
-  try {
-    const backup = await exportBackup();
-    const ok = setLocalStorageItem('revela_last_backup', JSON.stringify(backup));
-    if (ok) {
-      setLocalStorageItem('revela_backup_date', backup.exportDate);
-      try { localStorage.removeItem('revela_backup_failed'); } catch { /* ignore */ }
-      return true;
-    }
-  } catch (error) {
-    console.warn('Erro ao criar backup automático:', error);
-  }
-  setLocalStorageItem('revela_backup_failed', new Date().toISOString());
-  return false;
-};
-
-/** Data da última falha do backup automático (null se o último deu certo). */
-export const getAutoBackupFailure = (): string | null => getLocalStorageItem('revela_backup_failed');
-
-// Desabilitar backup automático
-export const disableAutoBackup = (): void => {
+// O antigo "Backup automático" guardava uma cópia no próprio navegador — não protegia
+// contra perda do aparelho e ocupava o pouco espaço do localStorage. Foi retirado;
+// isto apaga o que tenha ficado de quem usava. Backup de verdade = Exportar backup ou Cofre.
+export const retireAutoBackup = (): void => {
   if (typeof window === 'undefined') return;
-  setLocalStorageItem('revela_auto_backup', 'disabled');
-};
-
-// Verificar se backup automático está habilitado
-export const isAutoBackupEnabled = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return getLocalStorageItem('revela_auto_backup') === 'enabled';
-};
-
-// Obter último backup automático
-export const getLastAutoBackup = (): BackupData | null => {
-  if (typeof window === 'undefined') return null;
-  const backupStr = getLocalStorageItem('revela_last_backup');
-  if (!backupStr) return null;
   try {
-    return JSON.parse(backupStr) as BackupData;
+    ['revela_auto_backup', 'revela_last_backup', 'revela_backup_failed', 'revela_backup_date'].forEach((k) => localStorage.removeItem(k));
   } catch {
-    return null;
+    /* ignore */
   }
 };
 

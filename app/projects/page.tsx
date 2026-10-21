@@ -12,10 +12,10 @@ import { ShieldCheck } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MoreHorizontal, FolderInput, Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, Download, Upload, Database, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon } from 'lucide-react';
+import { MoreHorizontal, FolderInput, Eye, Trash2, Calendar, Search, Filter, ArrowUpDown, X, Download, Upload, FolderPlus, Folder as FolderIcon, FolderOpen, MoreVertical, Edit2, Trash2 as TrashIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getAllProjects, getAllProjectsForUser, moveProjectToTrash, getTrashedProjects, purgeExpiredTrash, TRASH_DAYS, type Project, exportBackup, importBackup, enableAutoBackup, disableAutoBackup, isAutoBackupEnabled, getLastAutoBackup, getAutoBackupFailure, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
+import { getAllProjects, getAllProjectsForUser, moveProjectToTrash, getTrashedProjects, purgeExpiredTrash, TRASH_DAYS, type Project, exportBackup, importBackup, retireAutoBackup, type BackupData, getAllFolders, createFolder, updateFolder, deleteFolder, moveProjectToFolder, type Folder } from '@/lib/storage';
 import { NavigationHeader } from '@/components/navigation-header';
 import { GuidedTour } from '@/components/guided-tour';
 import { Footer } from '@/components/footer';
@@ -46,9 +46,6 @@ export default function ProjectsPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [autoBackup, setAutoBackup] = useState(false);
-  const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
-  const [autoBackupFailed, setAutoBackupFailed] = useState(false);
   // Lembrete: dias desde o último backup (arquivo exportado ou envio para a nuvem); null = não mostrar
   const [backupReminderDays, setBackupReminderDays] = useState<number | null>(null);
   const vault = useVaultStatus();
@@ -169,9 +166,7 @@ export default function ProjectsPage() {
     if (user) {
       loadProjects(user.email || null);
       loadFolders();
-      // Verificar backup automático
-      setAutoBackup(isAutoBackupEnabled());
-      setAutoBackupFailed(isAutoBackupEnabled() && !!getAutoBackupFailure());
+      retireAutoBackup();
       try {
         const snoozedUntil = Number(localStorage.getItem('revela_backup_reminder_snooze') || 0);
         if (Date.now() > snoozedUntil) {
@@ -180,10 +175,6 @@ export default function ProjectsPage() {
           if (days === -1 || days >= BACKUP_REMINDER_DAYS) setBackupReminderDays(days);
         }
       } catch { /* ignore */ }
-      const lastBackup = getLastAutoBackup();
-      if (lastBackup) {
-        setLastBackupDate(lastBackup.exportDate);
-      }
     }
   }, [user, loadProjects]);
 
@@ -273,13 +264,6 @@ export default function ProjectsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      // Se backup automático estiver ativo, atualizar
-      if (autoBackup) {
-        const ok = await enableAutoBackup();
-        setAutoBackupFailed(!ok);
-        if (ok) setLastBackupDate(backup.exportDate);
-      }
-      
       // Trackear exportação de backup
       if (user) {
         trackExportBackup(backup.metadata?.totalProjects || 0);
@@ -333,28 +317,6 @@ export default function ProjectsPage() {
       notify.error(t => t.msg.importBackupError(errorMsg));
     } finally {
       setImporting(false);
-    }
-  };
-
-  const handleToggleAutoBackup = () => {
-    const newValue = !autoBackup;
-    setAutoBackup(newValue);
-    
-    if (newValue) {
-      // Cria o backup e só confirma se ele realmente coube no navegador
-      enableAutoBackup().then((ok) => {
-        setAutoBackupFailed(!ok);
-        if (ok) {
-          setLastBackupDate(getLastAutoBackup()?.exportDate ?? new Date().toISOString());
-          notify.success(t => t.msg.autoBackupEnabled);
-        } else {
-          notify.error(t => t.msg.autoBackupTooBig);
-        }
-      });
-    } else {
-      setAutoBackupFailed(false);
-      disableAutoBackup();
-      notify.success(t => t.msg.autoBackupDisabled);
     }
   };
 
@@ -803,55 +765,6 @@ export default function ProjectsPage() {
                       <span>{tr('Importar Backup', 'Import Backup')}</span>
                     </button>
 
-                    {/* Divisor */}
-                    <div className="h-px my-1" style={{ backgroundColor: 'rgba(232, 220, 192, 0.1)' }} />
-
-                    {/* Backup Automático */}
-                    <div className="px-3 py-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Database className="w-4 h-4" style={{ color: '#E8DCC0', opacity: 0.7 }} />
-                          <span className="text-sm" style={{ color: '#E8DCC0' }}>
-                            {tr('Backup Automático', 'Automatic Backup')}
-                          </span>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={autoBackup}
-                            onChange={handleToggleAutoBackup}
-                            className="sr-only peer"
-                          />
-                          <div 
-                            className="w-9 h-5 rounded-full peer transition-colors"
-                            style={{
-                              backgroundColor: autoBackup ? '#00A88F' : 'rgba(232, 220, 192, 0.2)',
-                            }}
-                          >
-                            <div 
-                              className="w-4 h-4 rounded-full transition-transform mt-0.5 ml-0.5"
-                              style={{
-                                backgroundColor: '#FFFFFF',
-                                transform: autoBackup ? 'translateX(16px)' : 'translateX(0)',
-                              }}
-                            />
-                          </div>
-                        </label>
-                      </div>
-                      {autoBackup && autoBackupFailed && (
-                        <p className="text-[11px] mt-1" style={{ color: '#fde68a' }}>
-                          {tr(
-                            '⚠ O último backup automático não coube no navegador. Use "Exportar Backup" para salvar um arquivo.',
-                            '⚠ The last automatic backup did not fit in the browser. Use "Export Backup" to save a file.'
-                          )}
-                        </p>
-                      )}
-                      {lastBackupDate && (
-                        <div className="mt-1 text-xs" style={{ color: '#E8DCC0', opacity: 0.5 }}>
-                          {tr('Último', 'Last')}: {new Date(lastBackupDate).toLocaleDateString(tr('pt-BR', 'en-US'))}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               )}
