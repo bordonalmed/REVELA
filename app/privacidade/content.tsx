@@ -43,7 +43,17 @@ export default function PrivacidadePageContent() {
               {tr('As fotografias do tipo "antes e depois" são armazenadas ', '"Before and after" photographs are stored ')}<strong>{tr('exclusivamente no dispositivo do usuário', 'exclusively on the user\'s device')}</strong>{tr(' (via IndexedDB no navegador). Não realizamos upload automático para servidores.', ' (via IndexedDB in the browser). We do not upload them automatically to servers.')}
             </p>
             <p className="mt-2">
-              <strong>{tr('Backup opcional em nuvem (plano Premium):', 'Optional cloud backup (Premium plan):')}</strong> {tr('quando ativado pelo usuário, os dados são criptografados no dispositivo com AES-GCM antes de serem transmitidos. A chave de criptografia é derivada localmente e não é enviada ao servidor.', 'when enabled by the user, data is encrypted on the device with AES-GCM before being transmitted. The encryption key is derived locally and is never sent to the server.')}
+              <strong>{tr('Cofre Revela (opcional, plano Premium):', 'Revela Vault (optional, Premium plan):')}</strong>{' '}
+              {tr(
+                'funciona somente se o usuário ligá-lo. Ele guarda uma cópia dos projetos para que apareçam nos outros aparelhos do usuário. Antes de sair do aparelho, fotos e dados são criptografados com AES-GCM (256 bits). A chave fica protegida pela senha do cofre, criada pelo usuário, e por um código de recuperação mostrado só a ele; nenhum dos dois é enviado ao servidor. Assim, o servidor armazena apenas conteúdo criptografado, que a equipe do Revela não consegue abrir.',
+                'it only works if the user turns it on. It keeps a copy of the projects so they appear on the user\'s other devices. Before leaving the device, photos and data are encrypted with AES-GCM (256-bit). The key is protected by the vault password, chosen by the user, and by a recovery code shown only to them; neither is sent to the server. The server therefore stores only encrypted content, which the Revela team cannot open.'
+              )}
+            </p>
+            <p className="mt-2">
+              {tr(
+                'Exclusão: um projeto apagado vai para a lixeira por até 30 dias e sua cópia no Cofre é removida. Ao apagá-lo da lixeira, ele é removido também dos outros aparelhos conectados ao Cofre. Ao apagar o Cofre, todas as cópias armazenadas no servidor são excluídas; os projetos que estão em cada aparelho permanecem nele.',
+                'Deletion: a deleted project goes to the trash for up to 30 days and its copy in the Vault is removed. When it is deleted from the trash, it is also removed from the other devices connected to the Vault. When the Vault is deleted, all copies stored on the server are erased; projects on each device remain there.'
+              )}
             </p>
           </section>
 
