@@ -5,6 +5,7 @@ import { ServiceWorkerRegistration } from "@/components/service-worker-registrat
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt";
 import { LanguageProvider } from "@/contexts/language-context";
 import { Notifier } from "@/components/notifier";
+import { CookieConsent } from "@/components/cookie-consent";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { ConversionPixels } from "@/components/conversion-pixels";
 
@@ -117,6 +118,7 @@ export default function RootLayout({
             {children}
           </ErrorBoundary>
           <Notifier />
+          <CookieConsent />
           <ServiceWorkerRegistration />
           {process.env.NODE_ENV === 'production' && <PWAInstallPrompt />}
         </LanguageProvider>

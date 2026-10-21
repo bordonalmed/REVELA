@@ -49,7 +49,7 @@ const faqPageSchema = {
       "name": "Quanto custa usar o Revela?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "O Revela possui um plano Free com até 3 projetos. Para funcionalidades avançadas, há o plano Pro (R$ 29/mês) e o Premium (R$ 49/mês) com recursos como timeline de evolução, relatório PDF e backup em nuvem.",
+        "text": "O Revela possui um plano Free com até 3 projetos. Para funcionalidades avançadas, há o plano Pro (R$ 19,90/mês) e o Premium (R$ 49/mês), com o Cofre Revela (projetos em todos os aparelhos, criptografados), relatório em PDF e Revela Evolução.",
       },
     },
     {

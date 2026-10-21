@@ -86,16 +86,16 @@ export function HomeClient() {
                 </Button>
               </div>
               <p className="text-xs text-revela-cream/60 pt-1">
-                Comece grátis. Planos a partir de R$ 19,90/mês.
+                {tr('Comece grátis. Planos a partir de R$ 19,90/mês.', 'Start for free. Plans from R$ 19.90/month.')}
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start pt-2">
                 <span className="inline-flex items-center gap-1.5 text-xs text-revela-cream/70 bg-revela-cream/5 border border-revela-cream/10 rounded-full px-3 py-1">
                   <Shield className="w-3.5 h-3.5 text-revela-teal" aria-hidden />
-                  Suas fotos nunca saem do dispositivo
+                  {tr('Suas fotos ficam no seu aparelho', 'Your photos stay on your device')}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-revela-cream/70 bg-revela-cream/5 border border-revela-cream/10 rounded-full px-3 py-1">
                   <Check className="w-3.5 h-3.5 text-revela-teal" aria-hidden />
-                  +500 profissionais de saúde
+                  {tr('+500 profissionais de saúde', '500+ health professionals')}
                 </span>
               </div>
             </div>

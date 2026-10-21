@@ -9,6 +9,7 @@ import {
   type ConversionEvent,
   type ConversionData 
 } from './conversion-tracking';
+import { hasAnalyticsConsent } from './consent';
 
 declare global {
   interface Window {
@@ -23,14 +24,15 @@ const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || '';
 
 // Verificar se o Google Analytics está disponível
 export const isGAEnabled = (): boolean => {
-  return !!(typeof window !== 'undefined' && window.gtag && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '');
+  return !!(typeof window !== 'undefined' && hasAnalyticsConsent() && window.gtag && typeof window.gtag === 'function' && GA_MEASUREMENT_ID !== '');
 };
 
 // Inicializar Google Analytics
 export const initGA = (): void => {
-  if (typeof window === 'undefined' || !GA_MEASUREMENT_ID) {
+  if (typeof window === 'undefined' || !GA_MEASUREMENT_ID || !hasAnalyticsConsent()) {
     return;
   }
+  if (document.querySelector('script[src*="googletagmanager.com/gtag/js"]')) return;
 
   // Carregar script do Google Analytics
   const script1 = document.createElement('script');
@@ -76,8 +78,10 @@ export const trackEvent = (
 ): void => {
   if (!isGAEnabled() || !window.gtag) return;
 
+  // Segurança: nomes de projeto/paciente nunca saem do aparelho
+  const { project_name: _n, content_name: _c, folder_name: _f, ...safeParams } = eventParams || {};
   window.gtag('event', eventName, {
-    ...eventParams,
+    ...safeParams,
   });
 };
 
@@ -118,8 +122,6 @@ export const trackSignup = (method: string = 'email'): void => {
 export const trackCreateProject = (projectName: string, beforeCount: number, afterCount: number): void => {
   trackEvent('create_project', {
     event_category: 'Projects',
-    event_label: projectName,
-    project_name: projectName,
     before_images_count: beforeCount,
     after_images_count: afterCount,
     total_images: beforeCount + afterCount,
@@ -127,7 +129,6 @@ export const trackCreateProject = (projectName: string, beforeCount: number, aft
   
   // Trackear conversão
   const { event, data } = mapRevelaEventToConversion('create_project', {
-    content_name: projectName,
     value: 1,
     currency: 'BRL',
   });
@@ -137,9 +138,7 @@ export const trackCreateProject = (projectName: string, beforeCount: number, aft
 export const trackViewProject = (projectId: string, projectName: string): void => {
   trackEvent('view_project', {
     event_category: 'Projects',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
   });
 };
 
@@ -150,9 +149,7 @@ export const trackUpdateProject = (projectId: string, projectName: string, chang
 }): void => {
   trackEvent('update_project', {
     event_category: 'Projects',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
     ...changes,
   });
 };
@@ -160,9 +157,7 @@ export const trackUpdateProject = (projectId: string, projectName: string, chang
 export const trackDeleteProject = (projectId: string, projectName: string): void => {
   trackEvent('delete_project', {
     event_category: 'Projects',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
   });
 };
 
@@ -176,9 +171,8 @@ export const trackEditImage = (
 ): void => {
   trackEvent('edit_image', {
     event_category: 'Image Editing',
-    event_label: `${projectName} - ${imageType} #${imageIndex + 1}`,
+    event_label: `${imageType} #${imageIndex + 1}`,
     project_id: projectId,
-    project_name: projectName,
     image_type: imageType,
     image_index: imageIndex,
     edit_type: editType,
@@ -194,16 +188,13 @@ export const trackExportImage = (
 ): void => {
   trackEvent('export_image', {
     event_category: 'Export',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
     export_format: format,
     export_layout: layout,
   });
   
   // Trackear conversão
   const { event, data } = mapRevelaEventToConversion('export_image', {
-    content_name: projectName,
     content_ids: [projectId],
     value: 1,
     currency: 'BRL',
@@ -214,9 +205,7 @@ export const trackExportImage = (
 export const trackExportProject = (projectId: string, projectName: string): void => {
   trackEvent('export_project', {
     event_category: 'Export',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
   });
 };
 
@@ -238,18 +227,14 @@ export const trackExportBackup = (projectsCount: number): void => {
 export const trackEnterPresentationMode = (projectId: string, projectName: string): void => {
   trackEvent('enter_presentation_mode', {
     event_category: 'View Modes',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
   });
 };
 
 export const trackEnterSliderMode = (projectId: string, projectName: string): void => {
   trackEvent('enter_slider_mode', {
     event_category: 'View Modes',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
   });
 };
 
@@ -257,9 +242,7 @@ export const trackEnterSliderMode = (projectId: string, projectName: string): vo
 export const trackSaveNotes = (projectId: string, projectName: string, notesLength: number): void => {
   trackEvent('save_notes', {
     event_category: 'Projects',
-    event_label: projectName,
     project_id: projectId,
-    project_name: projectName,
     notes_length: notesLength,
   });
 };
@@ -268,26 +251,20 @@ export const trackSaveNotes = (projectId: string, projectName: string, notesLeng
 export const trackCreateFolder = (folderName: string): void => {
   trackEvent('create_folder', {
     event_category: 'Folders',
-    event_label: folderName,
-    folder_name: folderName,
   });
 };
 
 export const trackUpdateFolder = (folderId: string, folderName: string): void => {
   trackEvent('update_folder', {
     event_category: 'Folders',
-    event_label: folderName,
     folder_id: folderId,
-    folder_name: folderName,
   });
 };
 
 export const trackDeleteFolder = (folderId: string, folderName: string): void => {
   trackEvent('delete_folder', {
     event_category: 'Folders',
-    event_label: folderName,
     folder_id: folderId,
-    folder_name: folderName,
   });
 };
 
@@ -359,13 +336,11 @@ export const trackShare = (projectId: string, projectName: string, platform: str
     event_category: 'Social',
     event_label: platform,
     project_id: projectId,
-    project_name: projectName,
     share_platform: platform,
   });
   
   // Trackear conversão
   const { event, data } = mapRevelaEventToConversion('share_social', {
-    content_name: projectName,
     content_ids: [projectId],
     share_platform: platform,
   });
@@ -378,7 +353,6 @@ export const trackMeasurement = (projectId: string, projectName: string, measure
     event_category: 'Measurements',
     event_label: measurementType,
     project_id: projectId,
-    project_name: projectName,
     measurement_type: measurementType,
   });
 };

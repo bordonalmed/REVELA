@@ -1,3 +1,4 @@
+import { hasAnalyticsConsent, isAppRoute } from './consent';
 // Sistema de Tracking de Conversão para Meta Ads, X/Twitter, Google Ads e TikTok
 // Gerencia pixels de conversão de todas as plataformas
 
@@ -76,6 +77,8 @@ export const initMetaPixel = (pixelId: string): void => {
     s.parentNode?.insertBefore(t, s);
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
+  // Sem coleta automática de botões/metadados da página (poderia pegar nomes de pacientes)
+  window.fbq?.('set', 'autoConfig', false, pixelId);
   window.fbq?.('init', pixelId);
   window.fbq?.('track', 'PageView');
 };
@@ -87,7 +90,6 @@ export const trackMetaConversion = (event: ConversionEvent, data?: ConversionDat
   
   if (data?.value) params.value = data.value;
   if (data?.currency) params.currency = data.currency;
-  if (data?.content_name) params.content_name = data.content_name;
   if (data?.content_category) params.content_category = data.content_category;
   if (data?.content_ids) params.content_ids = data.content_ids;
   if (data?.contents) params.contents = data.contents;
@@ -116,7 +118,6 @@ export const trackTwitterConversion = (event: ConversionEvent, data?: Conversion
   
   if (data?.value) params.value = data.value;
   if (data?.currency) params.currency = data.currency;
-  if (data?.content_name) params.content_name = data.content_name;
 
   window.twq?.('event', event, params);
 };
@@ -196,7 +197,6 @@ export const trackTikTokConversion = (event: ConversionEvent, data?: ConversionD
   
   if (data?.value) params.value = data.value;
   if (data?.currency) params.currency = data.currency;
-  if (data?.content_name) params.content_name = data.content_name;
   if (data?.content_ids) params.content_ids = data.content_ids;
 
   window.ttq?.track(event, params);
@@ -213,6 +213,12 @@ export const trackConversion = async (
     tiktok?: boolean;
   }
 ): Promise<void> => {
+  // Só com consentimento e nunca dentro do app (área com dados de pacientes)
+  if (typeof window === 'undefined' || !hasAnalyticsConsent() || isAppRoute(window.location.pathname)) return;
+  if (data) {
+    const { content_name: _n, ...rest } = data;
+    data = rest as ConversionData;
+  }
   // Meta Pixel
   if (platforms?.meta !== false && typeof window !== 'undefined' && window.fbq) {
     trackMetaConversion(event, data);
