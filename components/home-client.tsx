@@ -95,7 +95,7 @@ export function HomeClient() {
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-revela-cream/70 bg-revela-cream/5 border border-revela-cream/10 rounded-full px-3 py-1">
                   <Check className="w-3.5 h-3.5 text-revela-teal" aria-hidden />
-                  {tr('+500 profissionais de saúde', '500+ health professionals')}
+                  {tr('Grátis para começar, sem cartão', 'Free to start, no card needed')}
                 </span>
               </div>
             </div>
