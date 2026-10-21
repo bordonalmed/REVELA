@@ -616,7 +616,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => {
-            resetTours();
+            void resetTours();
             notify.success(tr('Pronto! O tour vai aparecer de novo nas telas.', 'Done! The tour will show again on each screen.'), { label: tr('Ir para o início', 'Go to home'), href: '/dashboard' });
           }}
           className="w-full flex items-center gap-4 rounded-lg p-4 sm:p-6 mb-6 border text-left transition-colors hover:bg-white/5"

@@ -12,7 +12,7 @@ import { SafeBase64Image } from '@/components/safe-image';
 import { useLanguage, useTr } from '@/contexts/language-context';
 import { getAllProjectsForUser, type Project } from '@/lib/storage';
 import { formatLocalDate } from '@/lib/utils';
-import { GuidedTour } from '@/components/guided-tour';
+import { GuidedTour, isTourDone, markTourDone } from '@/components/guided-tour';
 
 const CREAM = '#E8DCC0';
 const TEAL = '#00A88F';
@@ -139,10 +139,17 @@ export default function DashboardPage() {
     return () => subscription.unsubscribe();
   }, [router, checkUser]);
 
+  // "Como funciona" é só para o começo: some de vez depois do primeiro projeto
+  const [howToDone, setHowToDone] = useState(true);
+
   useEffect(() => {
     if (!user) return;
     getAllProjectsForUser(user.email || null)
-      .then((all) => setProjects(all))
+      .then(async (all) => {
+        if (all.length > 0) void markTourDone('howto');
+        else setHowToDone(await isTourDone('howto'));
+        setProjects(all);
+      })
       .catch(() => setProjects([]));
   }, [user]);
 
@@ -170,7 +177,7 @@ export default function DashboardPage() {
       <div className="flex-1 pt-20 sm:pt-24">
         <Hero onNew={handleNew} onStored={handleStored} t={t} />
         {projects !== null && <DashboardTour />}
-        {projects !== null && (projects.length === 0 ? <HowItWorks /> : <Recent projects={projects.slice(0, 4)} total={projects.length} />)}
+        {projects !== null && (projects.length === 0 ? (!howToDone && <HowItWorks />) : <Recent projects={projects.slice(0, 4)} total={projects.length} />)}
       </div>
       <Footer />
     </div>

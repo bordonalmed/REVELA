@@ -37,7 +37,8 @@ function setLocalStorageItem(key: string, value: string): boolean {
 // Avisa o app (ex.: Cofre Revela) que um projeto mudou. Não dispara em gravações
 // feitas pela própria sincronização, para não criar um vai-e-volta.
 export const PROJECT_CHANGED_EVENT = 'revela:project-changed';
-export type ProjectChangedDetail = { id: string; deleted?: boolean };
+// deleted = foi para a lixeira; purged = apagado de vez (da lixeira)
+export type ProjectChangedDetail = { id: string; deleted?: boolean; purged?: boolean };
 
 // Exclusões ainda não registradas no Cofre (ex.: cofre trancado ou sem internet).
 // O Cofre lê esta lista na próxima sincronização para avisar os outros aparelhos.
@@ -68,10 +69,42 @@ function markPendingDelete(id: string, deletedAt: string): void {
   setLocalStorageItem(PENDING_DELETES_KEY, JSON.stringify(map));
 }
 
+// Projetos apagados de vez (da lixeira) ainda não avisados ao Cofre.
+const PENDING_PURGES_KEY = 'revela_pending_purges';
+
+export function getPendingPurges(): Record<string, string> {
+  try {
+    return JSON.parse(getLocalStorageItem(PENDING_PURGES_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+export function clearPendingPurge(id: string): void {
+  const map = getPendingPurges();
+  if (!(id in map)) return;
+  delete map[id];
+  setLocalStorageItem(PENDING_PURGES_KEY, JSON.stringify(map));
+}
+
+function markPendingPurge(id: string, purgedAt: string): void {
+  const map = getPendingPurges();
+  const limit = Date.now() - 2 * TRASH_DAYS * 24 * 60 * 60 * 1000;
+  Object.keys(map).forEach((k) => {
+    if (new Date(map[k]).getTime() < limit) delete map[k];
+  });
+  map[id] = purgedAt;
+  setLocalStorageItem(PENDING_PURGES_KEY, JSON.stringify(map));
+}
+
 function emitProjectChanged(detail: ProjectChangedDetail) {
   if (typeof window === 'undefined') return;
-  if (detail.deleted) markPendingDelete(detail.id, new Date().toISOString());
-  else clearPendingDelete(detail.id);
+  if (detail.purged) markPendingPurge(detail.id, new Date().toISOString());
+  else if (detail.deleted) markPendingDelete(detail.id, new Date().toISOString());
+  else {
+    clearPendingDelete(detail.id);
+    clearPendingPurge(detail.id);
+  }
   try {
     window.dispatchEvent(new CustomEvent<ProjectChangedDetail>(PROJECT_CHANGED_EVENT, { detail }));
   } catch {
@@ -441,6 +474,12 @@ export const getTrashedProjects = async (ownerEmail: string | null): Promise<Pro
 export const trashDaysLeft = (p: Project): number => {
   const ms = new Date(p.deletedAt || 0).getTime() + TRASH_DAYS * 24 * 60 * 60 * 1000 - Date.now();
   return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+};
+
+/** Apagar para sempre (da lixeira): some deste aparelho e, com o Cofre, de todos os aparelhos. */
+export const purgeProjectFromTrash = async (id: string): Promise<void> => {
+  await deleteProjectFromIndexedDB(id, { silent: true });
+  emitProjectChanged({ id, deleted: true, purged: true });
 };
 
 /** Apaga de vez o que está na lixeira há mais de TRASH_DAYS dias. */

@@ -10,9 +10,9 @@ import { SafeBase64Image } from '@/components/safe-image';
 import { useAuth } from '@/hooks/useAuth';
 import { useTr } from '@/contexts/language-context';
 import { notify, confirmDialog } from '@/lib/notify';
-import { VAULT_UPDATED_EVENT } from '@/components/vault-agent';
+import { VAULT_UPDATED_EVENT, useVaultStatus } from '@/components/vault-agent';
 import {
-  deleteProjectFromIndexedDB, getTrashedProjects, purgeExpiredTrash, restoreProjectFromTrash, trashDaysLeft, TRASH_DAYS,
+  purgeProjectFromTrash, getTrashedProjects, purgeExpiredTrash, restoreProjectFromTrash, trashDaysLeft, TRASH_DAYS,
   type Project,
 } from '@/lib/storage';
 
@@ -33,6 +33,9 @@ export default function LixeiraPage() {
   const { user, loading } = useAuth(true);
   const [items, setItems] = useState<Project[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const vault = useVaultStatus();
+  const vaultOn = ['ok', 'syncing', 'error', 'locked'].includes(vault.phase);
+  const everywhere = vaultOn ? tr(' Ele será apagado deste aparelho e de todos os seus aparelhos.', ' It will be deleted from this device and all your devices.') : '';
 
   const load = useCallback(async () => {
     await purgeExpiredTrash().catch(() => 0);
@@ -62,13 +65,13 @@ export default function LixeiraPage() {
 
   const removeForever = async (p: Project) => {
     const ok = await confirmDialog(
-      tr(`Apagar "${p.name}" para sempre? Não será possível recuperar.`, `Delete "${p.name}" forever? It cannot be recovered.`),
+      tr(`Apagar "${p.name}" para sempre?`, `Delete "${p.name}" forever?`) + everywhere + tr(' Não será possível recuperar.', ' It cannot be recovered.'),
       { confirmLabel: tr('Apagar para sempre', 'Delete forever'), danger: true }
     );
     if (!ok) return;
     setBusy(p.id);
     try {
-      await deleteProjectFromIndexedDB(p.id, { silent: true });
+      await purgeProjectFromTrash(p.id);
       notify.success(tr('Projeto apagado para sempre.', 'Project deleted forever.'));
       await load();
     } finally {
@@ -80,15 +83,15 @@ export default function LixeiraPage() {
     if (!items?.length) return;
     const ok = await confirmDialog(
       tr(
-        `Esvaziar a lixeira? ${items.length} projeto(s) serão apagados para sempre.`,
-        `Empty the trash? ${items.length} project(s) will be deleted forever.`
+        `Esvaziar a lixeira? ${items.length} projeto(s) serão apagados para sempre${vaultOn ? ', deste aparelho e de todos os seus aparelhos' : ''}.`,
+        `Empty the trash? ${items.length} project(s) will be deleted forever${vaultOn ? ', from this device and all your devices' : ''}.`
       ),
       { confirmLabel: tr('Esvaziar lixeira', 'Empty trash'), danger: true }
     );
     if (!ok) return;
     setBusy('all');
     try {
-      for (const p of items) await deleteProjectFromIndexedDB(p.id, { silent: true });
+      for (const p of items) await purgeProjectFromTrash(p.id);
       notify.success(tr('Lixeira vazia.', 'Trash emptied.'));
       await load();
     } finally {
@@ -201,8 +204,8 @@ export default function LixeiraPage() {
             <p className="text-xs flex items-start gap-1.5 pt-2" style={{ color: C.muted }}>
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               {tr(
-                'A lixeira fica só neste aparelho. Ao restaurar, o projeto volta também para o Cofre e seus outros aparelhos (se o cofre estiver ligado).',
-                'The trash lives on this device only. When you restore, the project also returns to the Vault and your other devices (if the vault is on).'
+                'Com o Cofre ligado: restaurar traz o projeto de volta em todos os seus aparelhos, e apagar aqui apaga em todos eles.',
+                'With the Vault on: restoring brings the project back on all your devices, and deleting here deletes it on all of them.'
               )}
             </p>
           </div>
