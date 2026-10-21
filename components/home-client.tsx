@@ -7,7 +7,7 @@ import { Footer } from '@/components/footer';
 import { SafeImage } from '@/components/safe-image';
 import { LandingHeader } from '@/components/landing-header';
 import { ComparisonSlider } from '@/components/comparison-slider';
-import { useLanguage } from '@/contexts/language-context';
+import { useLanguage, useTr } from '@/contexts/language-context';
 import {
   Camera,
   Lock,
@@ -33,6 +33,7 @@ const FAQ_ITEMS = [
 
 export function HomeClient() {
   const { t } = useLanguage();
+  const tr = useTr();
   const [faqOpenIndex, setFaqOpenIndex] = useState<number | null>(0);
 
   return (
@@ -212,19 +213,19 @@ export function HomeClient() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="rounded-xl border border-revela-cream/15 bg-revela-cream/[0.03] p-4 sm:p-4 text-left">
                 <h3 className="text-base sm:text-lg font-semibold text-revela-cream mb-1.5">{t.home.planFreeName}</h3>
-                <p className="text-[10px] uppercase tracking-wide text-revela-cream/70 mb-2">Free – ideal para começar</p>
+                <p className="text-xs uppercase tracking-wide text-revela-cream/70 mb-2">{tr('R$ 0 — sem prazo', 'Free — no time limit')}</p>
                 {t.home.planFreeBullets?.length ? (
                   <ul className="text-xs sm:text-sm text-revela-cream/90 space-y-1">
-                    {t.home.planFreeBullets.map((line, i) => (<li key={`free-${i}`}>• {line}</li>))}
+                    {t.home.planFreeBullets.map((line, i) => (<li key={`free-${i}`}>✔ {line}</li>))}
                   </ul>
                 ) : (
                   <p className="text-xs sm:text-sm text-revela-cream/90">{t.home.planFreeDescription}</p>
                 )}
               </div>
               <div className="rounded-xl border border-revela-teal/40 bg-revela-teal/10 p-4 sm:p-4 text-left relative">
-                <span className="absolute -top-2.5 left-3 px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide bg-revela-teal text-white">Mais escolhido</span>
+                <span className="absolute -top-2.5 left-3 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide bg-revela-teal text-white">{tr('Para profissionais', 'For professionals')}</span>
                 <h3 className="text-base sm:text-lg font-semibold text-revela-cream mb-1.5">{t.home.planProName}</h3>
-                <p className="text-[10px] uppercase tracking-wide text-revela-cream/80 mb-2">R$ 19,90 / mês</p>
+                <p className="text-xs uppercase tracking-wide text-revela-cream/80 mb-2">{tr('R$ 19,90 / mês', 'R$ 19.90 / month')}</p>
                 {t.home.planProBullets?.length ? (
                   <ul className="text-xs sm:text-sm text-revela-cream/95 space-y-1">
                     {t.home.planProBullets.map((line, i) => (<li key={`pro-${i}`}>✔ {line}</li>))}
@@ -235,10 +236,10 @@ export function HomeClient() {
               </div>
               <div className="rounded-xl border border-revela-cream/25 bg-revela-cream/[0.06] p-4 sm:p-4 text-left">
                 <h3 className="text-base sm:text-lg font-semibold text-revela-cream mb-1.5">{t.home.planPremiumName}</h3>
-                <p className="text-[10px] uppercase tracking-wide text-revela-cream/80 mb-2">R$ 49,00 / mês</p>
+                <p className="text-xs uppercase tracking-wide text-revela-cream/80 mb-2">{tr('R$ 49,00 / mês', 'R$ 49.00 / month')}</p>
                 {t.home.planPremiumBullets?.length ? (
                   <ul className="text-xs sm:text-sm text-revela-cream/90 space-y-1">
-                    {t.home.planPremiumBullets.map((line, i) => (<li key={`premium-${i}`}>{i === 0 ? '✔' : '•'} {line}</li>))}
+                    {t.home.planPremiumBullets.map((line, i) => (<li key={`premium-${i}`}>✔ {line}</li>))}
                   </ul>
                 ) : (
                   <p className="text-xs sm:text-sm text-revela-cream/90">{t.home.planPremiumDescription}</p>
