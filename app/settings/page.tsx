@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { NavigationHeader } from '@/components/navigation-header';
+import { BackButton } from '@/components/back-button';
 import { Footer } from '@/components/footer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -236,7 +237,8 @@ export default function SettingsPage() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A2B32' }}>
       <NavigationHeader />
       
-      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-2xl pt-20 sm:pt-24">
+      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-2xl pt-28 sm:pt-28">
+        <BackButton className="mb-5" />
         <h1 
           className="text-2xl sm:text-3xl font-light mb-6" 
           style={{ color: '#E8DCC0' }}

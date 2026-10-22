@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ShieldCheck, Lock, Smartphone, Laptop, RefreshCw, KeyRound, Copy, Download, Printer, Eye, EyeOff,
-  CheckCircle2, AlertTriangle, ArrowLeft, Cloud, LogOut, Trash2, Sparkles, ChevronRight, X, HelpCircle, ChevronDown,
+  CheckCircle2, AlertTriangle, Cloud, LogOut, Trash2, Sparkles, ChevronRight, X, HelpCircle, ChevronDown,
 } from 'lucide-react';
 import { NavigationHeader } from '@/components/navigation-header';
+import { BackButton } from '@/components/back-button';
 import { Footer } from '@/components/footer';
 import { useAuth } from '@/hooks/useAuth';
 import { usePlan } from '@/hooks/usePlan';
@@ -264,9 +265,7 @@ export default function CofrePage() {
 
   return (
     <Shell>
-      <Link href="/settings" className="inline-flex items-center gap-1.5 text-sm mb-5 hover:opacity-80" style={{ color: C.muted }}>
-        <ArrowLeft className="w-4 h-4" /> {tr('Configurações', 'Settings')}
-      </Link>
+      <BackButton className="mb-5" />
 
       {!hasPremiumAccess ? (
         <Upsell />
@@ -297,7 +296,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: C.bg }}>
       <NavigationHeader />
-      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-2xl pt-20 sm:pt-24">{children}</main>
+      <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 max-w-2xl pt-28 sm:pt-28">{children}</main>
       <Footer />
     </div>
   );
