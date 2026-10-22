@@ -8,6 +8,7 @@ import { Notifier } from "@/components/notifier";
 import { CookieConsent } from "@/components/cookie-consent";
 import { GoogleAnalytics } from "@/components/google-analytics";
 import { ConversionPixels } from "@/components/conversion-pixels";
+import { NavTracker } from "@/components/back-button";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -113,6 +114,7 @@ export default function RootLayout({
       <body className="antialiased">
         <GoogleAnalytics />
         <ConversionPixels />
+        <NavTracker />
         <LanguageProvider>
           <ErrorBoundary>
             {children}
